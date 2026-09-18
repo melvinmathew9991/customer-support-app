@@ -121,6 +121,12 @@ class ZeroShotChainBasedEdge(ChainBasedEdge, ABC):
                 for action, _observation in result.get("intermediate_steps", [])
             ]
 
+        # Exposed so subclasses can check *what argument* a tool was called
+        # with, not just whether it returned something - a tool-calling
+        # model can hallucinate a plausible argument (see
+        # UserInfoChainBasedEdge._parse and docs/eval/Baseline-2026-09-19.md).
+        self._last_intermediate_steps = result.get("intermediate_steps", [])
+
         findings = result["output"]
 
         # The agent's natural-language "final answer" is a lossy summary -

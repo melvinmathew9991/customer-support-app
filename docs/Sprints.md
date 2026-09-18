@@ -83,6 +83,30 @@ build work, deliberately)
   rate is still flagged manual-only by design (`Metrics.md` #5).
   Sample sizes are still small (12-entry golden set) - see below.
 
+**Status (2026-09-19):**
+- ✅ Golden set scaled from 12 to 38 conversations (all 11 categories,
+  weighted toward identification and callback given they're where the
+  known issues are) - `tests/eval/golden_set.json`.
+- 🐛 Running the scaled set found a **sharper identification bug**: given
+  input as unrelated as "what's up," the tool-calling agent called
+  `user_info_db_search` with a fabricated argument that matched a *real*
+  account, authenticating as that person. The 2026-09-18 fix only checked
+  that the lookup returned something, not that its argument came from the
+  user's own message. **Fixed** (see Phase 2 in `Phases.md`) and verified
+  against the exact exploit sequence plus a happy-path control.
+- 🐛 The 38-entry run also exposed two bugs in `run_eval.py` itself, not
+  the app: (1) a `KeyError` crash on the two "uncertain by design" entries
+  (`ident-007`, `ident-010`) that don't have a fixed `identified_user` to
+  score against, and (2) callback recall being wrongly conflated with the
+  already-known whisper crash (Bug 2) - the crash logs show the callback
+  edge actually fired correctly 5 of 7 times before hitting that separate
+  bug, so the harness's 0% recall figure understated real detection
+  performance. Not yet fixed.
+- ⏳ `docs/eval/Baseline-2026-09-19.md` as currently committed predates
+  both the identification fix and the harness fixes above - **stale**,
+  needs a re-run once the harness is corrected, don't treat its numbers as
+  current.
+
 **Backlog:**
 - Define the metrics that matter, with explicit targets, e.g.:
   - Identification success rate (correct `UserProfile` extracted per turn budget)

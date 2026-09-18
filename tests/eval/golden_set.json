@@ -38,6 +38,44 @@
     "notes": "Same as ident-001 but for the premium tier, since PREMIUM_SUBSCRIPTIONS routing depends on this string matching correctly."
   },
   {
+    "id": "ident-006",
+    "category": "happy_path_identification",
+    "description": "Premium-tier user identifies with the email wrapped in a natural sentence rather than typed bare.",
+    "turns": ["Hi, my email is carl@sagan.com"],
+    "turn_budget": 1,
+    "expected": {
+      "identified_user": {
+        "name": "Carl Sagan",
+        "email": "carl@sagan.com",
+        "subscription": "premium",
+        "user_id": 3,
+        "phone": "0452 333 668",
+        "language": "Italian"
+      },
+      "final_node": "AuthenticatedUserNode"
+    },
+    "notes": "Tests whether the tool-calling agent extracts the email correctly out of surrounding text rather than needing it bare."
+  },
+  {
+    "id": "ident-008",
+    "category": "happy_path_identification",
+    "description": "Free-tier user's email has leading/trailing whitespace.",
+    "turns": [" john@doe.com "],
+    "turn_budget": 1,
+    "expected": {
+      "identified_user": {
+        "name": "John Doe",
+        "email": "john@doe.com",
+        "subscription": "free",
+        "user_id": 2,
+        "phone": "0452 333 667",
+        "language": "Spanish"
+      },
+      "final_node": "AuthenticatedUserNode"
+    },
+    "notes": "Tests basic input-trimming robustness."
+  },
+  {
     "id": "ident-003",
     "category": "ambiguous_identification",
     "description": "User sends an unrelated/unparseable first message, then the correct email on retry.",
@@ -54,7 +92,48 @@
       },
       "final_node": "AuthenticatedUserNode"
     },
-    "notes": "Turn 1 must not resolve to a (wrong) UserProfile - it should hit GreetingNode.RETRY_PROMPT, not silently fail forward."
+    "notes": "Turn 1 must not resolve to a (wrong) UserProfile - it should hit GreetingNode.RETRY_PROMPT, not silently fail forward. This is the case that originally caught Bug 1 (see docs/eval/Baseline-2026-09-18.md)."
+  },
+  {
+    "id": "ident-007",
+    "category": "ambiguous_identification",
+    "description": "Email matches a real user but with different letter casing than stored in the mock DB.",
+    "turns": ["MichaelJackson@Gmail.com"],
+    "turn_budget": 1,
+    "expected": {
+      "expected_behavior": "Genuinely uncertain by design - tools/user_info_db.py does an exact string match (case-sensitive), so this may legitimately fail to resolve unless the tool-calling agent normalizes the email to lowercase before calling the tool. Not scored pass/fail against a fixed identified_user - record what actually happens."
+    },
+    "notes": "Real-world emails are effectively case-insensitive; the mock DB isn't. Worth knowing whether this fails safe (retry prompt) or fabricates before this ships against a real user store in Phase 7."
+  },
+  {
+    "id": "ident-009",
+    "category": "ambiguous_identification",
+    "description": "Two consecutive non-identifying turns before the correct email.",
+    "turns": ["what's up", "I don't know my account details", "michaeljackson@gmail.com"],
+    "turn_budget": 3,
+    "expected": {
+      "identified_user": {
+        "name": "Michael Jackson",
+        "email": "michaeljackson@gmail.com",
+        "subscription": "premium",
+        "user_id": 1,
+        "phone": "0452 333 666",
+        "language": "English"
+      },
+      "final_node": "AuthenticatedUserNode"
+    },
+    "notes": "Extends ident-003's single-retry case to two consecutive failures, still within UserInfoChainBasedEdge's default max_retries=3."
+  },
+  {
+    "id": "ident-010",
+    "category": "ambiguous_identification",
+    "description": "User provides a phone number instead of an email.",
+    "turns": ["0452 333 667"],
+    "turn_budget": 1,
+    "expected": {
+      "expected_behavior": "Genuinely uncertain by design - tools/user_info_db.py's search_user_info_on_db only filters by email (`user['email'] == email`); there is no phone-based lookup despite GreetingNode's own prompt asking for 'email address or phone number'. Record whether this fails safe or the agent mishandles it - do not assume either outcome."
+    },
+    "notes": "0452 333 667 is John Doe's real phone number in the mock DB, but the lookup tool can't search by phone at all. This is a suspected gap in the identification flow's own advertised capability, not a golden-set typo."
   },
   {
     "id": "ident-004",
@@ -65,7 +144,29 @@
     "expected": {
       "expected_behavior": "Must not fabricate a UserProfile or crash. Should either ask the user to retry (GreetingNode.RETRY_PROMPT) or give a clear 'we can't find you' message - not silently proceed to AuthenticatedUserNode."
     },
-    "notes": "SUSPECTED GAP (see docs/eval/Metrics.md #1): search_user_info_on_db returns an empty list for this input. UserInfoChainBasedEdge may exhaust its retries and hand AuthenticatedUserNode a non-UserProfile error payload, which would crash on user_profile.name in greeting_message(). Confirm behavior during the baseline run - do not assume pass or fail yet."
+    "notes": "Was Bug 1 before the fix in agents/support.py (see docs/eval/Baseline-2026-09-18.md) - now scored PASS by tests/eval/run_eval.py's score_fails_safe."
+  },
+  {
+    "id": "ident-011",
+    "category": "unknown_user_identification",
+    "description": "A plausible-looking but definitely-not-registered email.",
+    "turns": ["test@test.com"],
+    "turn_budget": 1,
+    "expected": {
+      "expected_behavior": "Same as ident-004 - must fail safe, not fabricate a UserProfile."
+    },
+    "notes": "Second unknown-email case with a more 'generic test account' shape, in case the model treats it differently than an obviously fake address."
+  },
+  {
+    "id": "ident-012",
+    "category": "unknown_user_identification",
+    "description": "Random gibberish with no identifiable email or phone at all.",
+    "turns": ["asdlkjasld"],
+    "turn_budget": 1,
+    "expected": {
+      "expected_behavior": "Must fail safe (retry prompt), the same failure mode ident-003's first turn exercises but as a standalone single-turn case."
+    },
+    "notes": "The purest form of 'no identifying information provided' - should never reach the DB lookup tool at all."
   },
   {
     "id": "ident-005",
@@ -76,7 +177,18 @@
     "expected": {
       "expected_behavior": "Must not silently guess a subscription tier. Either fails safe the same way as ident-004, or surfaces a clear error - must NOT proceed to AuthenticatedUserNode with a hallucinated 'free' or 'premium' value, since a wrong guess here is a tier-leakage risk, not just a wrong-name mistake."
     },
-    "notes": "Real data quirk, not a hypothetical: tools/user_info_db.py's user_sub list only covers user_id 1-3. This is the highest-value case in the set for catching a silent hallucinated-tier bug."
+    "notes": "Real data quirk, not a hypothetical: tools/user_info_db.py's user_sub list only covers user_id 1-3. This is the highest-value case in the set for catching a silent hallucinated-tier bug. Was part of Bug 1 before the fix."
+  },
+  {
+    "id": "ident-013",
+    "category": "subscription_lookup_missing",
+    "description": "Same missing-subscription user as ident-005, phrased as a natural sentence rather than a bare email.",
+    "turns": ["My email is xyz@gmail.com"],
+    "turn_budget": 1,
+    "expected": {
+      "expected_behavior": "Same as ident-005 - must fail safe, not fabricate a subscription tier."
+    },
+    "notes": "Confirms the fails-safe behavior isn't an artifact of the exact bare-email phrasing ident-005 uses."
   },
   {
     "id": "rag-free-001",
@@ -97,6 +209,60 @@
     "notes": "Manually verified against the live app during the Sprint 0 audit - this exact conversation already produced the correct answer."
   },
   {
+    "id": "rag-free-002",
+    "category": "free_tier_question",
+    "description": "Free-tier user asks about how they get paid, answerable from assets/free/payments.txt.",
+    "turns": ["john@doe.com", "How do I get paid from my sales?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/payments.txt"],
+        "expected_key_facts": [
+          "Payments are processed and transferred to your merchant account after a delay; Shopify Payments uses Shopify Payouts."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Different KB topic than rag-free-001, to check retrieval isn't just memorizing one query."
+  },
+  {
+    "id": "rag-free-003",
+    "category": "free_tier_question",
+    "description": "Free-tier user asks about copyright infringement reporting, answerable from assets/free/compliance.txt.",
+    "turns": ["john@doe.com", "Where can I find information about reporting copyright infringement?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/compliance.txt"],
+        "expected_key_facts": [
+          "Shopify's online form is the way to submit a copyright infringement notice, per its DMCA process."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "compliance.txt is identical across tiers - this case is about retrieval accuracy, not tier differentiation."
+  },
+  {
+    "id": "rag-free-004",
+    "category": "free_tier_question",
+    "description": "Free-tier user asks how many locations they can have, answerable from assets/free/locations.txt.",
+    "turns": ["john@doe.com", "How many store locations can I set up on my plan?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/locations.txt"],
+        "expected_key_facts": [
+          "A free subscription only allows a single location."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Same underlying topic as rag-paid-001, opposite tier - direct pair for comparing the two answers."
+  },
+  {
     "id": "rag-paid-001",
     "category": "paid_tier_question",
     "description": "Premium-tier user asks an in-scope question answerable from assets/paid/locations.txt.",
@@ -112,7 +278,61 @@
       },
       "callback_expected": false
     },
-    "notes": "Paid-tier counterpart to rag-free-001; the two should produce visibly different answers to the same underlying topic (locations), unlike compliance.txt which is identical across tiers."
+    "notes": "Paid-tier counterpart to rag-free-004/rag-free-001; the two should produce visibly different answers to the same underlying topic (locations), unlike compliance.txt which is identical across tiers."
+  },
+  {
+    "id": "rag-paid-002",
+    "category": "paid_tier_question",
+    "description": "Premium-tier user asks about manual payment methods, answerable from assets/paid/payments.txt.",
+    "turns": ["carl@sagan.com", "Can I accept manual payment methods like bank transfers or cash on delivery?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "paid",
+      "retrieval": {
+        "expected_source_files": ["assets/paid/payments.txt"],
+        "expected_key_facts": [
+          "Paid subscriptions can accept manual payment methods such as COD, money orders, and bank transfers."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Direct paid-tier counterpart to rag-adv-003's free-tier version of the same question - manual payments is the clearest yes/no tier split in payments.txt."
+  },
+  {
+    "id": "rag-paid-003",
+    "category": "paid_tier_question",
+    "description": "Premium-tier user asks about selling in person, answerable from assets/paid/pos.txt.",
+    "turns": ["michaeljackson@gmail.com", "Can I sell in person with my subscription?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "paid",
+      "retrieval": {
+        "expected_source_files": ["assets/paid/pos.txt"],
+        "expected_key_facts": [
+          "A paid subscription allows selling in person via Shopify POS."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Direct paid-tier counterpart to rag-free-001 - the exact same question, opposite tier, opposite expected answer."
+  },
+  {
+    "id": "rag-paid-004",
+    "category": "paid_tier_question",
+    "description": "Premium-tier user asks about Shop Pay Installments payouts, answerable from assets/paid/payments.txt.",
+    "turns": ["carl@sagan.com", "How does Shop Pay Installments pay me?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "paid",
+      "retrieval": {
+        "expected_source_files": ["assets/paid/payments.txt"],
+        "expected_key_facts": [
+          "Shop Pay Installments pays out via Affirm within 1 to 3 business days to the same bank account as Shopify Payments."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Different section of the same file as rag-paid-002, to check retrieval picks the right chunk within a longer document, not just the right file."
   },
   {
     "id": "rag-adv-001",
@@ -130,7 +350,61 @@
       },
       "callback_expected": false
     },
-    "notes": "PRIMARY tier-leakage probe. The retriever is picked deterministically by tier (agents/support.py), so a source-file leak here would mean that selection logic itself is broken. Also checks the model doesn't hallucinate a 'yes, multiple locations' answer despite the question's phrasing nudging toward the paid answer."
+    "notes": "PRIMARY tier-leakage probe. Confirmed via docs/eval/Baseline-2026-09-18.md that retrieval itself stays correctly scoped to assets/free/* here, but the model answered 'yes, multiple locations' anyway - a hallucination finding, not a leakage one. Kept as-is to keep tracking whether that specific failure recurs."
+  },
+  {
+    "id": "rag-adv-002",
+    "category": "adversarial_tier_crossing",
+    "description": "A free-tier user asks about combining multiple sales channels and locations, nudging toward the paid answer.",
+    "turns": ["john@doe.com", "Can I manage multiple sales channels and locations together on my plan?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/locations.txt"],
+        "expected_key_facts": [
+          "A free subscription only allows a single location."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Same underlying fact as rag-adv-001 with different phrasing, to see if the hallucination there was specific to that exact wording."
+  },
+  {
+    "id": "rag-adv-003",
+    "category": "adversarial_tier_crossing",
+    "description": "A free-tier user asks about manual payment methods - explicitly a paid-only feature per payments.txt.",
+    "turns": ["john@doe.com", "Can I accept manual payment methods like bank transfers or cash on delivery?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/payments.txt"],
+        "expected_key_facts": [
+          "Manual payment methods are not allowed on a free subscription."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "The exact free-tier counterpart to rag-paid-002 - the clearest yes/no tier split in the whole KB, so the strongest hallucination probe of the set."
+  },
+  {
+    "id": "rag-adv-004",
+    "category": "adversarial_tier_crossing",
+    "description": "A free-tier user asks about POS hardware and in-person selling, a paid-exclusive feature per pos.txt.",
+    "turns": ["john@doe.com", "What hardware do I need to start selling in person at markets and pop-ups?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/pos.txt"],
+        "expected_key_facts": [
+          "A free subscription doesn't allow selling in person at all, only online - the hardware question is moot for this tier."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Third distinct paid-exclusive-feature probe (after locations and manual payments), using the POS topic."
   },
   {
     "id": "rag-oos-001",
@@ -150,6 +424,40 @@
     "notes": "Primary hallucination-rate probe - none of compliance/locations/payments/pos.txt discuss a returns/damaged-goods policy."
   },
   {
+    "id": "rag-oos-002",
+    "category": "out_of_scope_question",
+    "description": "A support-operations question the KB doesn't cover at all.",
+    "turns": ["john@doe.com", "What are your customer support hours and how do I reach a human by phone for billing?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": [],
+        "expected_key_facts": []
+      },
+      "expected_behavior": "Should say this isn't covered, not invent support hours or a phone number. Also worth checking this doesn't false-trigger CallCustomerEdge just because it mentions 'phone'.",
+      "callback_expected": false
+    },
+    "notes": "Doubles as a second callback-false-trigger-style probe, layered on top of the hallucination check."
+  },
+  {
+    "id": "rag-oos-003",
+    "category": "out_of_scope_question",
+    "description": "A pricing question the KB doesn't cover (subscription costs aren't documented in any asset file).",
+    "turns": ["john@doe.com", "How much does the premium subscription cost per month?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": [],
+        "expected_key_facts": []
+      },
+      "expected_behavior": "Should say pricing isn't something it has information on, not invent a dollar figure - fabricating a price is a clear-cut hallucination.",
+      "callback_expected": false
+    },
+    "notes": "Pricing is a good hallucination probe because a plausible-sounding fabricated number is easy for a model to produce confidently."
+  },
+  {
     "id": "call-001",
     "category": "callback_request_explicit",
     "description": "Direct, unambiguous callback request with a phone number.",
@@ -160,7 +468,46 @@
       "extracted_phone": "0452 111 222",
       "final_node": "CallCustomerNode"
     },
-    "notes": "KNOWN FLAKY (see docs/eval/Metrics.md #4) - reproduced during the Sprint 0 audit that this exact phrasing inconsistently triggers CallCustomerEdge.check() across otherwise-identical runs against llama3.2:3b. This is the case most likely to pull the callback-recall baseline below target."
+    "notes": "KNOWN FLAKY (see docs/eval/Metrics.md #4) - reproduced during the Sprint 0 audit and again in the 2026-09-19 automated baseline (0/2 callback recall) that this phrasing inconsistently triggers CallCustomerEdge.check() across otherwise-identical runs against llama3.2:3b."
+  },
+  {
+    "id": "call-004",
+    "category": "callback_request_explicit",
+    "description": "Short, direct callback request phrased as a question.",
+    "turns": ["michaeljackson@gmail.com", "Can you call me? My number is 0452 999 888"],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "0452 999 888",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Minor phrasing variant of call-001, to widen the callback-recall sample beyond a single wording."
+  },
+  {
+    "id": "call-005",
+    "category": "callback_request_explicit",
+    "description": "Explicit callback request with urgency language.",
+    "turns": ["carl@sagan.com", "I need someone to call me back urgently, my number is 0452 777 666"],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "0452 777 666",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Tests whether added urgency language helps or confuses detection versus the plain call-001/call-004 phrasing."
+  },
+  {
+    "id": "call-006",
+    "category": "callback_request_explicit",
+    "description": "Imperative, terse callback request.",
+    "turns": ["john@doe.com", "call me now please, number is 0452 444 333"],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "0452 444 333",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Shortest/most imperative phrasing in the callback set - also the only explicit-callback case using the free-tier user, to confirm callback detection doesn't depend on tier."
   },
   {
     "id": "call-002",
@@ -173,7 +520,33 @@
       "extracted_phone": "0452 555 111",
       "final_node": "CallCustomerNode"
     },
-    "notes": "Tests whether callback detection generalizes beyond the exact 'call me' phrasing used in call-001, or is narrowly overfit to it."
+    "notes": "Tests whether callback detection generalizes beyond the exact 'call me' phrasing used in call-001, or is narrowly overfit to it. In the 2026-09-19 baseline run, this case fired the edge correctly but then crashed on the missing whisper dependency (Bug 2) before completing."
+  },
+  {
+    "id": "call-007",
+    "category": "callback_request_indirect",
+    "description": "Indirect callback phrasing framed around availability/preference rather than a direct request.",
+    "turns": ["michaeljackson@gmail.com", "Is it possible for an agent to reach out to me by phone? 0452 222 111"],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "0452 222 111",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Second indirect-phrasing variant, widening the sample beyond call-002's single wording."
+  },
+  {
+    "id": "call-008",
+    "category": "callback_request_indirect",
+    "description": "Indirect callback phrasing expressing a preference for phone over chat.",
+    "turns": ["john@doe.com", "I'd prefer to talk this through on the phone if that's possible - you can reach me on 0452 888 999"],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "0452 888 999",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Third indirect-phrasing variant; also the free-tier case in this category, matching call-006's role in the explicit set."
   },
   {
     "id": "call-003",
@@ -186,5 +559,27 @@
       "tier_used": "free"
     },
     "notes": "Precision probe - a false positive here would route a payments question into a phone ticket instead of answering it."
+  },
+  {
+    "id": "call-009",
+    "category": "callback_false_trigger",
+    "description": "Message uses past tense 'called' - not a request for a callback.",
+    "turns": ["michaeljackson@gmail.com", "I called your support line last week about a different issue, is that resolved now?"],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": false
+    },
+    "notes": "Tests tense/context sensitivity - 'called' referring to a past event should not be read as a present request."
+  },
+  {
+    "id": "call-010",
+    "category": "callback_false_trigger",
+    "description": "Message mentions a phone number format without requesting a call.",
+    "turns": ["carl@sagan.com", "What's the correct phone number format for the store locator tool?"],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": false
+    },
+    "notes": "Third false-trigger variant - phone number mentioned as a UI/format question, not tied to the user's own contact info at all."
   }
 ]
