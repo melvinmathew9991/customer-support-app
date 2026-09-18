@@ -44,6 +44,7 @@ class Settings(BaseSettings):
 
     assets_dir: Path = Field(default_factory=lambda: PROJECT_ROOT / "assets")
     chroma_dir: Path = Field(default_factory=lambda: PROJECT_ROOT / "chroma_db")
+    turn_log_path: Path = Field(default_factory=lambda: PROJECT_ROOT / "logs" / "turns.jsonl")
 
     # LangChain AgentExecutor step-by-step tool-call tracing. Off by default
     # for a clean console; turn on for debugging agent behavior.

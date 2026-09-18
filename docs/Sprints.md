@@ -61,9 +61,16 @@ build work, deliberately)
 - ✅ First baseline run (manual, against the 12 drafted so far):
   `docs/eval/Baseline-2026-09-18.md` — found and fixed a critical
   identification bug (see Phase 2 in `Phases.md`) in the process.
-- ❌ Not started: per-turn structured logging in `logging_config.py`.
+- ✅ Per-turn structured logging: `logging_config.py` now writes JSON-line
+  records to `logs/turns.jsonl` for every turn, retrieval call, and
+  tool-calling agent invocation - node transitions, retrieved doc sources
+  (project-relative, matching `golden_set.json`'s `expected_source_files`
+  format) + similarity scores, tool calls made, and latency per event.
+  Wired into `pipeline.py`, `graph/chain_based_node.py`, and
+  `graph/chain_based_edge.py`.
 - ❌ Not started: automated scoring harness (the baseline run was
-  read-by-hand, not machine-scored against `expected` fields).
+  read-by-hand, not machine-scored against `expected` fields) - this is
+  now unblocked by the structured log existing.
 
 **Backlog:**
 - Define the metrics that matter, with explicit targets, e.g.:
