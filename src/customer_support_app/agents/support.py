@@ -105,6 +105,19 @@ To achieve this you have access to the following tools:"""
     _NO_USER_MATCH = re.compile(r"user_info_db_search result:\s*\[\s*\]")
     _NO_SUBSCRIPTION_MATCH = re.compile(r"user_subscription_db_search result:\s*\[\s*\]")
 
+    @staticmethod
+    def _tool_call_input(intermediate_steps, tool_name: str) -> Optional[str]:
+        for action, _observation in intermediate_steps:
+            if action.tool == tool_name:
+                tool_input = action.tool_input
+                if isinstance(tool_input, dict):
+                    # some tool-calling models wrap the single positional arg
+                    # in a dict (e.g. {"email": "..."}) rather than passing it
+                    # bare - unwrap to the first value either way.
+                    tool_input = next(iter(tool_input.values()), None)
+                return str(tool_input) if tool_input is not None else None
+        return None
+
     def _parse(self, message_history: MessageHistory) -> Union[str, BaseModel]:
         model_input = message_history.model_input()
         findings = self._gather_findings(model_input)
@@ -120,6 +133,24 @@ To achieve this you have access to the following tools:"""
         if self._NO_SUBSCRIPTION_MATCH.search(findings):
             raise OutputParserException(
                 "The user was found but has no subscription record - can't determine their tier."
+            )
+
+        # A real match from the DB tool isn't enough on its own - the tool
+        # call's own argument is model-generated and can be fabricated
+        # rather than taken from what the user actually typed (confirmed:
+        # given input as unrelated as "what's up", the agent called
+        # user_info_db_search with "john@doe.com" - a real account, but one
+        # the user never provided. See docs/eval/Baseline-2026-09-19.md).
+        # Require the looked-up value to actually appear in the user's own
+        # latest message before trusting the match.
+        last_user_message = message_history.role_based_history(Role.USER)[-1]["content"]
+        lookup_value = self._tool_call_input(
+            getattr(self, "_last_intermediate_steps", []), "user_info_db_search"
+        )
+        if not lookup_value or lookup_value.strip().lower() not in last_user_message.lower():
+            raise OutputParserException(
+                "The user lookup was performed with a value that doesn't appear in the "
+                "user's own message - refusing to trust a fabricated identity."
             )
 
         return self._structured_llm.invoke(

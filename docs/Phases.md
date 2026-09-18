@@ -24,6 +24,18 @@ phases are the actual next steps.
   checks the raw tool-call observations before extraction, and
   `AuthenticatedUserNode` fails safe instead of crashing if a non-`UserProfile`
   ever reaches it.
+- **Bugfix (2026-09-19, found via the scaled 38-entry golden-set run - see
+  `docs/eval/Baseline-2026-09-19.md`):** a sharper variant of the above
+  slipped past that first fix - given input as unrelated as "what's up",
+  the tool-calling agent called `user_info_db_search` with a fabricated
+  argument ("john@doe.com") that happened to match a *real* account,
+  authenticating the conversation as that person despite the user never
+  providing any identifying information. The first fix only checked that
+  the DB lookup returned *something*, not that its argument came from the
+  user's own message. `UserInfoChainBasedEdge._parse` now also requires
+  the looked-up value to actually appear in the user's latest message
+  before trusting the match. Verified: the exploit sequence now correctly
+  fails safe, and happy-path identification still works.
 
 ## Phase 3 — Tiered RAG support answers ✅ Done
 - `AuthenticatedUserNode` (`RetrievalNode`) answers from Chroma, retriever

@@ -1,4 +1,5 @@
 import abc
+from pathlib import Path
 
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain.chains import create_retrieval_chain
@@ -8,10 +9,25 @@ from langchain.output_parsers import PydanticOutputParser
 from pydantic import BaseModel
 from typing import Type, Optional, List
 
-from customer_support_app.config import get_settings
+from customer_support_app.config import PROJECT_ROOT, get_settings
 from customer_support_app.domain.chat import MessageHistory, Role
 from customer_support_app.graph.node import BaseNode
 from customer_support_app.graph.edge import BaseEdge
+from customer_support_app.logging_config import log_latency
+
+
+def _relative_source(source: Optional[str]) -> Optional[str]:
+    """Normalizes a Chroma doc's absolute source path to project-relative,
+    e.g. "assets/free/pos.txt" - matching the format golden_set.json's
+    expected_source_files use, so the two can be compared directly once
+    the eval harness exists.
+    """
+    if not source:
+        return source
+    try:
+        return Path(source).resolve().relative_to(PROJECT_ROOT).as_posix()
+    except ValueError:
+        return source
 
 
 class ChainBasedNode(BaseNode[MessageHistory], abc.ABC):
@@ -63,8 +79,25 @@ class RetrievalNode(ChainBasedNode, abc.ABC):
     def _predict(self, messages: MessageHistory) -> str:
         last_user_message = messages.role_based_history(role=Role.USER)[-1]["content"]
         retriever = self._get_retriever()
-        chain = create_retrieval_chain(retriever, self._combine_docs_chain)
-        result = chain.invoke({"input": last_user_message})
+
+        with log_latency("retrieval", node=type(self).__name__, query=last_user_message) as fields:
+            # The retriever interface itself doesn't expose scores - query
+            # the underlying vectorstore directly, purely for logging.
+            # Tier-leakage rate (docs/eval/Metrics.md #3) is scored from
+            # this "source" field: any assets/paid/* source for a free
+            # user's turn (or vice versa) is a hard failure.
+            try:
+                scored = retriever.vectorstore.similarity_search_with_score(last_user_message)
+                fields["retrieved_docs"] = [
+                    {"source": _relative_source(doc.metadata.get("source")), "score": round(float(score), 4)}
+                    for doc, score in scored
+                ]
+            except Exception:
+                fields["retrieved_docs"] = None
+
+            chain = create_retrieval_chain(retriever, self._combine_docs_chain)
+            result = chain.invoke({"input": last_user_message})
+
         return result["answer"]
 
 

@@ -11,6 +11,7 @@ from customer_support_app.config import get_settings
 from customer_support_app.domain.chat import MessageHistory, ModelInput
 from customer_support_app.domain.graph import MessageOutput
 from customer_support_app.graph.edge import BaseEdge
+from customer_support_app.logging_config import log_latency
 
 
 class ChainBasedEdge(BaseEdge[MessageHistory, MessageOutput], ABC):
@@ -111,9 +112,21 @@ class ZeroShotChainBasedEdge(ChainBasedEdge, ABC):
         pass
 
     def _gather_findings(self, model_input: ModelInput) -> str:
-        result = self._agent_executor.invoke(
-            {"input": model_input.input, "history": model_input.history}
-        )
+        with log_latency("tool_calling_agent", edge=type(self).__name__) as fields:
+            result = self._agent_executor.invoke(
+                {"input": model_input.input, "history": model_input.history}
+            )
+            fields["tool_calls"] = [
+                {"tool": action.tool, "input": str(action.tool_input)}
+                for action, _observation in result.get("intermediate_steps", [])
+            ]
+
+        # Exposed so subclasses can check *what argument* a tool was called
+        # with, not just whether it returned something - a tool-calling
+        # model can hallucinate a plausible argument (see
+        # UserInfoChainBasedEdge._parse and docs/eval/Baseline-2026-09-19.md).
+        self._last_intermediate_steps = result.get("intermediate_steps", [])
+
         findings = result["output"]
 
         # The agent's natural-language "final answer" is a lossy summary -

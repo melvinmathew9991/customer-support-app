@@ -61,9 +61,51 @@ build work, deliberately)
 - ✅ First baseline run (manual, against the 12 drafted so far):
   `docs/eval/Baseline-2026-09-18.md` — found and fixed a critical
   identification bug (see Phase 2 in `Phases.md`) in the process.
-- ❌ Not started: per-turn structured logging in `logging_config.py`.
-- ❌ Not started: automated scoring harness (the baseline run was
-  read-by-hand, not machine-scored against `expected` fields).
+- ✅ Per-turn structured logging: `logging_config.py` now writes JSON-line
+  records to `logs/turns.jsonl` for every turn, retrieval call, and
+  tool-calling agent invocation - node transitions, retrieved doc sources
+  (project-relative, matching `golden_set.json`'s `expected_source_files`
+  format) + similarity scores, tool calls made, and latency per event.
+  Wired into `pipeline.py`, `graph/chain_based_node.py`, and
+  `graph/chain_based_edge.py`.
+- ✅ Automated scoring harness: `tests/eval/run_eval.py` runs the golden
+  set against the live pipeline, scores each entry against its `expected`
+  fields using `logs/turns.jsonl`, and computes the aggregate metrics from
+  `docs/eval/Metrics.md` as real numbers. Not a pytest test (same reason
+  as the rest of this project's LLM-dependent behavior - slow, needs a
+  live Ollama server) - run manually via
+  `python tests/eval/run_eval.py --out <report path>`.
+- ✅ Real, machine-scored baseline: `docs/eval/Baseline-2026-09-19.md`.
+  Identification success 100% (n=3), fails-safe 100% (n=2), retrieval
+  recall@k 100% (n=3), tier-leakage 0% (n=3) - all clean now that Bug 1 is
+  fixed. **Callback recall: 0% (n=2)**, badly missing its ≥90% target -
+  turns the anecdotal flakiness finding into a real number. Hallucination
+  rate is still flagged manual-only by design (`Metrics.md` #5).
+  Sample sizes are still small (12-entry golden set) - see below.
+
+**Status (2026-09-19):**
+- ✅ Golden set scaled from 12 to 38 conversations (all 11 categories,
+  weighted toward identification and callback given they're where the
+  known issues are) - `tests/eval/golden_set.json`.
+- 🐛 Running the scaled set found a **sharper identification bug**: given
+  input as unrelated as "what's up," the tool-calling agent called
+  `user_info_db_search` with a fabricated argument that matched a *real*
+  account, authenticating as that person. The 2026-09-18 fix only checked
+  that the lookup returned something, not that its argument came from the
+  user's own message. **Fixed** (see Phase 2 in `Phases.md`) and verified
+  against the exact exploit sequence plus a happy-path control.
+- 🐛 The 38-entry run also exposed two bugs in `run_eval.py` itself, not
+  the app: (1) a `KeyError` crash on the two "uncertain by design" entries
+  (`ident-007`, `ident-010`) that don't have a fixed `identified_user` to
+  score against, and (2) callback recall being wrongly conflated with the
+  already-known whisper crash (Bug 2) - the crash logs show the callback
+  edge actually fired correctly 5 of 7 times before hitting that separate
+  bug, so the harness's 0% recall figure understated real detection
+  performance. Not yet fixed.
+- ⏳ `docs/eval/Baseline-2026-09-19.md` as currently committed predates
+  both the identification fix and the harness fixes above - **stale**,
+  needs a re-run once the harness is corrected, don't treat its numbers as
+  current.
 
 **Backlog:**
 - Define the metrics that matter, with explicit targets, e.g.:
