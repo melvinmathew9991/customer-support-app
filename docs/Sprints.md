@@ -102,10 +102,24 @@ build work, deliberately)
   edge actually fired correctly 5 of 7 times before hitting that separate
   bug, so the harness's 0% recall figure understated real detection
   performance. Not yet fixed.
-- ⏳ `docs/eval/Baseline-2026-09-19.md` as currently committed predates
-  both the identification fix and the harness fixes above - **stale**,
-  needs a re-run once the harness is corrected, don't treat its numbers as
-  current.
+- ✅ Both harness bugs fixed (`tests/eval/run_eval.py`) and the full
+  38-entry set re-run. `docs/eval/Baseline-2026-09-19.md` now reflects the
+  real, current state: identification success 100% (n=6), fails-safe 100%
+  (n=5), retrieval recall@k 100% (n=12), tier-leakage 0% (n=12) - all
+  clean, and `ident-009` (the exact auth-bypass exploit conversation) now
+  passes. **Callback recall: 71% (n=7)**, precision 100% (n=5) - the
+  harness fix revealed the edge actually fires correctly more often than
+  the earlier 0% figure suggested (5/7 fired; those 5 then hit the
+  separate whisper crash, Bug 2); only `call-001`/`call-008` are genuine
+  detection misses. Callback recall is the one metric still below target.
+
+**Definition of done status:** every metric now has a real number except
+hallucination rate, which stays intentionally manual per `Metrics.md` #5.
+Remaining before Sprint 1 can close: fix Bug 2 (whisper dependency) so the
+callback flow can complete rather than just detect correctly, decide
+whether 71% callback recall is acceptable or needs prompt/model work, and
+do a manual hallucination pass over the `out_of_scope_question` /
+`adversarial_tier_crossing` answers in the baseline report.
 
 **Backlog:**
 - Define the metrics that matter, with explicit targets, e.g.:
