@@ -48,10 +48,22 @@ Sprint 1's formal eval existing.
 
 ---
 
-## Sprint 1 (2 weeks) — Evaluation foundation & instrumentation
+## Sprint 1 (2 weeks) — Evaluation foundation & instrumentation 🚧 In progress
 **SDLC stage:** Requirements refinement + Test planning (done *before* more
 build work, deliberately)
 **Goal:** Make the system's behavior measurable before changing it further.
+
+**Status (2026-09-18):**
+- ✅ Metrics defined with explicit targets: `docs/eval/Metrics.md`.
+- ✅ Golden set structure + 12 draft conversations (one per category):
+  `tests/eval/golden_set.json` + `tests/eval/README.md`. Still needs
+  scaling to the full 30-50.
+- ✅ First baseline run (manual, against the 12 drafted so far):
+  `docs/eval/Baseline-2026-09-18.md` — found and fixed a critical
+  identification bug (see Phase 2 in `Phases.md`) in the process.
+- ❌ Not started: per-turn structured logging in `logging_config.py`.
+- ❌ Not started: automated scoring harness (the baseline run was
+  read-by-hand, not machine-scored against `expected` fields).
 
 **Backlog:**
 - Define the metrics that matter, with explicit targets, e.g.:
