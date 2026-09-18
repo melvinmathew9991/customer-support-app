@@ -55,15 +55,32 @@ def read_new_log_lines(log_path: Path, start_offset: int):
 
 
 def run_conversation(entry: dict):
+    """Runs one golden-set conversation to completion or to the turn that
+    crashes it.
+
+    A turn crashing (e.g. Bug 2 - the missing whisper dependency, hit when
+    CallCustomerNode's tool runs) doesn't mean the *node transition* that
+    preceded it was wrong: CustomerSupportPipeline._set_current_node sets
+    self._current_node before calling the new node's greeting_message(), so
+    pipeline._current_node still correctly reflects e.g. CallCustomerNode
+    even if greeting_message() then raises. Stopping here (rather than
+    letting the exception blow past this function) is what lets the
+    category scorer see that real final_node instead of losing it.
+    """
     pipeline = CustomerSupportPipeline()
     transcript = []
+    error = None
     res, _over = pipeline.run("")
     transcript.append([m.message for m in res])
     for turn in entry["turns"]:
-        res, _over = pipeline.run(turn)
+        try:
+            res, _over = pipeline.run(turn)
+        except Exception as e:
+            error = f"{type(e).__name__}: {e}"
+            break
         transcript.append([m.message for m in res])
-    final_node = type(pipeline._current_node).__name__
-    return transcript, final_node
+    final_node = type(pipeline._current_node).__name__ if pipeline._current_node else None
+    return transcript, final_node, error
 
 
 def _last_assistant_message(transcript):
@@ -79,7 +96,20 @@ def _last_assistant_message(transcript):
 
 
 def score_identification(entry, transcript, final_node, _log_records):
-    expected = entry["expected"]["identified_user"]
+    expected = entry["expected"].get("identified_user")
+    if expected is None:
+        # Some ambiguous_identification entries are deliberately open-ended
+        # (see their golden_set.json "notes" - e.g. ident-007's case-sensitive
+        # email, ident-010's phone-only lookup gap) and carry an
+        # expected_behavior note instead of a fixed identity to score
+        # against. Surface what happened for manual review rather than
+        # crashing on a KeyError.
+        return None, {
+            "answer": _last_assistant_message(transcript),
+            "final_node": final_node,
+            "expected_behavior": entry["expected"].get("expected_behavior"),
+            "note": "no fixed expected identity for this entry - manual review",
+        }
     last_msg = _last_assistant_message(transcript) or ""
     name_ok = expected["name"] in last_msg
     sub_ok = expected["subscription"].lower() in last_msg.lower()
@@ -166,18 +196,27 @@ def run_all(golden_set):
     for entry in golden_set:
         print(f"Running {entry['id']} ({entry['category']})...", file=sys.stderr)
         try:
-            transcript, final_node = run_conversation(entry)
+            transcript, final_node, crash = run_conversation(entry)
             log_records, offset = read_new_log_lines(log_path, offset)
             scorer = CATEGORY_SCORERS.get(entry["category"])
             if scorer is None:
                 passed, detail = None, {"error": f"no scorer registered for category '{entry['category']}'"}
             else:
+                # Score from final_node/log_records as usual even if this
+                # conversation crashed partway - a crash after a correct
+                # node transition (e.g. Bug 2's whisper crash, which only
+                # happens *inside* CallCustomerNode, after CallCustomerEdge
+                # already fired correctly) is a different failure than the
+                # edge never firing at all, and conflating the two
+                # understated callback recall in the 2026-09-19 run.
                 passed, detail = scorer(entry, transcript, final_node, log_records)
+            if crash:
+                detail = dict(detail)
+                detail["crash"] = crash
         except Exception as e:
-            # A conversation crashing (e.g. Bug 2 in docs/eval/Baseline-2026-09-18.md
-            # - the missing whisper dependency) is itself a real result, not a
-            # reason to abort the whole run - record it and keep going so one
-            # broken category doesn't hide every other metric.
+            # A harness-level failure the above couldn't even get a
+            # final_node out of (e.g. the very first pipeline.run("") call
+            # itself failing) - genuinely unscorable, not just crashed.
             _, offset = read_new_log_lines(log_path, offset)  # resync past any partial output
             passed, detail = False, {"error": f"{type(e).__name__}: {e}"}
         results.append({"id": entry["id"], "category": entry["category"], "passed": passed, "detail": detail})
@@ -238,6 +277,15 @@ def build_report(results, metrics):
     lines.append(fmt("Tier-leakage rate", "0%", metrics["tier_leakage_rate"]))
     lines.append(fmt("Callback recall", "≥90%", metrics["callback_recall"]))
     lines.append(fmt("Callback precision", "≥95%", metrics["callback_precision"]))
+    n_crashed = sum(1 for r in results if "crash" in r["detail"])
+    if n_crashed:
+        lines.append(
+            f"  - Note: {n_crashed} entries hit a crash after their node transition "
+            "was already scored (see each entry's `crash` field below) - callback "
+            "recall/precision reflect whether CallCustomerEdge *fired* correctly, "
+            "not whether the ticket-creation flow completed end-to-end. A crash "
+            "there is a separate, already-tracked issue (Bug 2)."
+        )
     lines.append(
         "- **Hallucination rate**: not auto-scored in v1 (manual grading by design "
         "— see docs/eval/Metrics.md #5). Review the `out_of_scope_question` and "
