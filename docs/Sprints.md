@@ -281,8 +281,9 @@ caught by monitoring, not by a user complaint.
   which `PRD.md` feature or `Phases.md` phase it serves, and how it'll be
   measured as done (a test, a metric delta, or an explicit manual check).
 - **Definition of Done** for any sprint: tests pass (`pytest`), `ruff`
-  clean, `Phases.md` status updated, and — from Sprint 5 onward — the CI
-  eval gate is green.
+  clean, `Phases.md` status updated, `docs/report.md` refreshed to reflect
+  the sprint's outcome (architecture/results/findings tables, not just a
+  changelog line), and — from Sprint 5 onward — the CI eval gate is green.
 - Sprints are sequential as scoped above (each depends on the eval
   foundation from Sprint 1), but Sprints 3/4 (persistence, user store) and
   Sprint 6 (design) don't depend on each other and can be reordered or
