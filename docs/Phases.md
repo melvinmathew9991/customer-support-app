@@ -16,6 +16,14 @@ phases are the actual next steps.
 - `GreetingNode` asks for email/phone.
 - `UserInfoChainBasedEdge` (tool-calling agent) resolves the user via
   `tools/user_info_db.py` into a structured `UserProfile`.
+- **Bugfix (2026-09-18, found via Sprint 1's first golden-set run - see
+  `docs/eval/Baseline-2026-09-18.md`):** identification previously accepted
+  non-identifying input (e.g. "hey there") or an unmatched email/phone and
+  fabricated a schema-valid `UserProfile` instead of failing - a silent
+  identity bypass. `UserInfoChainBasedEdge._parse` now deterministically
+  checks the raw tool-call observations before extraction, and
+  `AuthenticatedUserNode` fails safe instead of crashing if a non-`UserProfile`
+  ever reaches it.
 
 ## Phase 3 — Tiered RAG support answers ✅ Done
 - `AuthenticatedUserNode` (`RetrievalNode`) answers from Chroma, retriever

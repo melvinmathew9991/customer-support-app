@@ -1,6 +1,8 @@
 import random
+import re
 from typing import Optional, Type, Union, List
 
+from langchain_core.exceptions import OutputParserException
 from langchain_core.tools import Tool
 from pydantic import BaseModel
 
@@ -88,6 +90,42 @@ To achieve this you have access to the following tools:"""
         message = f"User Info retrieved: {user_info}"
         return [MessageOutput(message, Role.SYSTEM)]
 
+    # with_structured_output constrains the *shape* of the extraction
+    # result, but nothing stops the model from inventing plausible-looking
+    # values (a blank name, a name guessed from the email, "free" as a
+    # default subscription) for a schema whose fields are all required.
+    # Confirmed via the Sprint 1 golden set (ident-003/ident-004/ident-005 in
+    # tests/eval/golden_set.json): unrelated input, and even a genuinely
+    # unknown email, both produced a fabricated-but-schema-valid UserProfile
+    # instead of failing - i.e. a silent identity bypass. _gather_findings
+    # always embeds the raw tool observation as
+    # "- <tool_name> result: <observation>", so we can check deterministically
+    # whether the lookup tools actually found something before ever asking
+    # the model to extract a UserProfile from the findings.
+    _NO_USER_MATCH = re.compile(r"user_info_db_search result:\s*\[\s*\]")
+    _NO_SUBSCRIPTION_MATCH = re.compile(r"user_subscription_db_search result:\s*\[\s*\]")
+
+    def _parse(self, message_history: MessageHistory) -> Union[str, BaseModel]:
+        model_input = message_history.model_input()
+        findings = self._gather_findings(model_input)
+
+        if "user_info_db_search result:" not in findings:
+            raise OutputParserException(
+                "No email or phone number was found in the user's message to look up."
+            )
+        if self._NO_USER_MATCH.search(findings):
+            raise OutputParserException(
+                "No user record matches the email or phone number provided."
+            )
+        if self._NO_SUBSCRIPTION_MATCH.search(findings):
+            raise OutputParserException(
+                "The user was found but has no subscription record - can't determine their tier."
+            )
+
+        return self._structured_llm.invoke(
+            f"Extract the requested information from these findings:\n{findings}"
+        )
+
 
 class AuthenticatedUserNode(RetrievalNode):
     STATIC_PROMPT = [
@@ -105,9 +143,20 @@ class AuthenticatedUserNode(RetrievalNode):
         super().__init__(llm_model, pydantic_object, edges)
 
     def greeting_message(self) -> Optional[MessageOutput]:
-        prompt = random.choice(self.STATIC_PROMPT)
-        user_profile: UserProfile = self._node_input
+        user_profile = self._node_input
+        if not isinstance(user_profile, UserProfile):
+            # UserInfoChainBasedEdge exhausted its retries (e.g. the user
+            # never provided an identifiable email/phone, or gave one with
+            # no matching record) and handed this node an error payload
+            # instead of a real UserProfile. Fail safe with a plain message
+            # rather than crashing on user_profile.name below.
+            return MessageOutput(
+                "Sorry, we still couldn't verify your account. Please refresh and start "
+                "again with your registered email address or phone number.",
+                role=Role.ASSISTANT,
+            )
 
+        prompt = random.choice(self.STATIC_PROMPT)
         prompt = prompt.format(
             user_name=user_profile.name, subscription=user_profile.subscription
         )
@@ -117,8 +166,11 @@ class AuthenticatedUserNode(RetrievalNode):
         # Deterministically pick the knowledge base for the user's own tier,
         # instead of asking the LLM to guess which KB a question belongs to
         # (which could leak premium content to free users or vice versa).
-        user_profile: UserProfile = self._node_input
-        if user_profile.subscription.lower() in PREMIUM_SUBSCRIPTIONS:
+        user_profile = self._node_input
+        if (
+            isinstance(user_profile, UserProfile)
+            and user_profile.subscription.lower() in PREMIUM_SUBSCRIPTIONS
+        ):
             return self._hc_agent.paid_sub_retriever()
         return self._hc_agent.free_sub_retriever()
 
