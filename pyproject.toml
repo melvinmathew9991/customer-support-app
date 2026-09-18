@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "customer-support-app"
+version = "0.1.0"
+description = "LangChain + graph-orchestrated LLM customer support agent, running locally on Ollama by default."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "langchain==0.3.7",
+    "langchain-community==0.3.7",
+    "langchain-ollama==0.2.0",
+    "langchain-openai==0.2.6",
+    "langchain-chroma==0.1.4",
+    "langchain-text-splitters==0.3.2",
+    "chromadb==0.5.20",
+    "streamlit==1.39.0",
+    "graphviz==0.20.3",
+    "python-dotenv==1.0.1",
+    "pydantic==2.9.2",
+    "pydantic-settings==2.6.1",
+]
+
+[project.optional-dependencies]
+# Needed for tools/audio_transcribe.py (the phone-call transcription tool).
+# Pulls in torch, which can fail to install on Windows if the project path
+# is very long/deeply nested (MAX_PATH) - see README.
+audio = ["openai-whisper==20231106", "librosa==0.10.2", "numexpr==2.8.7"]
+# Alternative local embeddings backend (EMBEDDINGS_PROVIDER=sentence-transformers).
+# Also pulls in torch - the default EMBEDDINGS_PROVIDER=ollama avoids this.
+sentence-transformers = ["sentence-transformers==3.2.1"]
+dev = ["pytest==8.3.3", "pytest-mock==3.14.0", "ruff==0.7.4"]
+
+[project.scripts]
+customer-support-chat = "customer_support_app.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

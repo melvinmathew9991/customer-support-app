@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+myenv/
+.env
+chroma_db/
+.streamlit/
+__MACOSX/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
