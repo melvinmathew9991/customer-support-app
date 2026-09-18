@@ -68,9 +68,20 @@ build work, deliberately)
   format) + similarity scores, tool calls made, and latency per event.
   Wired into `pipeline.py`, `graph/chain_based_node.py`, and
   `graph/chain_based_edge.py`.
-- ❌ Not started: automated scoring harness (the baseline run was
-  read-by-hand, not machine-scored against `expected` fields) - this is
-  now unblocked by the structured log existing.
+- ✅ Automated scoring harness: `tests/eval/run_eval.py` runs the golden
+  set against the live pipeline, scores each entry against its `expected`
+  fields using `logs/turns.jsonl`, and computes the aggregate metrics from
+  `docs/eval/Metrics.md` as real numbers. Not a pytest test (same reason
+  as the rest of this project's LLM-dependent behavior - slow, needs a
+  live Ollama server) - run manually via
+  `python tests/eval/run_eval.py --out <report path>`.
+- ✅ Real, machine-scored baseline: `docs/eval/Baseline-2026-09-19.md`.
+  Identification success 100% (n=3), fails-safe 100% (n=2), retrieval
+  recall@k 100% (n=3), tier-leakage 0% (n=3) - all clean now that Bug 1 is
+  fixed. **Callback recall: 0% (n=2)**, badly missing its ≥90% target -
+  turns the anecdotal flakiness finding into a real number. Hallucination
+  rate is still flagged manual-only by design (`Metrics.md` #5).
+  Sample sizes are still small (12-entry golden set) - see below.
 
 **Backlog:**
 - Define the metrics that matter, with explicit targets, e.g.:
