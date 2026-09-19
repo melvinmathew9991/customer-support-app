@@ -95,6 +95,16 @@ phases are the actual next steps.
     phone number (6+ digits) in the user's latest message before the LLM
     intent check runs. **Behavior change:** a bare "call me" with no number no
     longer triggers a callback.
+- **Decision (2026-09-19, #7): keep it.** A callback request with no phone
+  number still gets a normal answer, not a callback. Rejected for now:
+  - *Use the number on the user's profile.* It calls a number the user did not
+    type, the behavior #22 removed (extraction now always returns a number from
+    the user's own message), and an earlier draft false-triggered `rag-oos-002`.
+  - *Ask "what number should we call?"* It needs the intent check to judge "wants
+    a call" with no digit pre-check to protect it, and that judgment is unreliable
+    on the 3B model (3 of 6 hard negatives with a number false-triggered, #23).
+    Revisit after #23 improves intent precision, with golden-set entries for the
+    no-number phrasings, a full eval re-run, recall >=90% and precision >=95%.
 
 ## Phase 5 — Interfaces ✅ Done
 - Streamlit `app.py` (Chat + Graph tabs, live DAG rendering via
