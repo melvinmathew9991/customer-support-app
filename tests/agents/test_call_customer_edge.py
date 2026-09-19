@@ -6,10 +6,11 @@ from customer_support_app.domain.validation import PhoneCallRequest, Validation
 
 
 class _CountingLLM:
-    """Stands in for a chat model whose intent check always says yes; counts calls."""
+    """Stands in for a chat model whose intent check always gives one answer; counts calls."""
 
-    def __init__(self):
+    def __init__(self, answer=True):
         self.calls = 0
+        self.answer = answer
 
     def with_structured_output(self, schema):
         llm = self
@@ -17,7 +18,7 @@ class _CountingLLM:
         class _Bound:
             def invoke(self, prompt):
                 llm.calls += 1
-                return Validation(is_valid=True)
+                return Validation(is_valid=llm.answer)
 
         return _Bound()
 
@@ -51,17 +52,77 @@ def test_no_phone_number_never_reaches_intent_check(message):
 @pytest.mark.parametrize(
     "message",
     [
-        "please call me at 0452 111 222",
-        "call me on 0452-111-222",
-        "ring me back, my number is (0452) 111 222",
+        "reach me on 0452-111-222 when you can",
+        "my number is (0452) 111 222, I'd like a chat by phone",
+        "+61 452 111 222 is the best number for me",
         "call +61 452 111 222",
     ],
 )
-def test_message_with_phone_number_defers_to_intent_check(message):
+def test_message_without_a_plain_request_defers_to_intent_check(message):
     llm = _CountingLLM()
     edge = CallCustomerEdge(llm_model=llm)
 
     assert edge.check(_history(message)) is True
+    assert llm.calls == 1
+
+
+def test_intent_check_saying_no_is_respected_for_a_message_without_a_plain_request():
+    llm = _CountingLLM(answer=False)
+    edge = CallCustomerEdge(llm_model=llm)
+
+    assert edge.check(_history("is 0452 111 222 the number for your store?")) is False
+    assert llm.calls == 1
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "please call me at 0452 111 222",
+        "call me on 0452-111-222",
+        "ring me back, my number is (0452) 111 222",
+        "Can you give me a call on 0452 111 222?",
+        "someone should phone 0452 111 222",
+        "call this number 0452 111 222",
+        "0452 111 222 - callback please",
+    ],
+)
+def test_plain_request_is_accepted_without_asking_the_model(message):
+    llm = _CountingLLM(answer=False)
+    edge = CallCustomerEdge(llm_model=llm)
+
+    assert edge.check(_history(message)) is True
+    assert llm.calls == 0
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "do not call me, my number is 0452 111 222 for texts",
+        "I'd rather have no calls. 0452 111 222 is my mobile",
+        "never call me on 0452 111 222",
+        "please don't call me, ring 0452 111 222 only in an emergency",
+    ],
+)
+def test_asking_not_to_be_called_is_rejected_without_asking_the_model(message):
+    llm = _CountingLLM(answer=True)
+    edge = CallCustomerEdge(llm_model=llm)
+
+    assert edge.check(_history(message)) is False
+    assert llm.calls == 0
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Your site says call us on 1300 655 021, is that right?",
+        "I called 0452 314 559 yesterday and nobody answered",
+    ],
+)
+def test_quoting_a_number_to_call_or_a_past_call_is_left_to_the_model(message):
+    llm = _CountingLLM(answer=False)
+    edge = CallCustomerEdge(llm_model=llm)
+
+    assert edge.check(_history(message)) is False
     assert llm.calls == 1
 
 
