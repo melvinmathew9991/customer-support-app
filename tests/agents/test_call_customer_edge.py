@@ -102,16 +102,41 @@ def test_extracted_number_found_in_the_users_message_starts_the_callback(message
 
 
 @pytest.mark.parametrize(
-    "message, extracted",
+    "message, extracted, typed",
     [
-        ("call me on 0452 222 111", "0452 333 666"),
-        ("call me on 0452 222 111", "+61 452 222 111"),
-        ("call me on 0452 222 111", ""),
-        ("call me on 0452 222 111", "no number"),
+        ("call me on 0452 222 111", "0452 333 666", "0452 222 111"),
+        ("call me on 0452 222 111", "+61 452 222 111", "0452 222 111"),
+        ("call me on 0452 222 111", "", "0452 222 111"),
+        ("call me on 0452 222 111", "no number", "0452 222 111"),
+        (
+            "Could someone ring me back? My number is 0452 555 111",
+            "0452255111",
+            "0452 555 111",
+        ),
+        ("my work line is (03) 9555 0177, call me there", "0395550188", "(03) 9555 0177"),
+        ("call me back, +61 452 222 111", "0452 222 111", "+61 452 222 111"),
     ],
 )
-def test_extracted_number_not_in_the_users_message_never_starts_the_callback(message, extracted):
+def test_extracted_number_not_in_the_users_message_falls_back_to_the_typed_number(
+    message, extracted, typed
+):
     edge = CallCustomerEdge(llm_model=_ExtractingLLM(extracted))
+
+    output = edge.execute(_history(message))
+
+    assert output.should_continue is True
+    assert output.result.phone_number == typed
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "my old number was 0452 909 120, call me on 0452 810 274",
+        "call 0452 111 222 or 0452 333 444",
+    ],
+)
+def test_wrong_extraction_with_several_numbers_never_starts_the_callback(message):
+    edge = CallCustomerEdge(llm_model=_ExtractingLLM("0452 333 666"))
 
     output = edge.execute(_history(message))
 

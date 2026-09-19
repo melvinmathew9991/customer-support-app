@@ -241,18 +241,26 @@ class CallCustomerEdge(PydanticTextBasedEdge):
             return False
         return super().check(user_input)
 
+    # A whole number as typed (optional leading + or bracket), for reading it back.
+    _PHONE_NUMBER_SPAN_RE = re.compile(r"\+?\(?\d(?:[\s\-().]*\d){5,}")
+
     def _parse(self, user_input: MessageHistory) -> Union[str, BaseModel]:
         result = super()._parse(user_input)
         # Never call a number the user did not type: the extracted digits must
-        # appear in their own latest message. Rejecting falls through to the
-        # normal answer path rather than starting a callback.
-        typed = re.sub(r"\D", "", user_input.role_based_history(Role.USER)[-1]["content"])
+        # appear in their own latest message.
+        last_input = user_input.role_based_history(Role.USER)[-1]["content"]
         extracted = re.sub(r"\D", "", result.phone_number)
-        if not extracted or extracted not in typed:
-            raise OutputParserException(
-                "The extracted phone number does not appear in the user's message."
-            )
-        return result
+        if extracted and extracted in re.sub(r"\D", "", last_input):
+            return result
+        # The 3B model sometimes mis-copies a digit. If the message holds exactly
+        # one number, that number is the one to call; with several, rejecting
+        # falls through to the normal answer path rather than guessing.
+        typed = self._PHONE_NUMBER_SPAN_RE.findall(last_input)
+        if len(typed) == 1:
+            return PhoneCallRequest(phone_number=typed[0].strip())
+        raise OutputParserException(
+            "The extracted phone number does not appear in the user's message."
+        )
 
     def _get_message_output(
         self, msg_input: Union[str, BaseModel]
