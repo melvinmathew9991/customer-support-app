@@ -57,11 +57,14 @@ profile, not the one he typed. The callback started, so the old scorer counted i
 as a pass; the entry passed for the whole of Sprint 1 while calling the wrong
 number. Extraction accuracy is 16/17 only because of this one.
 
-Likely cause (not confirmed): the extraction step sees the whole message history,
-including the internal `system: User Info retrieved: ... phone=...` line. That is
-the same leak that biased the intent check (fixed in Sprint 1 for `check()` only).
-It matches an earlier observation where an out-of-scope question that falsely
-triggered a callback named the profile number.
+**Cause (confirmed by a diagnostic run after the eval):** the extraction step
+(`PydanticTextBasedEdge._parse`) is given the whole message history, including the
+internal `system: User Info retrieved: ... phone=...` line. That is the same leak
+that biased the intent check, which was fixed for `check()` only in Sprint 1. On
+`call-007`'s real history, extraction returned the profile number `0452 333 666` in
+**5 of 5** runs with that line present and the typed number `0452 222 111` in **5 of
+5** runs with it removed. So it is deterministic here, and the fix is to keep
+system messages out of extraction too.
 
 ## What this changes
 
