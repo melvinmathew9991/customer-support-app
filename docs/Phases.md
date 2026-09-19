@@ -61,6 +61,13 @@ phases are the actual next steps.
   limit is stated unambiguously (the free `pos.txt` previously contradicted
   itself, and the "depends on your plan" sentence gave evasive answers); see
   `docs/eval/KB-Rewrite-Results-2026-09-19.md`.
+- **Invented-steps guard (2026-09-19, Sprint 2):** `RetrievalNode._predict`
+  now replaces an answer with the not-covered reply when it uses navigation
+  wording (click, navigate, tap, "A > B") that the retrieved context does not; the
+  turn log records `invented_steps_blocked`. Prompt rule 5 asks the model not to
+  invent menu paths or steps. `assets/free/payments.txt` no longer contradicts
+  itself on manual payments. See `docs/eval/Fix-16-17-Verification-2026-09-19.md`.
+  Heuristic: it does not catch fabricated steps written in plain prose.
 - **Answer prompt (2026-09-19, Sprint 2):** `RetrievalNode._SYSTEM_PROMPT` is
   now stricter (answer only from context, state applicable limits, exact
   "I don't have information about that in our help center." when uncovered,

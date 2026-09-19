@@ -227,6 +227,20 @@ phrasings), #9 (ruff findings + lint gate).
   for "how do I..." questions (`rag-free-006`, `rag-oos-007`) and a KB
   self-contradiction (`free/payments.txt:8` vs `:46`). Not fixed; these
   entries stay held-out only until used to tune.
+- ✅/❌ **Fixes for #16 and #17, verified on an untuned test cohort**
+  (`docs/eval/Fix-16-17-Verification-2026-09-19.md`; criteria written before the
+  fixes, 15 new entries baselined before and run once after). **#16 met:** the
+  free `payments.txt` contradiction is fixed and the free tier now answers
+  "not allowed" while the paid tier is unaffected. **#17 not met:** prompt rule 5
+  plus a deterministic `invents_steps()` guard (navigation wording absent from the
+  retrieved context is replaced with the not-covered reply) removed the click-path
+  fabrications (4 blocks in the run, all correct, no false positives), but 2 of
+  10 procedural test entries still fabricate in ways the guard cannot see
+  (`rag-free-012` misattributes "store admin"; `rag-oos-011` describes setup steps
+  in plain prose). Fabrication on the untuned cohort: 26.7% -> 13.3%; the <=5%
+  target is not met. No regression: machine-scored metrics unchanged (retrieval
+  100%, leakage 0%, callbacks 100%/100%), development answers 22/36 identical and
+  none worse.
 - ✅ **Reindex command** (`scripts/reindex_kb.py`, `--tier`, `--check`), stable
   chunk ids, content-based staleness check, and a startup warning when the
   index is out of date. 8 unit tests (fake embeddings, no Ollama); verified on
