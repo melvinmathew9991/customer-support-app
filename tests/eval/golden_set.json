@@ -1225,5 +1225,222 @@
       "callback_expected": false
     },
     "notes": "Sprint 2 verification set (test cohort for issues #16/#17): written from the KB text and committed before any fix or model run; do not tune against it."
+  },
+  {
+    "id": "call-011",
+    "category": "callback_request_explicit",
+    "description": "Explicit request with an international-format number.",
+    "turns": ["michaeljackson@gmail.com", "Please call me on +61 452 111 234"],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "+61 452 111 234",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Number format never used in the earlier set (all were 0452 xxx xxx). Sprint 2 held-out callback set (issue #8): written before any run against this code; do not tune against it."
+  },
+  {
+    "id": "call-012",
+    "category": "callback_request_explicit",
+    "description": "Explicit request with a dash-separated number.",
+    "turns": ["john@doe.com", "Call me back on 0452-311-908 when you get a chance."],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "0452-311-908",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Sprint 2 held-out callback set (issue #8): written before any run against this code; do not tune against it."
+  },
+  {
+    "id": "call-013",
+    "category": "callback_request_explicit",
+    "description": "Explicit request with the number stated first.",
+    "turns": ["carl@sagan.com", "0452 615 220 is my mobile, please give me a call."],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "0452 615 220",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Number before the request; the earlier set always put it after. Sprint 2 held-out callback set (issue #8): written before any run against this code; do not tune against it."
+  },
+  {
+    "id": "call-014",
+    "category": "callback_request_explicit",
+    "description": "Explicit request with an unspaced number.",
+    "turns": ["michaeljackson@gmail.com", "Can someone call me on 0452908114?"],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "0452908114",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Sprint 2 held-out callback set (issue #8): written before any run against this code; do not tune against it."
+  },
+  {
+    "id": "call-015",
+    "category": "callback_request_indirect",
+    "description": "Formal, indirect wording with a bracketed landline number.",
+    "turns": [
+      "john@doe.com",
+      "I would appreciate it if a member of your team could telephone me on (02) 9555 0143."
+    ],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "(02) 9555 0143",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "'Telephone' as a verb and a landline format; neither seen in the earlier set. Sprint 2 held-out callback set (issue #8): written before any run against this code; do not tune against it."
+  },
+  {
+    "id": "call-016",
+    "category": "callback_request_indirect",
+    "description": "Indirect request framed as an alternative to chat.",
+    "turns": ["carl@sagan.com", "Rather than typing all this out, could an agent dial me at 0452 771 305?"],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "0452 771 305",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Sprint 2 held-out callback set (issue #8): written before any run against this code; do not tune against it."
+  },
+  {
+    "id": "call-017",
+    "category": "callback_request_indirect",
+    "description": "Request phrased as a scheduling ask, with a leading 'Also'.",
+    "turns": [
+      "michaeljackson@gmail.com",
+      "Also, can you have someone ring me tomorrow about this? My number is 0452 660 918."
+    ],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "0452 660 918",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Sprint 2 held-out callback set (issue #8): written before any run against this code; do not tune against it."
+  },
+  {
+    "id": "call-018",
+    "category": "callback_request_explicit",
+    "description": "Terse, lowercase, casual request.",
+    "turns": ["john@doe.com", "ring me asap, 0452 442 015"],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "0452 442 015",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Sprint 2 held-out callback set (issue #8): written before any run against this code; do not tune against it."
+  },
+  {
+    "id": "call-019",
+    "category": "callback_request_indirect",
+    "description": "Request stated as a preference, with the ask at the end and the number mid-sentence.",
+    "turns": [
+      "carl@sagan.com",
+      "My email isn't working so the best way to reach me is by phone, on 0452 383 927 - could you call?"
+    ],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "0452 383 927",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Sprint 2 held-out callback set (issue #8): written before any run against this code; do not tune against it."
+  },
+  {
+    "id": "call-020",
+    "category": "callback_request_explicit",
+    "description": "Explicit request with a US-format number and extra context after it.",
+    "turns": [
+      "michaeljackson@gmail.com",
+      "Please call me on +1 415 555 0132, I'm travelling in the US this week."
+    ],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "+1 415 555 0132",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Sprint 2 held-out callback set (issue #8): written before any run against this code; do not tune against it."
+  },
+  {
+    "id": "call-021",
+    "category": "callback_false_trigger",
+    "description": "Refuses a call outright while stating a phone number.",
+    "turns": ["john@doe.com", "Please email me instead, don't call. My old number was 0452 909 120."],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": false
+    },
+    "notes": "Hard negative: has a call word and a number, but the intent is the opposite. Sprint 2 held-out callback set (issue #8): written before any run against this code; do not tune against it."
+  },
+  {
+    "id": "call-022",
+    "category": "callback_false_trigger",
+    "description": "Long digit string that is an order number, not a phone number.",
+    "turns": ["carl@sagan.com", "My order number is 20481937, where is it?"],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": false
+    },
+    "notes": "Digits pass the pre-check, so the language model has to reject it. The KB does not cover orders. Sprint 2 held-out callback set (issue #8): written before any run against this code; do not tune against it."
+  },
+  {
+    "id": "call-023",
+    "category": "callback_false_trigger",
+    "description": "Asks about the support line's number; not a request to be called.",
+    "turns": [
+      "michaeljackson@gmail.com",
+      "Is 1800 555 010 the right number to reach your support team by phone?"
+    ],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": false
+    },
+    "notes": "Mentions a phone number and reaching support by phone. Sprint 2 held-out callback set (issue #8): written before any run against this code; do not tune against it."
+  },
+  {
+    "id": "call-024",
+    "category": "callback_false_trigger",
+    "description": "Describes a past call to a number; not a request for a callback.",
+    "turns": ["john@doe.com", "I called 0452 314 559 yesterday and nobody answered, is that line working?"],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": false
+    },
+    "notes": "Sprint 2 held-out callback set (issue #8): written before any run against this code; do not tune against it."
+  },
+  {
+    "id": "call-025",
+    "category": "callback_false_trigger",
+    "description": "Supplies a phone number to update a profile, without asking for a call.",
+    "turns": [
+      "carl@sagan.com",
+      "I changed my phone number, it's 0452 700 812 now. Can you update my profile?"
+    ],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": false
+    },
+    "notes": "Plausible real-world near-miss: a number is offered but for a different purpose. Sprint 2 held-out callback set (issue #8): written before any run against this code; do not tune against it."
+  },
+  {
+    "id": "call-026",
+    "category": "callback_false_trigger",
+    "description": "Asks about SMS alerts to a phone number; not a request for a call.",
+    "turns": [
+      "michaeljackson@gmail.com",
+      "Does the store support text message alerts to +61 452 000 111 for new orders?"
+    ],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": false
+    },
+    "notes": "Sprint 2 held-out callback set (issue #8): written before any run against this code; do not tune against it."
   }
 ]

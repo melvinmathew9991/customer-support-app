@@ -241,6 +241,17 @@ phrasings), #9 (ruff findings + lint gate).
   target is not met. No regression: machine-scored metrics unchanged (retrieval
   100%, leakage 0%, callbacks 100%/100%), development answers 22/36 identical and
   none worse.
+- ✅ **Held-out callback set and stronger scoring (#8)**
+  (`docs/eval/Callback-HeldOut-Results-2026-09-19.md`): 16 new entries written and
+  committed before any run (golden set 90), plus a scorer that now checks which
+  number the bot says it will call. Recall holds (17/17, new 10/10 across varied
+  number formats). **Precision does not: 85% vs the >=95% target**, 3 of the 6 new
+  hard negatives started a callback (a support number, a profile-number update, an
+  SMS-alerts question). The three original negatives contain no digits, so the
+  digit pre-check rejects them before the model is consulted and they can never
+  fail; Sprint 1's 100% precision was uninformative. **A wrong number surfaced:**
+  existing `call-007` had the bot call the profile number instead of the one the
+  user typed, invisible to the old scorer. Not fixed; the set is now used.
 - ✅ **Lint cleanup and hard CI gate (#9).** All 27 ruff findings fixed (12
   import-order, 12 long lines, and one each of unused import, f-string without
   placeholders, and an undefined name that was a forward reference needing a

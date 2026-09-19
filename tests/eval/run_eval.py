@@ -17,6 +17,7 @@ Usage:
 """
 import argparse
 import json
+import re
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -172,11 +173,42 @@ def score_out_of_scope(_entry, transcript, final_node, log_records):
     }
 
 
-def score_callback(entry, _transcript, final_node, _log_records):
+# The assistant message that confirms which number the bot will call, in both
+# CallCustomerEdge's reply and CallCustomerNode's no-audio-extra reply.
+_CALLED_NUMBER_PATTERNS = (
+    re.compile(r"calling you now on:\s*(.+)"),
+    re.compile(r"callback request for\s*(.+?)\.\s"),
+)
+
+
+def extracted_phone_from(transcript):
+    """The number the bot said it would call, or None if it never named one."""
+    for messages in transcript:
+        for message in messages:
+            for pattern in _CALLED_NUMBER_PATTERNS:
+                found = pattern.search(message)
+                if found:
+                    return found.group(1).strip()
+    return None
+
+
+def _digits(text):
+    return re.sub(r"\D", "", text or "")
+
+
+def score_callback(entry, transcript, final_node, _log_records):
     expected_fire = entry["expected"]["callback_expected"]
     actually_fired = final_node == "CallCustomerNode"
     passed = actually_fired == expected_fire
-    return passed, {"actually_fired": actually_fired, "final_node": final_node}
+    detail = {"actually_fired": actually_fired, "final_node": final_node}
+    # Pass/fail (and so recall and precision) is only about whether the callback
+    # started. Extraction accuracy is reported separately: a callback to the wrong
+    # number counts as a recall hit but a phone_ok miss. Compared by digits only.
+    if expected_fire and actually_fired and "extracted_phone" in entry["expected"]:
+        got = extracted_phone_from(transcript)
+        detail["extracted_phone"] = got
+        detail["phone_ok"] = _digits(got) == _digits(entry["expected"]["extracted_phone"])
+    return passed, detail
 
 
 CATEGORY_SCORERS = {
@@ -285,6 +317,20 @@ def compute_metrics(results):
         (len(genuine_fired) / len(fired), len(fired)) if fired else None
     )
 
+    # Informational, no target yet: did the bot name the right number, and how
+    # often did a message that is not a callback request start one anyway.
+    checked = [r for r in callback_all if "phone_ok" in r["detail"]]
+    metrics["phone_extraction_accuracy"] = (
+        (sum(1 for r in checked if r["detail"]["phone_ok"]) / len(checked), len(checked))
+        if checked
+        else None
+    )
+    negatives = [r for r in callback_all if r["category"] not in CALLBACK_RECALL_CATS]
+    false_fired = [r for r in negatives if r["detail"].get("actually_fired")]
+    metrics["callback_false_trigger_rate"] = (
+        (len(false_fired) / len(negatives), len(negatives)) if negatives else None
+    )
+
     return metrics
 
 
@@ -318,6 +364,12 @@ def build_report(results, metrics):
     lines.append(fmt("Tier-leakage rate", "0%", metrics["tier_leakage_rate"]))
     lines.append(fmt("Callback recall", "≥90%", metrics["callback_recall"]))
     lines.append(fmt("Callback precision", "≥95%", metrics["callback_precision"]))
+    lines.append(
+        fmt("Phone extraction accuracy", "no target yet", metrics["phone_extraction_accuracy"])
+    )
+    lines.append(
+        fmt("Callback false-trigger rate", "no target yet", metrics["callback_false_trigger_rate"])
+    )
     n_crashed = sum(1 for r in results if "crash" in r["detail"])
     if n_crashed:
         lines.append(

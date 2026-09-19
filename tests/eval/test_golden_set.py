@@ -54,6 +54,24 @@ def test_rag_entry_is_well_formed(entry):
         assert (ROOT / f).is_file(), f"{f} does not exist"
 
 
+CALLBACK = [e for e in GOLDEN if e["category"].startswith("callback_")]
+
+
+@pytest.mark.parametrize("entry", CALLBACK, ids=lambda e: e["id"])
+def test_callback_entry_is_well_formed(entry):
+    expected = entry["expected"]
+    assert entry["id"].startswith("call-")
+    assert len(entry["turns"]) == 2 and entry["turns"][0] in KNOWN_EMAILS
+
+    if entry["category"] == "callback_false_trigger":
+        assert expected["callback_expected"] is False
+    else:
+        assert expected["callback_expected"] is True
+        assert expected["final_node"] == "CallCustomerNode"
+        # The number the bot should extract must really be in the user's message.
+        assert expected["extracted_phone"] in entry["turns"][1]
+
+
 def test_rag_id_prefix_matches_category():
     prefix = {
         "free_tier_question": "rag-free-",
