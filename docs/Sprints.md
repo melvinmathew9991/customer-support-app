@@ -266,6 +266,17 @@ phrasings), #9 (ruff findings + lint gate).
   precision 90% (26/29, not comparable to 85% since the set gained positives). The 3
   false triggers and `call-033` remain (#23). The 14 unscored entries were read by
   hand and are identical to the last full run.
+- ✅/❌ **Callback precision (#23), improved but the target is not met**
+  (`docs/eval/Callback-Precision-Results-2026-09-19.md`). A 22-entry cohort was
+  committed before any run and held out from design. Every stricter wording alone
+  lost recall (as in Sprint 1: 11%, 82%, 52%, 48%); the change that kept it is a
+  deterministic accept for plain requests ("call me", "give me a call") and a
+  "don't call" veto, ahead of a shorter model condition. **On the untouched
+  cohort: precision 67% -> 83% (5 -> 2 false triggers of 12), recall 10/10 both
+  times, identical across 3 baseline runs.** Not met (target >=95%): `call-042` is
+  still wrong and `call-047` is a new false trigger. Full eval, 122 entries: recall
+  97% (36/37), precision 94.7% (36/38, inflated by the entries the change was
+  developed on), extraction 100%, other metrics unchanged.
 - ✅ **Lint cleanup and hard CI gate (#9).** All 27 ruff findings fixed (12
   import-order, 12 long lines, and one each of unused import, f-string without
   placeholders, and an undefined name that was a forward reference needing a
