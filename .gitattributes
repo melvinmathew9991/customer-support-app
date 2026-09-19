@@ -1,0 +1,12 @@
+# Normalise line endings so Windows (core.autocrlf=true) and Linux/CI agree and
+# diffs don't fill with CRLF/LF noise. The repository already stores LF.
+* text=auto
+
+# Hook scripts run under bash even on Windows (Git Bash) - a CRLF here breaks them.
+.githooks/* text eol=lf
+*.sh text eol=lf
+
+# Binary assets: never touch line endings or try to diff as text.
+*.wav binary
+*.png binary
+*.jpg binary
