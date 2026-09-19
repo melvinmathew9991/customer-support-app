@@ -217,6 +217,16 @@ phrasings), #9 (ruff findings + lint gate).
   questions the old KB got 6/15 right and the new one 12/15. The remaining
   hallucination (`rag-free-002`, mild) is a side effect of the KB change, not
   pre-existing; n=15 is too coarse for a <=5% target (one answer = 6.7%).
+- ✅ **`rag-*` golden set grown 15 -> 36** (golden set now 59 entries) with 21
+  entries written from the KB text and committed before any run
+  (`docs/eval/Rag-HeldOut-Results-2026-09-19.md`). Retrieval recall 100% and
+  tier leakage 0% (n=16) hold on the unseen questions. **Hand-graded
+  hallucination on the 21 untuned questions: 2/21 = 9.5% (14% counting a
+  KB-caused wrong answer), so the earlier 6.7% on the tuned 15 was
+  optimistic and the <=5% target is not met.** Failures: invented UI steps
+  for "how do I..." questions (`rag-free-006`, `rag-oos-007`) and a KB
+  self-contradiction (`free/payments.txt:8` vs `:46`). Not fixed; these
+  entries stay held-out only until used to tune.
 - ✅ **Reindex command** (`scripts/reindex_kb.py`, `--tier`, `--check`), stable
   chunk ids, content-based staleness check, and a startup warning when the
   index is out of date. 8 unit tests (fake embeddings, no Ollama); verified on
