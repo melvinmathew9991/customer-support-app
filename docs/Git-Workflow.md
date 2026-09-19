@@ -46,8 +46,9 @@ git checkout -b sprint-2
    changes, known open items and testing.
 2. For anything touching LLM behavior, include the before/after eval numbers and
    link the `docs/eval/` report.
-3. CI must be green (`.github/workflows/ci.yml`: unit tests, plus ruff as
-   informational until the existing findings are cleaned up).
+3. CI must be green (`.github/workflows/ci.yml`: unit tests and `ruff check`,
+   both blocking). Run `ruff check src tests scripts` locally first; most
+   findings are auto-fixable with `--fix`.
 4. Merge with a merge commit, which is what PR #1 and #3 used. It keeps the
    sprint's commits and their explanatory bodies intact.
 
@@ -56,7 +57,7 @@ git checkout -b sprint-2
 | Where | What | Bypass |
 |---|---|---|
 | `.githooks/pre-commit` (local) | Runs `pytest` when a commit touches `src/`, `tests/` or `pyproject.toml` | `git commit --no-verify` |
-| GitHub Actions `CI` | `pytest` (blocking), `ruff check` (informational) on PRs and pushes to `main` | none for tests |
+| GitHub Actions `CI` | `pytest` and `ruff check src tests scripts`, both blocking, on PRs and pushes to `main` | none |
 
 The live eval harness (`tests/eval/run_eval.py`) needs a local Ollama model, so it
 runs manually and is deliberately not part of CI.

@@ -1,9 +1,13 @@
 import dataclasses
+from typing import TYPE_CHECKING, List, Optional, Union
 
-from typing import Union, Optional, List
 from pydantic import BaseModel
 
 from customer_support_app.domain.chat import Role
+
+if TYPE_CHECKING:
+    # Type-checking only: graph.node imports this module, so a runtime import would be circular.
+    from customer_support_app.graph.node import BaseNode
 
 
 @dataclasses.dataclass
@@ -18,4 +22,4 @@ class EdgeOutput:
     result: Union[BaseModel, str]
     message_output: Optional[List[MessageOutput]]
     num_fails: int
-    next_node: "BaseNode"
+    next_node: Optional["BaseNode"]

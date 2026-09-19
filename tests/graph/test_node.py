@@ -1,5 +1,3 @@
-from typing import Optional
-
 from langchain_core.exceptions import OutputParserException
 
 from customer_support_app.graph.edge import BaseEdge

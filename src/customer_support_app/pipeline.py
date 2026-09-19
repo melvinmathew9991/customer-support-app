@@ -1,17 +1,17 @@
 import uuid
-from typing import Optional, List, Tuple
+from typing import List, Optional, Tuple
 
 from customer_support_app.agents.support import (
-    UserInfoChainBasedEdge,
     AuthenticatedUserNode,
-    GreetingNode,
     CallCustomerEdge,
     CallCustomerNode,
+    GreetingNode,
+    UserInfoChainBasedEdge,
 )
 from customer_support_app.config import get_chat_model
 from customer_support_app.domain.chat import MessageHistory, Role
-from customer_support_app.domain.graph import MessageOutput, EdgeOutput
-from customer_support_app.domain.validation import UserProfile, PhoneCallTicket
+from customer_support_app.domain.graph import EdgeOutput, MessageOutput
+from customer_support_app.domain.validation import PhoneCallTicket, UserProfile
 from customer_support_app.graph.node import BaseNode
 from customer_support_app.logging_config import log_latency
 

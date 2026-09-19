@@ -1,6 +1,6 @@
 import abc
 from abc import ABC
-from typing import Type, Optional, Union
+from typing import Optional, Type, Union
 
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain.output_parsers import PydanticOutputParser

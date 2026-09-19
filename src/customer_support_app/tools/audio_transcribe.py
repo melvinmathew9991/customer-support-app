@@ -1,10 +1,9 @@
 import importlib.util
 
-from langchain.chains import LLMChain
+from langchain.chains import LLMChain, SequentialChain
 from langchain.memory import SimpleMemory
 from langchain.output_parsers import PydanticOutputParser
 from langchain_core.prompts import PromptTemplate
-from langchain.chains import SequentialChain
 
 from customer_support_app.config import get_chat_model, get_settings
 from customer_support_app.domain.validation import PhoneCallTicket
@@ -18,8 +17,8 @@ def transcription_available() -> bool:
 def call_customer(query: str):
     # whisper/librosa pull in torch, which is only needed for this one tool -
     # imported lazily so the rest of the app works without installing it.
-    import whisper
     import librosa
+    import whisper
 
     settings = get_settings()
     llm = get_chat_model(temperature=0)
@@ -36,7 +35,10 @@ def call_customer(query: str):
 
 CONCISE SUMMARY IN ENGLISH:"""
 
-    prefix_create_ticket = "You read Customer Call transcriptions and their summary and use the below output format instructions to answer:\n\n"
+    prefix_create_ticket = (
+        "You read Customer Call transcriptions and their summary and use the below "
+        "output format instructions to answer:\n\n"
+    )
     suffix_create_ticket = """
 {format_instructions}
 Call Summary:
