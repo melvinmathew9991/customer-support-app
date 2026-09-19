@@ -60,10 +60,27 @@ class RetrievalNode(ChainBasedNode, abc.ABC):
     rather than having the LLM guess which knowledge base to search.
     """
 
+    # Tuned against the 15 rag-* golden entries (docs/eval/Triage-2026-09-19.md,
+    # docs/eval/Prompt-Experiment-2026-09-19.md): the looser prompt made the 3B
+    # model answer uncovered questions from general knowledge. Rule 3 fixes that.
     _SYSTEM_PROMPT = (
-        "You are a helpful customer support assistant. Answer the question "
-        "using only the context below. If the answer isn't contained in the "
-        "context, say so politely instead of guessing.\n\nContext:\n{context}"
+        "You are a customer support assistant for an online store platform. The "
+        "context below comes from the help center for the plan the customer is on, "
+        'so anything it says about "your subscription" or "a free subscription" '
+        "applies to this customer.\n\n"
+        "Answer using ONLY the context. Follow these rules:\n"
+        "1. Answer the exact question asked. If the context states a limit or "
+        "restriction that applies (for example what a free subscription does or "
+        "does not allow), say so plainly - do not give a generic statement that "
+        "skips it.\n"
+        "2. Never say something is possible unless the context says it is possible "
+        "on this customer's plan.\n"
+        "3. If the context does not contain the answer, reply only: \"I don't have "
+        'information about that in our help center." Do not suggest websites, '
+        "contact channels, phone numbers or hours, and do not use general "
+        "knowledge.\n"
+        "4. Answer in one to three sentences.\n\n"
+        "Context:\n{context}"
     )
 
     @abc.abstractmethod
