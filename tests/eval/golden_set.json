@@ -1572,5 +1572,203 @@
       "final_node": "CallCustomerNode"
     },
     "notes": "Sprint 2 extraction-leak cohort (issue #22): written before any run against the fix; do not tune against it. Control, as call-035."
+  },
+  {
+    "id": "call-037",
+    "category": "callback_false_trigger",
+    "description": "Asks not to be called and offers a number for text messages instead.",
+    "turns": ["michaeljackson@gmail.com", "Please don't call me. Text me on 0452 118 402 instead."],
+    "turn_budget": 2,
+    "expected": { "callback_expected": false },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it. Contains 'call' and a number but is the opposite of a request."
+  },
+  {
+    "id": "call-038",
+    "category": "callback_false_trigger",
+    "description": "Asks whether a phone number is saved on the account.",
+    "turns": ["john@doe.com", "My phone number is 0452 220 391, can you confirm it's saved on my account?"],
+    "turn_budget": 2,
+    "expected": { "callback_expected": false },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-039",
+    "category": "callback_false_trigger",
+    "description": "Asks whether a support phone line is genuine.",
+    "turns": ["carl@sagan.com", "Our accountant found this line, 1300 655 021, is that really Shopify's support number?"],
+    "turn_budget": 2,
+    "expected": { "callback_expected": false },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-040",
+    "category": "callback_false_trigger",
+    "description": "Reports spam calls from a number and asks how to block them.",
+    "turns": ["michaeljackson@gmail.com", "I keep getting spam calls from 0452 771 830, how do I block them?"],
+    "turn_budget": 2,
+    "expected": { "callback_expected": false },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-041",
+    "category": "callback_false_trigger",
+    "description": "Asks about adding a store contact phone number.",
+    "turns": ["john@doe.com", "Can I add 0452 664 105 as the contact number shown on my store?"],
+    "turn_budget": 2,
+    "expected": { "callback_expected": false },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-042",
+    "category": "callback_false_trigger",
+    "description": "Asks about the phone number format for checkout.",
+    "turns": ["carl@sagan.com", "What format should an Australian number like +61 452 883 210 be in for the checkout form?"],
+    "turn_budget": 2,
+    "expected": { "callback_expected": false },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-043",
+    "category": "callback_false_trigger",
+    "description": "Asks whether a customer's phone number can be exported with an order.",
+    "turns": ["michaeljackson@gmail.com", "A customer gave me 0452 337 109 with their order, can I export that number with the order data?"],
+    "turn_budget": 2,
+    "expected": { "callback_expected": false },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-044",
+    "category": "callback_false_trigger",
+    "description": "Asks whether it is safe to show a phone number on the storefront.",
+    "turns": ["john@doe.com", "Is it safe to show my number, 0452 409 227, to customers on my storefront?"],
+    "turn_budget": 2,
+    "expected": { "callback_expected": false },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-045",
+    "category": "callback_false_trigger",
+    "description": "Asks to remove a disconnected old number from the account.",
+    "turns": ["carl@sagan.com", "My old number 0452 115 908 is disconnected, please remove it from my account."],
+    "turn_budget": 2,
+    "expected": { "callback_expected": false },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-046",
+    "category": "callback_false_trigger",
+    "description": "Asks whether a text message from a number is genuinely from the company.",
+    "turns": ["michaeljackson@gmail.com", "I got a text from 0452 993 041 saying it's Shopify, is that legit?"],
+    "turn_budget": 2,
+    "expected": { "callback_expected": false },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-047",
+    "category": "callback_false_trigger",
+    "description": "Asks whether phone support exists, citing a number seen elsewhere.",
+    "turns": ["john@doe.com", "Do you offer phone support? I saw 1300 224 907 listed on a third-party site."],
+    "turn_budget": 2,
+    "expected": { "callback_expected": false },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-048",
+    "category": "callback_false_trigger",
+    "description": "Asks how to verify a number for two-step login.",
+    "turns": ["carl@sagan.com", "How do I verify 0452 662 470 as the mobile number for two-step login?"],
+    "turn_budget": 2,
+    "expected": { "callback_expected": false },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-049",
+    "category": "callback_request_explicit",
+    "description": "Asks for someone to ring a number this afternoon.",
+    "turns": ["michaeljackson@gmail.com", "Can you have someone ring 0452 508 337 this afternoon?"],
+    "turn_budget": 2,
+    "expected": { "callback_expected": true, "extracted_phone": "0452 508 337", "final_node": "CallCustomerNode" },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-050",
+    "category": "callback_request_explicit",
+    "description": "Asks for a callback whenever someone is free.",
+    "turns": ["john@doe.com", "I'd appreciate a callback on 0452 611 984 whenever someone's free."],
+    "turn_budget": 2,
+    "expected": { "callback_expected": true, "extracted_phone": "0452 611 984", "final_node": "CallCustomerNode" },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-051",
+    "category": "callback_request_indirect",
+    "description": "Asks for an agent to phone about a payout.",
+    "turns": ["carl@sagan.com", "Please get an agent to phone me on +61 452 704 118 about my payout."],
+    "turn_budget": 2,
+    "expected": { "callback_expected": true, "extracted_phone": "+61 452 704 118", "final_node": "CallCustomerNode" },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-052",
+    "category": "callback_request_explicit",
+    "description": "Asks for a call because chat is not usable right now.",
+    "turns": ["michaeljackson@gmail.com", "Give me a call on 0433 902 116, I can't use chat right now."],
+    "turn_budget": 2,
+    "expected": { "callback_expected": true, "extracted_phone": "0433 902 116", "final_node": "CallCustomerNode" },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-053",
+    "category": "callback_request_explicit",
+    "description": "Short question asking for a call back.",
+    "turns": ["john@doe.com", "Could I get a call back? It's 0452 187 660."],
+    "turn_budget": 2,
+    "expected": { "callback_expected": true, "extracted_phone": "0452 187 660", "final_node": "CallCustomerNode" },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-054",
+    "category": "callback_request_indirect",
+    "description": "Wants to speak to someone by phone, with a bracketed landline.",
+    "turns": ["carl@sagan.com", "I'd like to speak to someone on the phone about this. Reach me at (07) 3555 0192."],
+    "turn_budget": 2,
+    "expected": { "callback_expected": true, "extracted_phone": "(07) 3555 0192", "final_node": "CallCustomerNode" },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-055",
+    "category": "callback_request_explicit",
+    "description": "Terse request to be rung on a number.",
+    "turns": ["michaeljackson@gmail.com", "Ring me: 0452 349 771"],
+    "turn_budget": 2,
+    "expected": { "callback_expected": true, "extracted_phone": "0452 349 771", "final_node": "CallCustomerNode" },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-056",
+    "category": "callback_request_indirect",
+    "description": "Asks for someone from billing to call, urgently.",
+    "turns": ["john@doe.com", "Someone from billing should call me at 0421 668 305, it's urgent."],
+    "turn_budget": 2,
+    "expected": { "callback_expected": true, "extracted_phone": "0421 668 305", "final_node": "CallCustomerNode" },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-057",
+    "category": "callback_request_indirect",
+    "description": "Prefers phone contact to chat.",
+    "turns": ["carl@sagan.com", "Can a support agent contact me by phone on 0490 552 018 rather than chat?"],
+    "turn_budget": 2,
+    "expected": { "callback_expected": true, "extracted_phone": "0490 552 018", "final_node": "CallCustomerNode" },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-058",
+    "category": "callback_request_explicit",
+    "description": "Lowercase, abbreviated request to be called back.",
+    "turns": ["michaeljackson@gmail.com", "call me back on 0452 926 043 pls"],
+    "turn_budget": 2,
+    "expected": { "callback_expected": true, "extracted_phone": "0452 926 043", "final_node": "CallCustomerNode" },
+    "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
   }
 ]
