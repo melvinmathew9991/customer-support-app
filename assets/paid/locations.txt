@@ -5,7 +5,7 @@ sell products
 ship or fulfill orders
 stock inventory
 
-You can set up multiple locations in your Shopify store so that you can track inventory and fulfill orders at your locations.
+Paid subscription: you can set up multiple locations in your Shopify store, so you are not limited to a single location. You use your locations to track inventory and fulfill orders.
 
 Your locations can be retail stores, warehouses, popups, dropshippers, or any other place where you manage or stock inventory.
 
@@ -16,7 +16,7 @@ If some of your inventory is out of stock at one location, but it’s in stock a
 
 If you make sales from physical locations using the Shopify POS app, then you can add a location to your sales device to track your inventory accurately.
 
-The maximum number of locations that you can have depends on your plan. Locations that you deactivate don't count toward your location limit.
+Locations that you deactivate don't count toward your location limit.
 
 Apps that stock inventory or fulfill orders for you are considered to be locations, but don't count towards those limits. When you add such an app to your store, the app is automatically added as a location.
 

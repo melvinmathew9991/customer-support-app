@@ -208,6 +208,15 @@ phrasings), #9 (ruff findings + lint gate).
   partial fix: the location answers and `rag-adv-004` still fail even with a
   strict prompt and only two chunks, so the remaining lever is KB wording.
   Quoting the source sentence and trimming context were tried and rejected.
+- ✅ **KB rewrite** (`docs/eval/KB-Rewrite-Results-2026-09-19.md`): free and
+  paid `locations.txt` and free `pos.txt` now state each tier's limit
+  unambiguously (fixes #6, the `pos.txt` self-contradiction). Full 38-entry
+  eval: all six machine-scored metrics identical to Sprint 1 (no regression;
+  retrieval recall 100%, tier leakage 0%). **Hand-graded hallucination rate:
+  20% -> 6.7% (3/15 -> 1/15), target <=5% still not met.** On five held-out
+  questions the old KB got 6/15 right and the new one 12/15. The remaining
+  hallucination (`rag-free-002`, mild) is a side effect of the KB change, not
+  pre-existing; n=15 is too coarse for a <=5% target (one answer = 6.7%).
 - ✅ **Reindex command** (`scripts/reindex_kb.py`, `--tier`, `--check`), stable
   chunk ids, content-based staleness check, and a startup warning when the
   index is out of date. 8 unit tests (fake embeddings, no Ollama); verified on

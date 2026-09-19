@@ -56,6 +56,11 @@ phases are the actual next steps.
   compares the persisted index with `assets/` by content, and the app logs a
   warning at startup naming any stale tier instead of silently serving the old
   KB.
+- **KB content (2026-09-19, Sprint 2):** `assets/free/locations.txt`,
+  `assets/free/pos.txt` and `assets/paid/locations.txt` rewritten so each tier's
+  limit is stated unambiguously (the free `pos.txt` previously contradicted
+  itself, and the "depends on your plan" sentence gave evasive answers); see
+  `docs/eval/KB-Rewrite-Results-2026-09-19.md`.
 - **Answer prompt (2026-09-19, Sprint 2):** `RetrievalNode._SYSTEM_PROMPT` is
   now stricter (answer only from context, state applicable limits, exact
   "I don't have information about that in our help center." when uncovered,
