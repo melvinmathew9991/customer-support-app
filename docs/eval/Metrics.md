@@ -110,6 +110,27 @@ baseline run; this metric exists specifically to turn that anecdotal
 finding into a number in production terms (n≈3 manual trials during the
 audit vs. a real sample here).
 
+### 4b. Two informational callback figures (added Sprint 2, no target yet)
+
+Recall and precision keep the definitions above. Two figures are reported
+alongside them, because those two cannot see certain failures:
+
+- **Phone extraction accuracy**: of the callbacks that started for entries with
+  an `expected.extracted_phone`, the share where the number the bot said it would
+  call has the same digits as the expected one (formatting ignored, so `0452-111-222`
+  matches `0452 111 222`; a different country-code form such as `+61 452...` vs
+  `0452...` is reported as a miss and should be read from the detail). A callback to
+  the wrong number counts as a recall hit but a miss here, so it is not hidden.
+- **Callback false-trigger rate**: of the entries that are not callback requests
+  (`callback_false_trigger` and `out_of_scope_question`), the share that started a
+  callback anyway.
+
+Note on what precision measures: a negative that contains no 6-digit number is
+rejected by the deterministic phone-number pre-check before the language model is
+consulted, so it says nothing about the model's own judgment. The three original
+false-trigger entries are all of this kind; the Sprint 2 held-out set (`call-021` to
+`call-026`) deliberately includes phone numbers so the intent check is exercised.
+
 ## 5. Hallucination rate
 
 **What it measures:** does the RAG answer assert something not grounded
