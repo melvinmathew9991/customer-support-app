@@ -126,7 +126,7 @@ def score_fails_safe(_entry, _transcript, final_node, _log_records):
     return passed, {"final_node": final_node}
 
 
-def score_retrieval(entry, _transcript, _final_node, log_records):
+def score_retrieval(entry, transcript, _final_node, log_records):
     retrieval_events = [r for r in log_records if r.get("event") == "retrieval"]
     if not retrieval_events:
         return False, {"error": "no retrieval event logged for this conversation"}
@@ -143,15 +143,26 @@ def score_retrieval(entry, _transcript, _final_node, log_records):
         tier_leak = any(f"assets/{other_tier}/" in s for s in sources)
 
     passed = recall_hit and not tier_leak
-    return passed, {"sources": sources, "recall_hit": recall_hit, "tier_leak": tier_leak}
+    return passed, {
+        "answer": _last_assistant_message(transcript),
+        "sources": sources,
+        "recall_hit": recall_hit,
+        "tier_leak": tier_leak,
+    }
 
 
-def score_out_of_scope(_entry, transcript, _final_node, log_records):
+def score_out_of_scope(_entry, transcript, final_node, log_records):
     retrieval_events = [r for r in log_records if r.get("event") == "retrieval"]
     sources = retrieval_events[-1].get("retrieved_docs") if retrieval_events else None
-    return None, {
+    # These questions are never callback requests, so reaching CallCustomerNode
+    # is a callback false trigger (auto-gradable), independent of the manual
+    # hallucination grading of the answer itself.
+    actually_fired = final_node == "CallCustomerNode"
+    return (False if actually_fired else None), {
         "answer": _last_assistant_message(transcript),
         "retrieved_docs": sources,
+        "actually_fired": actually_fired,
+        "final_node": final_node,
         "note": "hallucination grading is manual in v1 - see docs/eval/Metrics.md #5",
     }
 
@@ -247,7 +258,11 @@ def compute_metrics(results):
     )
 
     metrics["callback_recall"] = pass_rate(CALLBACK_RECALL_CATS)
-    callback_all = [r for cat in CALLBACK_ALL_CATS for r in by_cat.get(cat, [])]
+    # Out-of-scope questions are never callback requests, so a fire there is a
+    # false trigger and belongs in the precision denominator too.
+    callback_all = [
+        r for cat in CALLBACK_ALL_CATS | {"out_of_scope_question"} for r in by_cat.get(cat, [])
+    ]
     fired = [r for r in callback_all if r["detail"].get("actually_fired")]
     genuine_fired = [r for r in fired if r["category"] in CALLBACK_RECALL_CATS]
     metrics["callback_precision"] = (

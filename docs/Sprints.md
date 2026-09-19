@@ -113,13 +113,40 @@ build work, deliberately)
   separate whisper crash, Bug 2); only `call-001`/`call-008` are genuine
   detection misses. Callback recall is the one metric still below target.
 
-**Definition of done status:** every metric now has a real number except
-hallucination rate, which stays intentionally manual per `Metrics.md` #5.
-Remaining before Sprint 1 can close: fix Bug 2 (whisper dependency) so the
-callback flow can complete rather than just detect correctly, decide
-whether 71% callback recall is acceptable or needs prompt/model work, and
-do a manual hallucination pass over the `out_of_scope_question` /
-`adversarial_tier_crossing` answers in the baseline report.
+**Status (2026-09-19, later):**
+- ✅ **Bug 2 fixed.** The callback flow now completes without the `audio`
+  extra (`transcription_available()` check; honest "callback logged" message,
+  no fabricated ticket summary). Verified live and by unit test.
+- ✅ **Hallucination rate graded: 3/15 = 20%** (target ≤5%, **not met**).
+  `docs/eval/Hallucination-Grading-2026-09-19.md`. Two definite hallucinations
+  are the same fact (free tier = single location, `rag-adv-001/002`); the
+  third (`rag-oos-002`) is a judgment call. The two contradictions recurred in
+  the post-fix full run (the first `rag-oos-002` answer was only spot-checked
+  there). Not fixed - candidate fixes are listed in that file.
+- ✅ **Callback recall root-caused and fixed: 71% → 100% (n=7).** The misses
+  were deterministic, not sampling noise: the internal `system:` user-profile
+  line in the message history biased the 3B classifier. Two fixes (see
+  `Phases.md` Phase 4): system messages are no longer shown to the intent
+  check, and a callback now requires a phone number in the user's message.
+  Prompt rewording alone was tried and rejected - it traded recall for
+  precision (net wash on golden + held-out phrasings).
+- 🐛 A first cut of the fix (reworded condition only) **regressed
+  `rag-oos-002`** into a false callback trigger, which the harness missed
+  because out-of-scope entries had no `final_node` check. The harness now
+  fails an out-of-scope entry that reaches `CallCustomerNode` and counts it in
+  callback precision.
+- Post-fix full 38-entry run: `docs/eval/Baseline-2026-09-19-post-fixes.md`.
+  Callback recall 100% (n=7), precision 100%, no crashes; every other metric
+  unchanged and on target.
+
+**Definition of done status:** every metric now has a real number.
+Callback recall/precision now meet target. **Hallucination rate (20%) does
+not meet its ≤5% target**, and no fix has been attempted, so Sprint 1's
+"every metric has a number" criterion is met but the metric itself is an open
+quality issue carried into the next sprint. Caveats: callback numbers come from
+a 38-entry golden set the fix was developed against (partially mitigated by 10
+held-out phrasings, which didn't discriminate), so treat 100% as an upper
+bound; sample sizes are still small.
 
 **Backlog:**
 - Define the metrics that matter, with explicit targets, e.g.:
