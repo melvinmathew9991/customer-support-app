@@ -55,6 +55,23 @@ phases are the actual next steps.
   number into a `PhoneCallRequest`.
 - `CallCustomerNode` produces a `PhoneCallTicket` and a closing message;
   optional Whisper transcription via `tools/audio_transcribe.py`.
+- **Bugfixes (2026-09-19, found by the Sprint 1 eval harness):**
+  - Without the optional `audio` extra the node crashed with
+    `ModuleNotFoundError: whisper`. `tools/audio_transcribe.py` now exposes
+    `transcription_available()`; when it's false `CallCustomerNode` skips the
+    LLM/tool call and replies that the callback was logged, with no ticket
+    summary (none can be produced without a call to transcribe).
+  - Callback detection missed 2 of 7 genuine requests (71% recall). Root
+    cause: `PydanticTextBasedEdge.check()` passed the whole message history to
+    the intent classifier, including the internal
+    `system: User Info retrieved: ... phone=...` line, which deterministically
+    biased `llama3.2:3b` toward "no" for some phrasings. `check()` now passes
+    only user/assistant messages. Removing that line alone made the classifier
+    over-fire on phone-related questions, and prompt rewording only traded
+    misses for false triggers, so `CallCustomerEdge.check()` also requires a
+    phone number (6+ digits) in the user's latest message before the LLM
+    intent check runs. **Behavior change:** a bare "call me" with no number no
+    longer triggers a callback.
 
 ## Phase 5 — Interfaces ✅ Done
 - Streamlit `app.py` (Chat + Graph tabs, live DAG rendering via

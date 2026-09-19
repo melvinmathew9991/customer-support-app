@@ -13,7 +13,7 @@ from customer_support_app.graph.chain_based_edge import ZeroShotChainBasedEdge
 from customer_support_app.graph.chain_based_node import RetrievalNode, MultifunctionNode
 from customer_support_app.graph.node import BaseNode, BaseEdge, NodeInput
 from customer_support_app.graph.text_based_edge import PydanticTextBasedEdge
-from customer_support_app.tools.audio_transcribe import call_customer
+from customer_support_app.tools.audio_transcribe import call_customer, transcription_available
 from customer_support_app.tools.rag_responder import HelpCenterAgent
 from customer_support_app.tools.user_info_db import (
     search_user_info_on_db,
@@ -214,8 +214,11 @@ class CallCustomerEdge(PydanticTextBasedEdge):
     def __init__(self, llm_model, max_retries: int = 5, out_node: BaseNode = None):
         super().__init__(
             condition=(
-                "Is the user asking to be called, phoned, or rung back on a phone "
-                "number (e.g. 'call me', 'please call me back', 'can you ring me at ...')?"
+                "Is the user asking for someone from support to call or phone THEM "
+                "(a callback, ring-back, or being reached on their phone number)? "
+                "Questions that merely mention phones - phone payment methods, phone "
+                "number formats, or calls the user made in the past - are NOT "
+                "requests to be called."
             ),
             parse_prompt="Extract the phone number from the user message",
             parse_class=PhoneCallRequest,
@@ -223,6 +226,19 @@ class CallCustomerEdge(PydanticTextBasedEdge):
             max_retries=max_retries,
             out_node=out_node,
         )
+
+    # At least 6 digits, allowing spaces/dashes/brackets between them.
+    _PHONE_NUMBER_RE = re.compile(r"(?:\d[\s\-().]*){6,}")
+
+    def check(self, user_input: MessageHistory) -> bool:
+        # A callback request always names the number to call. Requiring one is
+        # deterministic, and keeps questions that merely mention phones or how to
+        # reach support (which the 3B model conflates with callback requests)
+        # from ever reaching the LLM-based intent check.
+        last_input = user_input.role_based_history(Role.USER)[-1]["content"]
+        if not self._PHONE_NUMBER_RE.search(last_input):
+            return False
+        return super().check(user_input)
 
     def _get_message_output(
         self, msg_input: Union[str, BaseModel]
@@ -243,6 +259,9 @@ class CallCustomerEdge(PydanticTextBasedEdge):
 
 class CallCustomerNode(MultifunctionNode):
     def greeting_message(self) -> Optional[MessageOutput]:
+        if not transcription_available():
+            return self._callback_logged_message()
+
         message_history = MessageHistory(messages=[])
         message_history.add_user_message(
             content=f"Call user on his phone number: {self._node_input.phone_number}"
@@ -266,6 +285,15 @@ class CallCustomerNode(MultifunctionNode):
                 role=Role.ASSISTANT,
             )
         return None
+
+    def _callback_logged_message(self) -> MessageOutput:
+        # Without the optional `audio` extra there is no call to transcribe, so
+        # no ticket summary can be produced - say so instead of inventing one.
+        return MessageOutput(
+            message=f"We've logged your callback request for {self._node_input.phone_number}. "
+            f"A customer care representative will call you back shortly.",
+            role=Role.ASSISTANT,
+        )
 
     def no_edges_found(self, user_input: NodeInput) -> Optional[MessageOutput]:
         return None

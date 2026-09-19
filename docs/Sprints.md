@@ -102,10 +102,51 @@ build work, deliberately)
   edge actually fired correctly 5 of 7 times before hitting that separate
   bug, so the harness's 0% recall figure understated real detection
   performance. Not yet fixed.
-- ⏳ `docs/eval/Baseline-2026-09-19.md` as currently committed predates
-  both the identification fix and the harness fixes above - **stale**,
-  needs a re-run once the harness is corrected, don't treat its numbers as
-  current.
+- ✅ Both harness bugs fixed (`tests/eval/run_eval.py`) and the full
+  38-entry set re-run. `docs/eval/Baseline-2026-09-19.md` now reflects the
+  real, current state: identification success 100% (n=6), fails-safe 100%
+  (n=5), retrieval recall@k 100% (n=12), tier-leakage 0% (n=12) - all
+  clean, and `ident-009` (the exact auth-bypass exploit conversation) now
+  passes. **Callback recall: 71% (n=7)**, precision 100% (n=5) - the
+  harness fix revealed the edge actually fires correctly more often than
+  the earlier 0% figure suggested (5/7 fired; those 5 then hit the
+  separate whisper crash, Bug 2); only `call-001`/`call-008` are genuine
+  detection misses. Callback recall is the one metric still below target.
+
+**Status (2026-09-19, later):**
+- ✅ **Bug 2 fixed.** The callback flow now completes without the `audio`
+  extra (`transcription_available()` check; honest "callback logged" message,
+  no fabricated ticket summary). Verified live and by unit test.
+- ✅ **Hallucination rate graded: 3/15 = 20%** (target ≤5%, **not met**).
+  `docs/eval/Hallucination-Grading-2026-09-19.md`. Two definite hallucinations
+  are the same fact (free tier = single location, `rag-adv-001/002`); the
+  third (`rag-oos-002`) is a judgment call. The two contradictions recurred in
+  the post-fix full run (the first `rag-oos-002` answer was only spot-checked
+  there). Not fixed - candidate fixes are listed in that file.
+- ✅ **Callback recall root-caused and fixed: 71% → 100% (n=7).** The misses
+  were deterministic, not sampling noise: the internal `system:` user-profile
+  line in the message history biased the 3B classifier. Two fixes (see
+  `Phases.md` Phase 4): system messages are no longer shown to the intent
+  check, and a callback now requires a phone number in the user's message.
+  Prompt rewording alone was tried and rejected - it traded recall for
+  precision (net wash on golden + held-out phrasings).
+- 🐛 A first cut of the fix (reworded condition only) **regressed
+  `rag-oos-002`** into a false callback trigger, which the harness missed
+  because out-of-scope entries had no `final_node` check. The harness now
+  fails an out-of-scope entry that reaches `CallCustomerNode` and counts it in
+  callback precision.
+- Post-fix full 38-entry run: `docs/eval/Baseline-2026-09-19-post-fixes.md`.
+  Callback recall 100% (n=7), precision 100%, no crashes; every other metric
+  unchanged and on target.
+
+**Definition of done status:** every metric now has a real number.
+Callback recall/precision now meet target. **Hallucination rate (20%) does
+not meet its ≤5% target**, and no fix has been attempted, so Sprint 1's
+"every metric has a number" criterion is met but the metric itself is an open
+quality issue carried into the next sprint. Caveats: callback numbers come from
+a 38-entry golden set the fix was developed against (partially mitigated by 10
+held-out phrasings, which didn't discriminate), so treat 100% as an upper
+bound; sample sizes are still small.
 
 **Backlog:**
 - Define the metrics that matter, with explicit targets, e.g.:
@@ -267,8 +308,9 @@ caught by monitoring, not by a user complaint.
   which `PRD.md` feature or `Phases.md` phase it serves, and how it'll be
   measured as done (a test, a metric delta, or an explicit manual check).
 - **Definition of Done** for any sprint: tests pass (`pytest`), `ruff`
-  clean, `Phases.md` status updated, and — from Sprint 5 onward — the CI
-  eval gate is green.
+  clean, `Phases.md` status updated, `docs/report.md` refreshed to reflect
+  the sprint's outcome (architecture/results/findings tables, not just a
+  changelog line), and — from Sprint 5 onward — the CI eval gate is green.
 - Sprints are sequential as scoped above (each depends on the eval
   foundation from Sprint 1), but Sprints 3/4 (persistence, user store) and
   Sprint 6 (design) don't depend on each other and can be reordered or

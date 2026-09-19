@@ -1,3 +1,5 @@
+import importlib.util
+
 from langchain.chains import LLMChain
 from langchain.memory import SimpleMemory
 from langchain.output_parsers import PydanticOutputParser
@@ -6,6 +8,11 @@ from langchain.chains import SequentialChain
 
 from customer_support_app.config import get_chat_model, get_settings
 from customer_support_app.domain.validation import PhoneCallTicket
+
+
+def transcription_available() -> bool:
+    """True if the optional `audio` extra (whisper + librosa) is installed."""
+    return all(importlib.util.find_spec(m) is not None for m in ("whisper", "librosa"))
 
 
 def call_customer(query: str):

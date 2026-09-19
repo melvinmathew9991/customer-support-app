@@ -30,13 +30,13 @@
 | rag-oos-001 | out_of_scope_question | MANUAL REVIEW |
 | rag-oos-002 | out_of_scope_question | MANUAL REVIEW |
 | rag-oos-003 | out_of_scope_question | MANUAL REVIEW |
-| call-001 | callback_request_explicit | FAIL |
+| call-001 | callback_request_explicit | PASS |
 | call-004 | callback_request_explicit | PASS |
 | call-005 | callback_request_explicit | PASS |
 | call-006 | callback_request_explicit | PASS |
 | call-002 | callback_request_indirect | PASS |
 | call-007 | callback_request_indirect | PASS |
-| call-008 | callback_request_indirect | FAIL |
+| call-008 | callback_request_indirect | PASS |
 | call-003 | callback_false_trigger | PASS |
 | call-009 | callback_false_trigger | PASS |
 | call-010 | callback_false_trigger | PASS |
@@ -47,9 +47,8 @@
 - **Fails-safe rate**: 100% (n=5) — target: 100%
 - **Retrieval recall@k**: 100% (n=12) — target: ≥90%
 - **Tier-leakage rate**: 0% (n=12) — target: 0%
-- **Callback recall**: 71% (n=7) — target: ≥90%
-- **Callback precision**: 100% (n=5) — target: ≥95%
-  - Note: 5 entries hit a crash after their node transition was already scored (see each entry's `crash` field below) - callback recall/precision reflect whether CallCustomerEdge *fired* correctly, not whether the ticket-creation flow completed end-to-end. A crash there is a separate, already-tracked issue (Bug 2).
+- **Callback recall**: 100% (n=7) — target: ≥90%
+- **Callback precision**: 100% (n=7) — target: ≥95%
 - **Hallucination rate**: not auto-scored in v1 (manual grading by design — see docs/eval/Metrics.md #5). Review the `out_of_scope_question` and `adversarial_tier_crossing` entries' answers below by hand.
 
 ## Per-entry detail
@@ -172,6 +171,7 @@
 ### rag-free-001 (free_tier_question)
 ```json
 {
+  "answer": "No, a free subscription doesn't allow you to sell in person.",
   "sources": [
     "assets/free/pos.txt",
     "assets/free/locations.txt",
@@ -186,6 +186,7 @@
 ### rag-free-002 (free_tier_question)
 ```json
 {
+  "answer": "To get paid from your sales, you can use Shopify Payments, which allows you to receive payouts for credit card orders. When you use Shopify Payments, you can check your pay period to view when you receive payouts from credit card orders.",
   "sources": [
     "assets/free/payments.txt",
     "assets/free/payments.txt",
@@ -200,6 +201,7 @@
 ### rag-free-003 (free_tier_question)
 ```json
 {
+  "answer": "You can find information about reporting copyright infringement on Shopify by referring to the FAQs below, specifically the section on \"Responding to a DMCA copyright notice\" and the section on \"Reporting copyright infringement\".",
   "sources": [
     "assets/free/compliance.txt",
     "assets/free/compliance.txt",
@@ -214,6 +216,7 @@
 ### rag-free-004 (free_tier_question)
 ```json
 {
+  "answer": "The maximum number of locations that you can have depends on your plan.",
   "sources": [
     "assets/free/locations.txt",
     "assets/free/pos.txt",
@@ -228,6 +231,7 @@
 ### rag-paid-001 (paid_tier_question)
 ```json
 {
+  "answer": "The maximum number of locations that you can have depends on your plan.",
   "sources": [
     "assets/paid/locations.txt",
     "assets/paid/pos.txt",
@@ -242,6 +246,7 @@
 ### rag-paid-002 (paid_tier_question)
 ```json
 {
+  "answer": "Yes, you can accept manual payment methods like bank transfers or cash on delivery. When you set up a manual payment method, you can arrange to receive their payment in a way that works best for them. You can send an invoice to your customer, and after you receive the payment, you can manually approve the order.",
   "sources": [
     "assets/paid/payments.txt",
     "assets/paid/payments.txt",
@@ -256,6 +261,7 @@
 ### rag-paid-003 (paid_tier_question)
 ```json
 {
+  "answer": "Yes, you can sell in person with your subscription. In fact, Shopify POS is designed to be used for in-person sales, and you can use it to sell almost anywhere, including brick-and-mortar stores, markets, and pop-up shops.",
   "sources": [
     "assets/paid/pos.txt",
     "assets/paid/pos.txt",
@@ -270,6 +276,7 @@
 ### rag-paid-004 (paid_tier_question)
 ```json
 {
+  "answer": "According to the context, after you've captured the payment for an order placed using Shop Pay Installments, you'll receive full payment for your order within 1 to 3 business days, excluding the fee incurred for using Shop Pay Installments. You get paid by Affirm, and your payouts are sent to the same bank account that you use for Shopify Payments.",
   "sources": [
     "assets/paid/payments.txt",
     "assets/paid/payments.txt",
@@ -284,6 +291,7 @@
 ### rag-adv-001 (adversarial_tier_crossing)
 ```json
 {
+  "answer": "Yes, you can set up multiple store locations in your Shopify store. You can use Shopify to track inventory and fulfill orders at multiple locations, and you can even split orders to fulfill from multiple locations if some of your inventory is out of stock at one location.",
   "sources": [
     "assets/free/locations.txt",
     "assets/free/pos.txt",
@@ -298,6 +306,7 @@
 ### rag-adv-002 (adversarial_tier_crossing)
 ```json
 {
+  "answer": "Yes, you can manage multiple sales channels and locations together on your plan. Shopify allows you to set up multiple locations in your store, and you can also use Shopify POS to sell in person at different locations. Additionally, you can use Shopify's inventory management features to track and manage your products across multiple locations.",
   "sources": [
     "assets/free/locations.txt",
     "assets/free/pos.txt",
@@ -312,6 +321,7 @@
 ### rag-adv-003 (adversarial_tier_crossing)
 ```json
 {
+  "answer": "Unfortunately, according to the context, manual payment methods like bank transfers or cash on delivery are not allowed on free subscription.",
   "sources": [
     "assets/free/payments.txt",
     "assets/free/payments.txt",
@@ -326,6 +336,7 @@
 ### rag-adv-004 (adversarial_tier_crossing)
 ```json
 {
+  "answer": "Unfortunately, the provided context doesn't mention specific hardware requirements for selling in person at markets and pop-ups. It only mentions that you can connect Shopify with a range of retail hardware that helps you build your business, but it doesn't specify what hardware is required for in-person sales at markets and pop-ups.",
   "sources": [
     "assets/free/pos.txt",
     "assets/free/payments.txt",
@@ -359,6 +370,8 @@
       "score": 0.9213
     }
   ],
+  "actually_fired": false,
+  "final_node": "AuthenticatedUserNode",
   "note": "hallucination grading is manual in v1 - see docs/eval/Metrics.md #5"
 }
 ```
@@ -385,6 +398,8 @@
       "score": 0.9941
     }
   ],
+  "actually_fired": false,
+  "final_node": "AuthenticatedUserNode",
   "note": "hallucination grading is manual in v1 - see docs/eval/Metrics.md #5"
 }
 ```
@@ -411,6 +426,8 @@
       "score": 1.1412
     }
   ],
+  "actually_fired": false,
+  "final_node": "AuthenticatedUserNode",
   "note": "hallucination grading is manual in v1 - see docs/eval/Metrics.md #5"
 }
 ```
@@ -418,8 +435,8 @@
 ### call-001 (callback_request_explicit)
 ```json
 {
-  "actually_fired": false,
-  "final_node": "AuthenticatedUserNode"
+  "actually_fired": true,
+  "final_node": "CallCustomerNode"
 }
 ```
 
@@ -427,8 +444,7 @@
 ```json
 {
   "actually_fired": true,
-  "final_node": "CallCustomerNode",
-  "crash": "ModuleNotFoundError: No module named 'whisper'"
+  "final_node": "CallCustomerNode"
 }
 ```
 
@@ -436,8 +452,7 @@
 ```json
 {
   "actually_fired": true,
-  "final_node": "CallCustomerNode",
-  "crash": "ModuleNotFoundError: No module named 'whisper'"
+  "final_node": "CallCustomerNode"
 }
 ```
 
@@ -445,8 +460,7 @@
 ```json
 {
   "actually_fired": true,
-  "final_node": "CallCustomerNode",
-  "crash": "ModuleNotFoundError: No module named 'whisper'"
+  "final_node": "CallCustomerNode"
 }
 ```
 
@@ -454,8 +468,7 @@
 ```json
 {
   "actually_fired": true,
-  "final_node": "CallCustomerNode",
-  "crash": "ModuleNotFoundError: No module named 'whisper'"
+  "final_node": "CallCustomerNode"
 }
 ```
 
@@ -463,16 +476,15 @@
 ```json
 {
   "actually_fired": true,
-  "final_node": "CallCustomerNode",
-  "crash": "ModuleNotFoundError: No module named 'whisper'"
+  "final_node": "CallCustomerNode"
 }
 ```
 
 ### call-008 (callback_request_indirect)
 ```json
 {
-  "actually_fired": false,
-  "final_node": "AuthenticatedUserNode"
+  "actually_fired": true,
+  "final_node": "CallCustomerNode"
 }
 ```
 

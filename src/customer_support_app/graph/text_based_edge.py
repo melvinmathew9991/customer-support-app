@@ -45,7 +45,14 @@ class PydanticTextBasedEdge(BaseEdge[MessageHistory, MessageOutput]):
 
     def check(self, user_input: MessageHistory) -> bool:
         """ask the llm if the input satisfies the condition"""
-        history = "\n".join((str(user_input)).split("\n")[:-1])
+        # System messages are internal bookkeeping (e.g. the retrieved user profile,
+        # with its own phone number) - showing them to a small model biases the
+        # yes/no answer, so only the user/assistant conversation is passed.
+        history = "".join(
+            f"\n{msg['role']}: {msg['content']}"
+            for msg in user_input.messages[:-1]
+            if msg["role"] != Role.SYSTEM
+        )
         last_input = (user_input.role_based_history(Role.USER)[-1])["content"]
 
         try:
