@@ -215,11 +215,9 @@ class CallCustomerEdge(PydanticTextBasedEdge):
     def __init__(self, llm_model, max_retries: int = 5, out_node: BaseNode = None):
         super().__init__(
             condition=(
-                "Is the user asking for someone from support to call or phone THEM "
-                "(a callback, ring-back, or being reached on their phone number)? "
-                "Questions that merely mention phones - phone payment methods, phone "
-                "number formats, or calls the user made in the past - are NOT "
-                "requests to be called."
+                "Does the user ask a support agent to call them? Only mentioning, "
+                "giving, changing or asking about a phone number is not a request "
+                "to be called."
             ),
             parse_prompt="Extract the phone number from the user message",
             parse_class=PhoneCallRequest,
@@ -231,6 +229,21 @@ class CallCustomerEdge(PydanticTextBasedEdge):
     # At least 6 digits, allowing spaces/dashes/brackets between them.
     _PHONE_NUMBER_RE = re.compile(r"(?:\d[\s\-().]*){6,}")
 
+    # Unambiguous ways of asking to be called, and of asking not to be. The 3B model
+    # misses some plain requests ("Can you call me?") once a number is present and
+    # accepts non-requests that merely mention one, so these are decided without it.
+    _CALL_ME_RE = re.compile(
+        r"\b(?:call|ring|phone)\s+me\b|\bgive\s+me\s+a\s+(?:call|ring)\b|\bcall\s*back\b"
+        r"|\bcall\s+(?:this|that|the)\s+number\b"
+        r"|\b(?:someone|somebody|an?\s+agent)\s+(?:to\s+|could\s+|can\s+|should\s+)?"
+        r"(?:call|phone|ring)\b",
+        re.IGNORECASE,
+    )
+    _DO_NOT_CALL_RE = re.compile(
+        r"\b(?:don'?t|do\s+not|not|never|no)\s+(?:to\s+)?(?:call|phone|ring)\b|\bno\s+calls?\b",
+        re.IGNORECASE,
+    )
+
     def check(self, user_input: MessageHistory) -> bool:
         # A callback request always names the number to call. Requiring one is
         # deterministic, and keeps questions that merely mention phones or how to
@@ -239,6 +252,10 @@ class CallCustomerEdge(PydanticTextBasedEdge):
         last_input = user_input.role_based_history(Role.USER)[-1]["content"]
         if not self._PHONE_NUMBER_RE.search(last_input):
             return False
+        if self._DO_NOT_CALL_RE.search(last_input):
+            return False
+        if self._CALL_ME_RE.search(last_input):
+            return True
         return super().check(user_input)
 
     # A whole number as typed (optional leading + or bracket), for reading it back.
