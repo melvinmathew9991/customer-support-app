@@ -1,7 +1,5 @@
 import abc
-
 from typing import List, Optional
-
 
 from customer_support_app.domain.graph import EdgeOutput
 from customer_support_app.graph.edge import BaseEdge

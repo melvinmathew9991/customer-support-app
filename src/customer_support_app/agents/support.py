@@ -1,6 +1,6 @@
 import random
 import re
-from typing import Optional, Type, Union, List
+from typing import List, Optional, Type, Union
 
 from langchain_core.exceptions import OutputParserException
 from langchain_core.tools import Tool
@@ -8,10 +8,10 @@ from pydantic import BaseModel
 
 from customer_support_app.domain.chat import MessageHistory, Role
 from customer_support_app.domain.graph import MessageOutput
-from customer_support_app.domain.validation import UserProfile, PhoneCallRequest, PhoneCallTicket
+from customer_support_app.domain.validation import PhoneCallRequest, PhoneCallTicket, UserProfile
 from customer_support_app.graph.chain_based_edge import ZeroShotChainBasedEdge
-from customer_support_app.graph.chain_based_node import RetrievalNode, MultifunctionNode
-from customer_support_app.graph.node import BaseNode, BaseEdge, NodeInput
+from customer_support_app.graph.chain_based_node import MultifunctionNode, RetrievalNode
+from customer_support_app.graph.node import BaseEdge, BaseNode, NodeInput
 from customer_support_app.graph.text_based_edge import PydanticTextBasedEdge
 from customer_support_app.tools.audio_transcribe import call_customer, transcription_available
 from customer_support_app.tools.rag_responder import HelpCenterAgent
@@ -160,7 +160,8 @@ To achieve this you have access to the following tools:"""
 
 class AuthenticatedUserNode(RetrievalNode):
     STATIC_PROMPT = [
-        "Hi, {user_name} I am your Shopify Agent for today, you have the {subscription} subscription "
+        "Hi, {user_name} I am your Shopify Agent for today, you have the "
+        "{subscription} subscription "
         "I can help you with any Help or you can ask me to call you at anytime!"
     ]
 
@@ -245,7 +246,7 @@ class CallCustomerEdge(PydanticTextBasedEdge):
     ) -> Optional[List[MessageOutput]]:
         if isinstance(msg_input, PhoneCallRequest):
             system_message = MessageOutput(
-                f"User has been called as per their request", Role.SYSTEM
+                "User has been called as per their request", Role.SYSTEM
             )
 
             assistant_message = MessageOutput(
@@ -271,17 +272,20 @@ class CallCustomerNode(MultifunctionNode):
         if self._output_parser is not None:
             ticket_request: PhoneCallTicket = self._output_parser.parse(completion)
             return MessageOutput(
-                message=f"We are connecting you to our customer care representative Ruby.  We will be happy to resolve your queries via call."
+                message="We are connecting you to our customer care representative Ruby.  "
+                "We will be happy to resolve your queries via call."
                 f"\n"
                 f"\n"
                 f"\n"
                 f"\n"
                 f"\n"
                 f"\n"
-                f"\nThanks for your time today with {ticket_request.agent_name}  a ticket has been created on your behalf"
+                f"\nThanks for your time today with {ticket_request.agent_name}  "
+                f"a ticket has been created on your behalf"
                 f"\nHere is your ticket summary: "
                 f"\n\n{ticket_request.call_summary}"
-                f"\n\nThanks for your time today! See you next time. We are closing this ticket now.",
+                f"\n\nThanks for your time today! See you next time. "
+                f"We are closing this ticket now.",
                 role=Role.ASSISTANT,
             )
         return None

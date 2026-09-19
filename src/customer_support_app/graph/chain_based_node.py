@@ -1,21 +1,20 @@
 import abc
 import re
 from pathlib import Path
+from typing import List, Optional, Type
 
 from langchain.agents import AgentExecutor, create_tool_calling_agent
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.output_parsers import PydanticOutputParser
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from pydantic import BaseModel
-from typing import Type, Optional, List
 
 from customer_support_app.config import PROJECT_ROOT, get_settings
 from customer_support_app.domain.chat import MessageHistory, Role
-from customer_support_app.graph.node import BaseNode
 from customer_support_app.graph.edge import BaseEdge
+from customer_support_app.graph.node import BaseNode
 from customer_support_app.logging_config import log_latency
-
 
 NOT_COVERED_REPLY = "I don't have information about that in our help center."
 
@@ -131,7 +130,10 @@ class RetrievalNode(ChainBasedNode, abc.ABC):
             try:
                 scored = retriever.vectorstore.similarity_search_with_score(last_user_message)
                 fields["retrieved_docs"] = [
-                    {"source": _relative_source(doc.metadata.get("source")), "score": round(float(score), 4)}
+                    {
+                        "source": _relative_source(doc.metadata.get("source")),
+                        "score": round(float(score), 4),
+                    }
                     for doc, score in scored
                 ]
             except Exception:

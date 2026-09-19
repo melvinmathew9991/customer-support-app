@@ -1,9 +1,8 @@
 import abc
-from typing import List, Generic, TypeVar, Union, Optional
+from typing import Generic, List, Optional, TypeVar, Union
 
 from customer_support_app.domain.graph import EdgeOutput, MessageOutput
 from customer_support_app.graph.edge import BaseEdge
-
 
 NodeInput = TypeVar("NodeInput")
 

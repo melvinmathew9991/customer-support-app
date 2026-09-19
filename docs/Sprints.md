@@ -241,6 +241,15 @@ phrasings), #9 (ruff findings + lint gate).
   target is not met. No regression: machine-scored metrics unchanged (retrieval
   100%, leakage 0%, callbacks 100%/100%), development answers 22/36 identical and
   none worse.
+- ✅ **Lint cleanup and hard CI gate (#9).** All 27 ruff findings fixed (12
+  import-order, 12 long lines, and one each of unused import, f-string without
+  placeholders, and an undefined name that was a forward reference needing a
+  `TYPE_CHECKING` import). Verified behavior-neutral by comparing every modified
+  file's syntax tree with the previous version, ignoring only import order: 10 of
+  13 files identical, and the 3 that differ do so exactly as intended (including
+  every re-wrapped user-facing message). 105 tests pass and every module still
+  imports. CI's `ruff check src tests scripts` step is now blocking (no
+  `continue-on-error`); a deliberate violation exits 1.
 - ✅ **Reindex command** (`scripts/reindex_kb.py`, `--tier`, `--check`), stable
   chunk ids, content-based staleness check, and a startup warning when the
   index is out of date. 8 unit tests (fake embeddings, no Ollama); verified on

@@ -1,5 +1,5 @@
 import abc
-from typing import Generic, TypeVar, Optional, Union, List
+from typing import Generic, List, Optional, TypeVar, Union
 
 from langchain_core.exceptions import OutputParserException
 from pydantic import BaseModel, ValidationError

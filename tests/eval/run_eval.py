@@ -115,7 +115,12 @@ def score_identification(entry, transcript, final_node, _log_records):
     sub_ok = expected["subscription"].lower() in last_msg.lower()
     node_ok = final_node == entry["expected"].get("final_node", final_node)
     passed = name_ok and sub_ok and node_ok
-    return passed, {"answer": last_msg, "name_ok": name_ok, "subscription_ok": sub_ok, "node_ok": node_ok}
+    return passed, {
+        "answer": last_msg,
+        "name_ok": name_ok,
+        "subscription_ok": sub_ok,
+        "node_ok": node_ok,
+    }
 
 
 def score_fails_safe(_entry, _transcript, final_node, _log_records):
@@ -211,7 +216,9 @@ def run_all(golden_set):
             log_records, offset = read_new_log_lines(log_path, offset)
             scorer = CATEGORY_SCORERS.get(entry["category"])
             if scorer is None:
-                passed, detail = None, {"error": f"no scorer registered for category '{entry['category']}'"}
+                passed, detail = None, {
+                    "error": f"no scorer registered for category '{entry['category']}'"
+                }
             else:
                 # Score from final_node/log_records as usual even if this
                 # conversation crashed partway - a crash after a correct
@@ -230,7 +237,14 @@ def run_all(golden_set):
             # itself failing) - genuinely unscorable, not just crashed.
             _, offset = read_new_log_lines(log_path, offset)  # resync past any partial output
             passed, detail = False, {"error": f"{type(e).__name__}: {e}"}
-        results.append({"id": entry["id"], "category": entry["category"], "passed": passed, "detail": detail})
+        results.append(
+            {
+                "id": entry["id"],
+                "category": entry["category"],
+                "passed": passed,
+                "detail": detail,
+            }
+        )
     return results
 
 
@@ -254,7 +268,9 @@ def compute_metrics(results):
     retrieval_entries = [r for cat in RETRIEVAL_CATS for r in by_cat.get(cat, [])]
     leaked = [r for r in retrieval_entries if r["detail"].get("tier_leak")]
     metrics["tier_leakage_rate"] = (
-        (len(leaked) / len(retrieval_entries), len(retrieval_entries)) if retrieval_entries else None
+        (len(leaked) / len(retrieval_entries), len(retrieval_entries))
+        if retrieval_entries
+        else None
     )
 
     metrics["callback_recall"] = pass_rate(CALLBACK_RECALL_CATS)
@@ -275,7 +291,11 @@ def compute_metrics(results):
 def build_report(results, metrics):
     lines = ["# Eval run results\n", "| id | category | result |", "|---|---|---|"]
     for r in results:
-        status = "PASS" if r["passed"] is True else ("FAIL" if r["passed"] is False else "MANUAL REVIEW")
+        status = (
+            "PASS"
+            if r["passed"] is True
+            else ("FAIL" if r["passed"] is False else "MANUAL REVIEW")
+        )
         lines.append(f"| {r['id']} | {r['category']} | {status} |")
 
     lines.append("\n## Aggregate metrics (docs/eval/Metrics.md)\n")
@@ -286,7 +306,13 @@ def build_report(results, metrics):
         rate, n = value
         return f"- **{name}**: {rate:.0%} (n={n}) — target: {target}"
 
-    lines.append(fmt("Identification success rate", "≥95% clean / ≥80% ambiguous", metrics["identification_success_rate"]))
+    lines.append(
+        fmt(
+            "Identification success rate",
+            "≥95% clean / ≥80% ambiguous",
+            metrics["identification_success_rate"],
+        )
+    )
     lines.append(fmt("Fails-safe rate", "100%", metrics["fails_safe_rate"]))
     lines.append(fmt("Retrieval recall@k", "≥90%", metrics["retrieval_recall_at_k"]))
     lines.append(fmt("Tier-leakage rate", "0%", metrics["tier_leakage_rate"]))

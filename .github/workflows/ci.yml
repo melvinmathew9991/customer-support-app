@@ -31,9 +31,6 @@ jobs:
       - name: Unit tests
         run: pytest -q
 
-      # Informational for now: `main` has pre-existing ruff findings (import order,
-      # line length). Drop `continue-on-error` once they're cleaned up so lint
-      # becomes a hard gate.
+      # A hard gate: the repo is ruff-clean (see issue #9), so any new finding fails the build.
       - name: Lint (ruff)
-        run: ruff check src tests
-        continue-on-error: true
+        run: ruff check src tests scripts
