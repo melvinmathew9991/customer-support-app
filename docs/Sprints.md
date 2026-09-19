@@ -252,6 +252,20 @@ phrasings), #9 (ruff findings + lint gate).
   fail; Sprint 1's 100% precision was uninformative. **A wrong number surfaced:**
   existing `call-007` had the bot call the profile number instead of the one the
   user typed, invisible to the old scorer. Not fixed; the set is now used.
+- ✅ **Wrong-number callback fixed (#22)**
+  (`docs/eval/Extraction-Leak-Results-2026-09-19.md`). Cause confirmed: the
+  extraction prompt included the internal profile line, so `call-007` returned the
+  profile number in 5 of 5 runs. Fix: system messages stay out of extraction, and the
+  extracted digits must appear in the user's own message, otherwise the single number
+  they typed is used (several numbers: reject). 10 fresh entries were committed before
+  any run, but they were already at ceiling (the leak reproduced only on `call-007`),
+  so they show no regression, not an improvement. The first version of the fix
+  regressed `call-002` (the model mis-copied a digit and the guard blocked the
+  call); the typed-number fallback was added after seeing that on a used entry. Full
+  eval, 100 entries: **phone extraction 94% -> 100% (26/26)**, recall 96% (26/27),
+  precision 90% (26/29, not comparable to 85% since the set gained positives). The 3
+  false triggers and `call-033` remain (#23). The 14 unscored entries were read by
+  hand and are identical to the last full run.
 - ✅ **Lint cleanup and hard CI gate (#9).** All 27 ruff findings fixed (12
   import-order, 12 long lines, and one each of unused import, f-string without
   placeholders, and an undefined name that was a forward reference needing a
