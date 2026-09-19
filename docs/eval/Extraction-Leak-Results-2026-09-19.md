@@ -64,6 +64,28 @@ from 17 to 27 positives (the 10 new cohort entries), and the precision gain come
 from those added true positives. The three false triggers (`call-023`, `-025`,
 `-026`) are the same as before and unchanged by this fix (tracked in #23).
 
+## Manual-review entries (14 of the 100 are not auto-scored)
+
+Read by hand against the KB text; a single reader, so `oos-009` and `oos-011` are
+judgment calls. All 14 answers are **identical** to the last earlier full run
+(`Baseline-2026-09-19-fix-16-17.md`), so none is attributable to this change.
+
+- `ident-007` (mixed-case email) and `ident-010` (phone number): both fail safe with
+  the retry message. The known limitation of the mock lookup (#11).
+- `rag-oos-001` to `-008`, `-010`, `-012`: correct refusals (10 of 12).
+- `rag-oos-009` (enable Shopify Payments): "in the Payment providers area of your
+  Shopify admin". The phrase is in `payments.txt:2` but in another context and the KB
+  gives no steps. Borderline.
+- `rag-oos-011` (connect a card reader): says to set up the reader in the POS app and
+  link it to the admin. The KB gives no connection steps. Hallucinated on the
+  stricter reading.
+
+So 1 hallucinated and 1 borderline of 12, as before. Separately, three auto-scored
+answers (`rag-free-006`, `-008`, `-014`) changed wording against that run with no
+change to the answer path or the KB (`assets/` is unchanged), none into a
+fabrication. That is run-to-run variation even at temperature 0, so single-run
+wording differences are noise.
+
 ## Not fixed here
 
 - `call-033` is an intent miss on a positive; see #23 for the callback intent check.
