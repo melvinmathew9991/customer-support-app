@@ -241,6 +241,19 @@ class CallCustomerEdge(PydanticTextBasedEdge):
             return False
         return super().check(user_input)
 
+    def _parse(self, user_input: MessageHistory) -> Union[str, BaseModel]:
+        result = super()._parse(user_input)
+        # Never call a number the user did not type: the extracted digits must
+        # appear in their own latest message. Rejecting falls through to the
+        # normal answer path rather than starting a callback.
+        typed = re.sub(r"\D", "", user_input.role_based_history(Role.USER)[-1]["content"])
+        extracted = re.sub(r"\D", "", result.phone_number)
+        if not extracted or extracted not in typed:
+            raise OutputParserException(
+                "The extracted phone number does not appear in the user's message."
+            )
+        return result
+
     def _get_message_output(
         self, msg_input: Union[str, BaseModel]
     ) -> Optional[List[MessageOutput]]:
