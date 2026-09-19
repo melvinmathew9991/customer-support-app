@@ -56,6 +56,23 @@ def test_check_excludes_system_messages_from_history():
     assert "User's latest message: please call me" in prompt
 
 
+def test_parse_excludes_system_messages():
+    llm = _RecordingLLM()
+    history = MessageHistory(messages=[])
+    history.add_assistant_message("welcome")
+    history.add_user_message("me@example.com")
+    history.add_system_message("User Info retrieved: phone='0452 333 666'")
+    history.add_user_message("call me on 0452 222 111")
+
+    _edge(llm)._parse(history)
+
+    prompt = llm.prompts[0]
+    assert "User Info retrieved" not in prompt
+    assert "0452 333 666" not in prompt
+    assert "assistant: welcome" in prompt
+    assert "user: call me on 0452 222 111" in prompt
+
+
 def test_check_does_not_repeat_latest_message_in_history():
     llm = _RecordingLLM()
     history = MessageHistory(messages=[])

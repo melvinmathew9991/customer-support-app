@@ -73,7 +73,12 @@ class PydanticTextBasedEdge(BaseEdge[MessageHistory, MessageOutput]):
 
     def _parse(self, user_input: MessageHistory) -> Union[str, BaseModel]:
         """ask the llm to parse the parse_class, based on the parse_prompt, from the input"""
-        return self._extraction_llm.invoke(f"{self.parse_prompt}:\n\nInput: {user_input}")
+        # Same reason as check(): the system profile line carries its own phone
+        # number, which the extraction returns instead of the one the user typed.
+        conversation = MessageHistory(
+            [msg for msg in user_input.messages if msg["role"] != Role.SYSTEM]
+        )
+        return self._extraction_llm.invoke(f"{self.parse_prompt}:\n\nInput: {conversation}")
 
     def execute(self, user_input: MessageHistory):
         # input did't make it past the input condition for the edge

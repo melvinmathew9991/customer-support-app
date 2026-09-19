@@ -1442,5 +1442,135 @@
       "callback_expected": false
     },
     "notes": "Sprint 2 held-out callback set (issue #8): written before any run against this code; do not tune against it."
+  },
+  {
+    "id": "call-027",
+    "category": "callback_request_explicit",
+    "description": "Explicit request; typed number differs from the profile number (0452 333 666).",
+    "turns": ["michaeljackson@gmail.com", "Please call me on 0452 810 274"],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "0452 810 274",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Sprint 2 extraction-leak cohort (issue #22): written before any run against the fix; do not tune against it. Profile number differs from the typed one, so a leak from the system profile line shows as a wrong number."
+  },
+  {
+    "id": "call-028",
+    "category": "callback_request_explicit",
+    "description": "Explicit request with trailing time context; typed number differs from the profile number (0452 333 667).",
+    "turns": ["john@doe.com", "Ring me back at 0433 690 512 today if you can."],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "0433 690 512",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Sprint 2 extraction-leak cohort (issue #22): written before any run against the fix; do not tune against it."
+  },
+  {
+    "id": "call-029",
+    "category": "callback_request_explicit",
+    "description": "Explicit request for a bracketed landline; typed number differs from the profile number (0452 333 668).",
+    "turns": ["carl@sagan.com", "My work line is (03) 9555 0177, could someone call me there?"],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "(03) 9555 0177",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Sprint 2 extraction-leak cohort (issue #22): written before any run against the fix; do not tune against it. A landline, so the profile mobile is a plausible wrong answer."
+  },
+  {
+    "id": "call-030",
+    "category": "callback_request_indirect",
+    "description": "Polite indirect request; typed number differs from the profile number (0452 333 666).",
+    "turns": ["michaeljackson@gmail.com", "Would it be alright if someone phoned me on 0490 128 345 tomorrow morning?"],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "0490 128 345",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Sprint 2 extraction-leak cohort (issue #22): written before any run against the fix; do not tune against it."
+  },
+  {
+    "id": "call-031",
+    "category": "callback_request_indirect",
+    "description": "States a preference for phone contact; typed number differs from the profile number (0452 333 667).",
+    "turns": ["john@doe.com", "I'd rather talk this through by phone. My number is 0421 907 366."],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "0421 907 366",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Sprint 2 extraction-leak cohort (issue #22): written before any run against the fix; do not tune against it."
+  },
+  {
+    "id": "call-032",
+    "category": "callback_request_explicit",
+    "description": "Explicit request with a UK-format number; typed number differs from the profile number (0452 333 668).",
+    "turns": ["carl@sagan.com", "Call me back on +44 7700 900 461 please"],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "+44 7700 900 461",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Sprint 2 extraction-leak cohort (issue #22): written before any run against the fix; do not tune against it."
+  },
+  {
+    "id": "call-033",
+    "category": "callback_request_explicit",
+    "description": "Number stated first, sharing the profile number's prefix (0452 333 666) but not its last digits.",
+    "turns": ["michaeljackson@gmail.com", "0452 333 999 - please call this number."],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "0452 333 999",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Sprint 2 extraction-leak cohort (issue #22): written before any run against the fix; do not tune against it. The typed number is close to the profile number, the hardest case for a leak to be noticed."
+  },
+  {
+    "id": "call-034",
+    "category": "callback_request_indirect",
+    "description": "Asks for a ring; typed number differs from the profile number (0452 333 667).",
+    "turns": ["john@doe.com", "Can an agent give me a ring? Reach me on 0466 253 018."],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "0466 253 018",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Sprint 2 extraction-leak cohort (issue #22): written before any run against the fix; do not tune against it."
+  },
+  {
+    "id": "call-035",
+    "category": "callback_request_explicit",
+    "description": "Control: the typed number is the same as the profile number (0452 333 667).",
+    "turns": ["john@doe.com", "Please call me on 0452 333 667"],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "0452 333 667",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Sprint 2 extraction-leak cohort (issue #22): written before any run against the fix; do not tune against it. Control: the fix must not break the case where the two numbers agree."
+  },
+  {
+    "id": "call-036",
+    "category": "callback_request_explicit",
+    "description": "Control: the typed number is the same as the profile number (0452 333 668).",
+    "turns": ["carl@sagan.com", "Could you call me back on 0452 333 668?"],
+    "turn_budget": 2,
+    "expected": {
+      "callback_expected": true,
+      "extracted_phone": "0452 333 668",
+      "final_node": "CallCustomerNode"
+    },
+    "notes": "Sprint 2 extraction-leak cohort (issue #22): written before any run against the fix; do not tune against it. Control, as call-035."
   }
 ]
