@@ -1,4 +1,5 @@
 import abc
+import re
 from pathlib import Path
 
 from langchain.agents import AgentExecutor, create_tool_calling_agent
@@ -14,6 +15,25 @@ from customer_support_app.domain.chat import MessageHistory, Role
 from customer_support_app.graph.node import BaseNode
 from customer_support_app.graph.edge import BaseEdge
 from customer_support_app.logging_config import log_latency
+
+
+NOT_COVERED_REPLY = "I don't have information about that in our help center."
+
+# Navigation wording that shows up when a model describes an admin UI from general
+# knowledge ("go to Settings > Payments and click Edit"). The knowledge base contains
+# none of it, so if an answer uses it and the retrieved context does not, the steps
+# were invented. Heuristic: it catches this pattern, not every kind of fabrication.
+_NAVIGATION_MARKERS = (
+    re.compile(r"\bclick(?:s|ed|ing)?\b", re.I),
+    re.compile(r"\bnavigat\w*", re.I),
+    re.compile(r"\btap(?:s|ped|ping)?\b", re.I),
+    re.compile(r"\w\s*>\s*\w"),
+)
+
+
+def invents_steps(answer: str, context: str) -> bool:
+    """True if the answer gives UI navigation the retrieved context never uses."""
+    return any(m.search(answer) and not m.search(context) for m in _NAVIGATION_MARKERS)
 
 
 def _relative_source(source: Optional[str]) -> Optional[str]:
@@ -60,9 +80,10 @@ class RetrievalNode(ChainBasedNode, abc.ABC):
     rather than having the LLM guess which knowledge base to search.
     """
 
-    # Tuned against the 15 rag-* golden entries (docs/eval/Triage-2026-09-19.md,
-    # docs/eval/Prompt-Experiment-2026-09-19.md): the looser prompt made the 3B
-    # model answer uncovered questions from general knowledge. Rule 3 fixes that.
+    # Rules 3 and 5 exist because the 3B model answers uncovered questions, and
+    # "how do I..." questions the KB only partly covers, from general knowledge
+    # (docs/eval/Prompt-Experiment-2026-09-19.md, docs/eval/Fix-16-17-Verification-2026-09-19.md).
+    # Prompt wording alone did not stop it, so invents_steps() backs rule 5 up in _predict.
     _SYSTEM_PROMPT = (
         "You are a customer support assistant for an online store platform. The "
         "context below comes from the help center for the plan the customer is on, "
@@ -79,7 +100,11 @@ class RetrievalNode(ChainBasedNode, abc.ABC):
         'information about that in our help center." Do not suggest websites, '
         "contact channels, phone numbers or hours, and do not use general "
         "knowledge.\n"
-        "4. Answer in one to three sentences.\n\n"
+        "4. Answer in one to three sentences.\n"
+        "5. Never describe menu paths, buttons, screens or step-by-step instructions "
+        "unless they appear in the context. If the context only says that something "
+        'can be done (for example "in your Shopify Payments settings"), say only that '
+        "and do not add steps.\n\n"
         "Context:\n{context}"
     )
 
@@ -115,7 +140,11 @@ class RetrievalNode(ChainBasedNode, abc.ABC):
             chain = create_retrieval_chain(retriever, self._combine_docs_chain)
             result = chain.invoke({"input": last_user_message})
 
-        return result["answer"]
+            answer = result["answer"]
+            context = "\n".join(doc.page_content for doc in result["context"])
+            fields["invented_steps_blocked"] = invents_steps(answer, context)
+
+        return NOT_COVERED_REPLY if fields["invented_steps_blocked"] else answer
 
 
 class MultifunctionNode(ChainBasedNode, abc.ABC):
