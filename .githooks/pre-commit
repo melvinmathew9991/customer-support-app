@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Runs the unit tests before each commit that touches code, so a broken change
+# never enters history. Docs-only commits skip it. Bypass in an emergency with
+# `git commit --no-verify`.
+#
+# Enable once per clone:  git config core.hooksPath .githooks
+
+set -e
+
+if ! git diff --cached --name-only | grep -qE '^(src/|tests/|pyproject\.toml)'; then
+    exit 0
+fi
+
+# Prefer the project virtualenv (Windows layout, then POSIX), else whatever is on PATH.
+if [ -x ".venv/Scripts/python" ]; then
+    PYTHON=".venv/Scripts/python"
+elif [ -x ".venv/bin/python" ]; then
+    PYTHON=".venv/bin/python"
+else
+    PYTHON="python"
+fi
+
+echo "pre-commit: running unit tests..."
+if ! "$PYTHON" -m pytest -q; then
+    echo
+    echo "pre-commit: unit tests failed - commit aborted (use --no-verify to override)." >&2
+    exit 1
+fi

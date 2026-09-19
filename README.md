@@ -140,6 +140,12 @@ behavior (tool-calling, RAG answers, structured extraction) is exercised
 manually against a live Ollama server rather than in this suite, since it's
 slow and non-deterministic by nature.
 
+## Contributing
+
+Branching, commit and PR conventions, the pre-commit hook and CI are described
+in [`docs/Git-Workflow.md`](docs/Git-Workflow.md). After cloning, enable the
+hook once with `git config core.hooksPath .githooks`.
+
 ## Updating the knowledge base
 
 The Chroma index in `chroma_db/` is only built once per tier (it's reused on
