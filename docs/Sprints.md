@@ -48,7 +48,7 @@ Sprint 1's formal eval existing.
 
 ---
 
-## Sprint 1 (2 weeks) — Evaluation foundation & instrumentation 🚧 In progress
+## Sprint 1 (2 weeks) — Evaluation foundation & instrumentation ✅ Done (merged 2026-09-19, PR #3)
 **SDLC stage:** Requirements refinement + Test planning (done *before* more
 build work, deliberately)
 **Goal:** Make the system's behavior measurable before changing it further.
@@ -188,6 +188,39 @@ skipping it; every subsequent sprint reuses it.
   deterministically from `assets/` (content changes shouldn't require
   manually deleting `chroma_db/`).
 - Re-run the Sprint 1 eval set; compare against baseline.
+
+**Status (2026-09-19, sprint started on branch `sprint-2`):** tracked as the
+`Sprint 2` milestone on GitHub: #5 (hallucination rate), #6 (free-tier KB
+contradiction), #7 (callback behavior decision), #8 (held-out callback
+phrasings), #9 (ruff findings + lint gate).
+- ✅ **Triage done first, as this sprint's plan requires**
+  (`docs/eval/Triage-2026-09-19.md`). For all six problem answers from the
+  Sprint 1 hallucination grade, the deciding KB sentence was in the top-ranked
+  retrieved chunk. **Retrieval and chunking are not the cause; the model
+  ignores context it was given (generation).** One KB content defect is
+  confirmed (`free/pos.txt` contradicts itself, #6).
+- Consequence: the highest-value work is in the answer prompt/generation and
+  KB wording, not retriever changes. Retrieval recall@k and tier leakage are
+  already at target and must not regress.
+- ✅ **Stricter answer prompt** (`docs/eval/Prompt-Experiment-2026-09-19.md`):
+  fixes `rag-oos-002` (uncovered question answered from general knowledge) and
+  regresses nothing on the 15-question screen (27/45 -> 30/45). Only a
+  partial fix: the location answers and `rag-adv-004` still fail even with a
+  strict prompt and only two chunks, so the remaining lever is KB wording.
+  Quoting the source sentence and trimming context were tried and rejected.
+- ✅ **KB rewrite** (`docs/eval/KB-Rewrite-Results-2026-09-19.md`): free and
+  paid `locations.txt` and free `pos.txt` now state each tier's limit
+  unambiguously (fixes #6, the `pos.txt` self-contradiction). Full 38-entry
+  eval: all six machine-scored metrics identical to Sprint 1 (no regression;
+  retrieval recall 100%, tier leakage 0%). **Hand-graded hallucination rate:
+  20% -> 6.7% (3/15 -> 1/15), target <=5% still not met.** On five held-out
+  questions the old KB got 6/15 right and the new one 12/15. The remaining
+  hallucination (`rag-free-002`, mild) is a side effect of the KB change, not
+  pre-existing; n=15 is too coarse for a <=5% target (one answer = 6.7%).
+- ✅ **Reindex command** (`scripts/reindex_kb.py`, `--tier`, `--check`), stable
+  chunk ids, content-based staleness check, and a startup warning when the
+  index is out of date. 8 unit tests (fake embeddings, no Ollama); verified on
+  the real index (free 14 / paid 15 chunks, ids unique).
 
 **Deliverables:** updated KB content, `scripts/reindex_kb.py` (or similar),
 a before/after retrieval-metrics comparison.

@@ -149,16 +149,18 @@ hook once with `git config core.hooksPath .githooks`.
 ## Updating the knowledge base
 
 The Chroma index in `chroma_db/` is only built once per tier (it's reused on
-every later run to avoid re-embedding on each process start). If you edit
-`assets/free` or `assets/paid`, force a rebuild by deleting the relevant
-tier's persisted index:
+every later run to avoid re-embedding on each process start), so edits under
+`assets/free` or `assets/paid` are not picked up until you rebuild it:
 
 ```bash
-rm -rf chroma_db/free chroma_db/paid
+python scripts/reindex_kb.py            # rebuild both tiers
+python scripts/reindex_kb.py --tier free
+python scripts/reindex_kb.py --check    # report only; exit 1 if the index is out of date
 ```
 
-A proper reindex command (rebuild without deleting by hand) is planned but
-not yet implemented - see `docs/Sprints.md` Sprint 2.
+Stop the app first, and keep Ollama running (it computes the embeddings). If
+you forget to reindex, the app logs a warning at startup naming the stale tier
+instead of silently answering from the old content.
 
 ## Configuration reference
 
