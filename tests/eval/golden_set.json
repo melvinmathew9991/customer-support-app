@@ -581,5 +581,382 @@
       "callback_expected": false
     },
     "notes": "Third false-trigger variant - phone number mentioned as a UI/format question, not tied to the user's own contact info at all."
+  },
+  {
+    "id": "rag-free-005",
+    "category": "free_tier_question",
+    "description": "Free-tier payout timing after the payout is sent (payments.txt:13).",
+    "turns": [
+      "john@doe.com",
+      "My payout was sent but I still don't see the money in my bank account. Is that normal?"
+    ],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/payments.txt"],
+        "expected_key_facts": [
+          "After a payout is sent it can take a few days to be deposited into your bank account; check with your bank if it is delayed."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Sprint 2 held-out: written from the KB text before any model run."
+  },
+  {
+    "id": "rag-free-006",
+    "category": "free_tier_question",
+    "description": "Free-tier procedure for changing bank details (payments.txt:14).",
+    "turns": ["john@doe.com", "My bank account details changed. How do I update where I get paid?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/payments.txt"],
+        "expected_key_facts": ["Update the bank account information in your Shopify Payments settings."]
+      },
+      "callback_expected": false
+    },
+    "notes": "Sprint 2 held-out: written from the KB text before any model run."
+  },
+  {
+    "id": "rag-free-007",
+    "category": "free_tier_question",
+    "description": "Free-tier fee question needing the Shopify Payments vs third-party distinction (payments.txt:23).",
+    "turns": [
+      "john@doe.com",
+      "Do I get charged extra fees if I use a payment provider other than Shopify Payments?"
+    ],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/payments.txt"],
+        "expected_key_facts": [
+          "Yes: a third-party transaction fee applies with a third-party provider; no third-party transaction fees on orders processed through Shopify Payments."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Sprint 2 held-out: written from the KB text before any model run."
+  },
+  {
+    "id": "rag-free-008",
+    "category": "free_tier_question",
+    "description": "Compliance definition question (compliance.txt:30,33).",
+    "turns": ["john@doe.com", "What's the difference between a copyright and a trademark?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/compliance.txt"],
+        "expected_key_facts": [
+          "Copyright protects original works such as photos or text descriptions; trademarks are symbols or words that identify a business or product."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "compliance.txt is identical in both tiers. Sprint 2 held-out: written from the KB text before any model run."
+  },
+  {
+    "id": "rag-free-009",
+    "category": "free_tier_question",
+    "description": "Specific number the model must not get wrong (compliance.txt:104).",
+    "turns": [
+      "john@doe.com",
+      "I got a trademark notice on my store. How long do I have to respond before the content is removed?"
+    ],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/compliance.txt"],
+        "expected_key_facts": ["You have two days to respond before the content is removed."]
+      },
+      "callback_expected": false
+    },
+    "notes": "A wrong number here (e.g. 10 days, which is the DMCA repost window) is a clear hallucination. Sprint 2 held-out: written from the KB text before any model run."
+  },
+  {
+    "id": "rag-free-010",
+    "category": "free_tier_question",
+    "description": "Long list answer: checks that nothing is invented (compliance.txt:79-85).",
+    "turns": ["john@doe.com", "What do I need to include if I want to file a DMCA counter notice?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/compliance.txt"],
+        "expected_key_facts": [
+          "Legal name and contact information; identification of the removed content and its original location; a statement under penalty of perjury of good-faith belief it was removed by mistake; consent to federal district court jurisdiction; a physical or electronic signature."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Graded on no fabricated items; a partial list is acceptable. Sprint 2 held-out: written from the KB text before any model run."
+  },
+  {
+    "id": "rag-paid-005",
+    "category": "paid_tier_question",
+    "description": "Paid-tier conditional fact (paid/payments.txt manual payments section).",
+    "turns": ["carl@sagan.com", "Can I accept email money transfers from my customers?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "paid",
+      "retrieval": {
+        "expected_source_files": ["assets/paid/payments.txt"],
+        "expected_key_facts": ["Only if your store and your customers are based in Canada."]
+      },
+      "callback_expected": false
+    },
+    "notes": "Sprint 2 held-out: written from the KB text before any model run."
+  },
+  {
+    "id": "rag-paid-006",
+    "category": "paid_tier_question",
+    "description": "Paid-tier list question (paid/payments.txt manual payments section).",
+    "turns": ["michaeljackson@gmail.com", "What kinds of manual payments can I accept?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "paid",
+      "retrieval": {
+        "expected_source_files": ["assets/paid/payments.txt"],
+        "expected_key_facts": ["Cash on delivery (COD), money orders and bank transfers."]
+      },
+      "callback_expected": false
+    },
+    "notes": "Sprint 2 held-out: written from the KB text before any model run."
+  },
+  {
+    "id": "rag-paid-007",
+    "category": "paid_tier_question",
+    "description": "Paid-tier trap: a plausible 'yes' is wrong (paid/pos.txt:7).",
+    "turns": ["carl@sagan.com", "Can I run Shopify POS on my Windows laptop?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "paid",
+      "retrieval": {
+        "expected_source_files": ["assets/paid/pos.txt"],
+        "expected_key_facts": ["The Shopify POS app is available only for iOS and Android devices."]
+      },
+      "callback_expected": false
+    },
+    "notes": "The 'iOS and Android only' line exists only in the paid pos.txt. Sprint 2 held-out: written from the KB text before any model run."
+  },
+  {
+    "id": "rag-paid-008",
+    "category": "paid_tier_question",
+    "description": "Paid-tier detail on location limits (paid/locations.txt).",
+    "turns": [
+      "michaeljackson@gmail.com",
+      "If I deactivate a location, does it still count toward my location limit?"
+    ],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "paid",
+      "retrieval": {
+        "expected_source_files": ["assets/paid/locations.txt"],
+        "expected_key_facts": ["No: locations that you deactivate don't count toward your location limit."]
+      },
+      "callback_expected": false
+    },
+    "notes": "Sprint 2 held-out: written from the KB text before any model run."
+  },
+  {
+    "id": "rag-paid-009",
+    "category": "paid_tier_question",
+    "description": "Compliance consequence question (compliance.txt:40).",
+    "turns": ["carl@sagan.com", "What happens to my store if I keep getting copyright infringement notices?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "paid",
+      "retrieval": {
+        "expected_source_files": ["assets/paid/compliance.txt"],
+        "expected_key_facts": [
+          "Shopify has a policy of terminating stores for repeat infringement (several uncountered notices) and may disable a store for a single willful or egregious infringement."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "compliance.txt is identical in both tiers. Sprint 2 held-out: written from the KB text before any model run."
+  },
+  {
+    "id": "rag-paid-010",
+    "category": "paid_tier_question",
+    "description": "Paid-tier fee question (paid/payments.txt).",
+    "turns": [
+      "michaeljackson@gmail.com",
+      "Will I be charged third-party transaction fees when I use Shopify Payments?"
+    ],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "paid",
+      "retrieval": {
+        "expected_source_files": ["assets/paid/payments.txt"],
+        "expected_key_facts": [
+          "No third-party transaction fees for orders processed through Shopify Payments; you still pay credit card processing fees depending on your plan."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Same underlying fact as rag-free-007 asked from the other tier and worded differently. Sprint 2 held-out: written from the KB text before any model run."
+  },
+  {
+    "id": "rag-adv-005",
+    "category": "adversarial_tier_crossing",
+    "description": "Free user asks about a paid-only manual payment flow (invoice + money order).",
+    "turns": ["john@doe.com", "Can I send my customer an invoice and let them pay by money order?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/payments.txt"],
+        "expected_key_facts": [
+          "Manual payment methods (such as money orders and bank transfers) are not allowed on a free subscription."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "KB defect: free/payments.txt:8 says you can accept manual payments outside checkout such as money orders or bank transfers, contradicting line 46 (not allowed on free). Graded against the tier policy in line 46. Sprint 2 held-out: written from the KB text before any model run."
+  },
+  {
+    "id": "rag-adv-006",
+    "category": "adversarial_tier_crossing",
+    "description": "Free user asks about a paid-only payment type, behind a Canada condition that only the paid KB mentions.",
+    "turns": ["john@doe.com", "Can I accept email money transfers from my customers in Canada?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/payments.txt"],
+        "expected_key_facts": [
+          "Manual payment methods are not allowed on a free subscription (email money transfers are a manual payment type)."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Same KB contradiction as rag-adv-005 applies. Sprint 2 held-out: written from the KB text before any model run."
+  },
+  {
+    "id": "rag-adv-007",
+    "category": "adversarial_tier_crossing",
+    "description": "Free user asks about multiple locations without using the word 'location' as the deciding term.",
+    "turns": [
+      "john@doe.com",
+      "I run shops in two different cities. Can one Shopify store on my plan manage both?"
+    ],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/locations.txt"],
+        "expected_key_facts": ["A free subscription only allows a single location."]
+      },
+      "callback_expected": false
+    },
+    "notes": "Sprint 2 held-out: written from the KB text before any model run."
+  },
+  {
+    "id": "rag-adv-008",
+    "category": "adversarial_tier_crossing",
+    "description": "Reverse crossing: a paid user must not be given the free tier's online-only restriction.",
+    "turns": ["carl@sagan.com", "Am I restricted to selling online only on my plan?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "paid",
+      "retrieval": {
+        "expected_source_files": ["assets/paid/pos.txt"],
+        "expected_key_facts": [
+          "No: a paid subscription allows selling in person with Shopify POS as well as online."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Scored for tier leakage in the other direction (a free source for a paid user is a leak). Sprint 2 held-out: written from the KB text before any model run."
+  },
+  {
+    "id": "rag-oos-004",
+    "category": "out_of_scope_question",
+    "description": "Shipping setup: adjacent to store operations but absent from the KB (confirmed by search).",
+    "turns": ["john@doe.com", "How do I set up shipping rates for international orders?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": [],
+        "expected_key_facts": []
+      },
+      "expected_behavior": "Should say it doesn't have this information rather than inventing an answer.",
+      "callback_expected": false
+    },
+    "notes": "Sprint 2 held-out: written from the KB text before any model run."
+  },
+  {
+    "id": "rag-oos-005",
+    "category": "out_of_scope_question",
+    "description": "Storefront theming: absent from the KB (confirmed by search).",
+    "turns": ["carl@sagan.com", "How do I install a custom theme on my storefront?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "paid",
+      "retrieval": {
+        "expected_source_files": [],
+        "expected_key_facts": []
+      },
+      "expected_behavior": "Should say it doesn't have this information rather than inventing an answer.",
+      "callback_expected": false
+    },
+    "notes": "Sprint 2 held-out: written from the KB text before any model run."
+  },
+  {
+    "id": "rag-oos-006",
+    "category": "out_of_scope_question",
+    "description": "A specific number the KB never gives; a stated limit would be fabricated.",
+    "turns": ["john@doe.com", "What's the maximum file size for product images I can upload?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": [],
+        "expected_key_facts": []
+      },
+      "expected_behavior": "Should say it doesn't have this information rather than inventing an answer.",
+      "callback_expected": false
+    },
+    "notes": "Sprint 2 held-out: written from the KB text before any model run."
+  },
+  {
+    "id": "rag-oos-007",
+    "category": "out_of_scope_question",
+    "description": "Subscription management: absent from the KB (confirmed by search).",
+    "turns": ["michaeljackson@gmail.com", "How do I cancel my subscription?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "paid",
+      "retrieval": {
+        "expected_source_files": [],
+        "expected_key_facts": []
+      },
+      "expected_behavior": "Should say it doesn't have this information rather than inventing an answer.",
+      "callback_expected": false
+    },
+    "notes": "Sprint 2 held-out: written from the KB text before any model run."
+  },
+  {
+    "id": "rag-oos-008",
+    "category": "out_of_scope_question",
+    "description": "Partial-coverage trap (payments.txt:23 mentions fees but no figures).",
+    "turns": ["john@doe.com", "What percentage do you charge for credit card processing fees?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": [],
+        "expected_key_facts": []
+      },
+      "expected_behavior": "The KB says processing fees exist and depend on the plan but gives no percentages; should say it has no rate information, not state a number.",
+      "callback_expected": false
+    },
+    "notes": "Any percentage in the answer is fabricated. Sprint 2 held-out: written from the KB text before any model run."
   }
 ]
