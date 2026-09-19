@@ -958,5 +958,272 @@
       "callback_expected": false
     },
     "notes": "Any percentage in the answer is fabricated. Sprint 2 held-out: written from the KB text before any model run."
+  },
+  {
+    "id": "rag-free-011",
+    "category": "free_tier_question",
+    "description": "Partial procedural coverage: the KB names the action (check your pay period) but no steps (payments.txt:12).",
+    "turns": ["john@doe.com", "How do I check when I'll receive my payouts?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/payments.txt"],
+        "expected_key_facts": [
+          "If you use Shopify Payments you can check your pay period to view when you receive payouts from credit card orders; other payment providers have their own rules. The KB gives no menu path."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Any invented navigation path (e.g. 'Settings > Payouts') is a fabrication. Sprint 2 verification set (test cohort for issues #16/#17): written from the KB text and committed before any fix or model run; do not tune against it."
+  },
+  {
+    "id": "rag-free-012",
+    "category": "free_tier_question",
+    "description": "Fully covered procedure with real steps (compliance.txt:43-64).",
+    "turns": ["john@doe.com", "How do I submit a copyright infringement notice to Shopify?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/compliance.txt"],
+        "expected_key_facts": [
+          "Use Shopify's online form (the most efficient way); if you can't, send the notice with the required information to Shopify's designated agent (Shopify Trust & Safety, Ottawa; legal@shopify.com)."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Should answer confidently; an unnecessary refusal would be unresponsive. Sprint 2 verification set (test cohort for issues #16/#17): written from the KB text and committed before any fix or model run; do not tune against it."
+  },
+  {
+    "id": "rag-free-013",
+    "category": "free_tier_question",
+    "description": "Covered procedure that names a location only generically ('a form in your store admin', compliance.txt:79).",
+    "turns": ["john@doe.com", "My content was removed by mistake. How do I file a counter notice?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/compliance.txt"],
+        "expected_key_facts": [
+          "Send a counter notice through a form in your store admin, including the required information (legal name and contact details, identification of the removed content, a penalty-of-perjury statement of good-faith belief it was a mistake, jurisdiction consent, signature)."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Any specific menu path beyond 'a form in your store admin' is invented. Sprint 2 verification set (test cohort for issues #16/#17): written from the KB text and committed before any fix or model run; do not tune against it."
+  },
+  {
+    "id": "rag-free-014",
+    "category": "free_tier_question",
+    "description": "Covered procedure with a specific number (compliance.txt:104,140).",
+    "turns": ["john@doe.com", "How do I respond to a trademark notice on my store?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/compliance.txt"],
+        "expected_key_facts": [
+          "If you disagree, send your response through your store admin with the required information; you have two days to respond before content is removed."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "A wrong deadline (e.g. 10 days) is a hallucination. Sprint 2 verification set (test cohort for issues #16/#17): written from the KB text and committed before any fix or model run; do not tune against it."
+  },
+  {
+    "id": "rag-paid-011",
+    "category": "paid_tier_question",
+    "description": "Partial coverage: what manual payments are, but no setup navigation (paid/payments.txt manual payment methods section).",
+    "turns": ["michaeljackson@gmail.com", "How do I set up a manual payment method?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "paid",
+      "retrieval": {
+        "expected_source_files": ["assets/paid/payments.txt"],
+        "expected_key_facts": [
+          "The KB describes manual payments (arrange payment in a way that works for you, send an invoice, manually approve the order after you receive payment) but gives no setup steps."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Any invented menu path or setup click-through is a fabrication. Sprint 2 verification set (test cohort for issues #16/#17): written from the KB text and committed before any fix or model run; do not tune against it."
+  },
+  {
+    "id": "rag-paid-012",
+    "category": "paid_tier_question",
+    "description": "Partial coverage: the action is named (paid/locations.txt:17) but no steps.",
+    "turns": ["carl@sagan.com", "How do I add a location to my POS device?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "paid",
+      "retrieval": {
+        "expected_source_files": ["assets/paid/locations.txt"],
+        "expected_key_facts": [
+          "If you make sales from physical locations using the Shopify POS app you can add a location to your sales device to track inventory accurately; the KB gives no steps."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Any invented steps or screens are a fabrication. Sprint 2 verification set (test cohort for issues #16/#17): written from the KB text and committed before any fix or model run; do not tune against it."
+  },
+  {
+    "id": "rag-oos-009",
+    "category": "out_of_scope_question",
+    "description": "Partial-coverage trap: the KB assumes Shopify Payments exists but never explains enabling it.",
+    "turns": ["john@doe.com", "How do I enable Shopify Payments?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": [],
+        "expected_key_facts": []
+      },
+      "expected_behavior": "KB only mentions activating Shopify Payments in passing (payments.txt:8) and gives no steps; should say it doesn't have the steps and must not invent menu paths, buttons or steps that are not in the KB.",
+      "callback_expected": false
+    },
+    "notes": "Sprint 2 verification set (test cohort for issues #16/#17): written from the KB text and committed before any fix or model run; do not tune against it."
+  },
+  {
+    "id": "rag-oos-010",
+    "category": "out_of_scope_question",
+    "description": "Common admin task absent from the KB (confirmed by search).",
+    "turns": ["john@doe.com", "How do I add a new product to my store?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": [],
+        "expected_key_facts": []
+      },
+      "expected_behavior": "Not covered by the KB; should say it doesn't have this information and must not invent menu paths, buttons or steps that are not in the KB.",
+      "callback_expected": false
+    },
+    "notes": "Sprint 2 verification set (test cohort for issues #16/#17): written from the KB text and committed before any fix or model run; do not tune against it."
+  },
+  {
+    "id": "rag-oos-011",
+    "category": "out_of_scope_question",
+    "description": "Partial-coverage trap: hardware is mentioned (paid/pos.txt:12,14) without instructions.",
+    "turns": ["carl@sagan.com", "How do I connect a card reader to Shopify POS?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "paid",
+      "retrieval": {
+        "expected_source_files": [],
+        "expected_key_facts": []
+      },
+      "expected_behavior": "KB says supported hardware can be connected and refers to a Hardware section, but gives no connection steps; should say it doesn't have them and must not invent menu paths, buttons or steps that are not in the KB.",
+      "callback_expected": false
+    },
+    "notes": "Sprint 2 verification set (test cohort for issues #16/#17): written from the KB text and committed before any fix or model run; do not tune against it."
+  },
+  {
+    "id": "rag-oos-012",
+    "category": "out_of_scope_question",
+    "description": "Account-management task absent from the KB (confirmed by search).",
+    "turns": ["michaeljackson@gmail.com", "How do I reset my admin password?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "paid",
+      "retrieval": {
+        "expected_source_files": [],
+        "expected_key_facts": []
+      },
+      "expected_behavior": "Not covered by the KB; should say it doesn't have this information and must not invent menu paths, buttons or steps that are not in the KB.",
+      "callback_expected": false
+    },
+    "notes": "Sprint 2 verification set (test cohort for issues #16/#17): written from the KB text and committed before any fix or model run; do not tune against it."
+  },
+  {
+    "id": "rag-adv-009",
+    "category": "adversarial_tier_crossing",
+    "description": "Free user asks about a paid-only manual payment type.",
+    "turns": ["john@doe.com", "Can I accept bank transfers from my customers?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/payments.txt"],
+        "expected_key_facts": [
+          "Manual payment methods (including bank transfers) are not allowed on a free subscription."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Depends on the free/payments.txt line 8 vs 46 contradiction (#16): graded against the tier policy in line 46. Sprint 2 verification set (test cohort for issues #16/#17): written from the KB text and committed before any fix or model run; do not tune against it."
+  },
+  {
+    "id": "rag-adv-010",
+    "category": "adversarial_tier_crossing",
+    "description": "Free user asks about COD, which the free KB never names (only the paid KB lists it).",
+    "turns": ["john@doe.com", "Is cash on delivery available on my plan?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/payments.txt"],
+        "expected_key_facts": [
+          "Manual payment methods are not allowed on a free subscription (cash on delivery is a manual payment type). A 'not covered' answer is acceptable; 'yes' is wrong."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Requires inferring that COD is a manual payment; an unresponsive-but-honest answer is not a hallucination. Sprint 2 verification set (test cohort for issues #16/#17): written from the KB text and committed before any fix or model run; do not tune against it."
+  },
+  {
+    "id": "rag-adv-011",
+    "category": "adversarial_tier_crossing",
+    "description": "Worded like the contradicting sentence in free/payments.txt line 8, to test issue #16 directly.",
+    "turns": ["john@doe.com", "Can I take payments outside my online checkout, like by money order?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "free",
+      "retrieval": {
+        "expected_source_files": ["assets/free/payments.txt"],
+        "expected_key_facts": [
+          "No: manual payment methods such as money orders are not allowed on a free subscription."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Graded against the tier policy in line 46. Sprint 2 verification set (test cohort for issues #16/#17): written from the KB text and committed before any fix or model run; do not tune against it."
+  },
+  {
+    "id": "rag-paid-013",
+    "category": "paid_tier_question",
+    "description": "Paid-tier counterpart of rag-adv-011: the same wording must get the opposite answer.",
+    "turns": ["carl@sagan.com", "Can I take payments outside my online checkout, like by money order?"],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "paid",
+      "retrieval": {
+        "expected_source_files": ["assets/paid/payments.txt"],
+        "expected_key_facts": [
+          "Yes: a paid subscription can accept manual payment methods such as money orders, bank transfers and COD."
+        ]
+      },
+      "callback_expected": false
+    },
+    "notes": "Guards against a fix for #16 that over-restricts the paid tier. Sprint 2 verification set (test cohort for issues #16/#17): written from the KB text and committed before any fix or model run; do not tune against it."
+  },
+  {
+    "id": "rag-paid-014",
+    "category": "paid_tier_question",
+    "description": "Paid-tier manual-payment follow-up (paid/payments.txt manual payment methods section).",
+    "turns": [
+      "michaeljackson@gmail.com",
+      "A customer paid me by bank transfer. What do I do with their order?"
+    ],
+    "turn_budget": 2,
+    "expected": {
+      "tier_used": "paid",
+      "retrieval": {
+        "expected_source_files": ["assets/paid/payments.txt"],
+        "expected_key_facts": ["After you receive the payment, manually approve the order."]
+      },
+      "callback_expected": false
+    },
+    "notes": "Sprint 2 verification set (test cohort for issues #16/#17): written from the KB text and committed before any fix or model run; do not tune against it."
   }
 ]
