@@ -92,10 +92,11 @@ customer_support_app/
 │   │   └── static_text_node.py
 │   ├── tools/
 │   │   ├── user_info_db.py           # mock user/subscription DB lookups
-│   │   ├── rag_responder.py          # HelpCenterAgent: builds/queries free & paid Chroma retrievers
+│   │   ├── rag_responder.py          # HelpCenterAgent: builds/queries free & paid Chroma retrievers; reindex + staleness check
 │   │   └── audio_transcribe.py       # Whisper-based call transcription (optional `audio` extra)
 │   └── ui/graph_renderer.py         # renders the DAG in the Streamlit "Graph" tab
-└── tests/                         # pytest: graph/, domain/, test_config.py — no Ollama/network required
+├── scripts/reindex_kb.py          # rebuild the Chroma indexes from assets/ (see README "Updating the knowledge base")
+└── tests/                         # pytest: agents/, graph/, domain/, tools/, test_config.py — no Ollama/network required
 ```
 
 ## 5. Configuration

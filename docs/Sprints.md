@@ -202,6 +202,16 @@ phrasings), #9 (ruff findings + lint gate).
 - Consequence: the highest-value work is in the answer prompt/generation and
   KB wording, not retriever changes. Retrieval recall@k and tier leakage are
   already at target and must not regress.
+- ✅ **Stricter answer prompt** (`docs/eval/Prompt-Experiment-2026-09-19.md`):
+  fixes `rag-oos-002` (uncovered question answered from general knowledge) and
+  regresses nothing on the 15-question screen (27/45 -> 30/45). Only a
+  partial fix: the location answers and `rag-adv-004` still fail even with a
+  strict prompt and only two chunks, so the remaining lever is KB wording.
+  Quoting the source sentence and trimming context were tried and rejected.
+- ✅ **Reindex command** (`scripts/reindex_kb.py`, `--tier`, `--check`), stable
+  chunk ids, content-based staleness check, and a startup warning when the
+  index is out of date. 8 unit tests (fake embeddings, no Ollama); verified on
+  the real index (free 14 / paid 15 chunks, ids unique).
 
 **Deliverables:** updated KB content, `scripts/reindex_kb.py` (or similar),
 a before/after retrieval-metrics comparison.

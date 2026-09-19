@@ -49,6 +49,17 @@ phases are the actual next steps.
   degrading retrieval. Now reuses the persisted collection if it's already
   populated, and only reindexes when it's empty. `chroma_db/` was reset to
   clear the duplication that had already accumulated.
+- **Reindex command (2026-09-19, Sprint 2):** `scripts/reindex_kb.py`
+  rebuilds the indexes from `assets/` (`--tier`, `--check`), so KB edits no
+  longer mean deleting `chroma_db/` by hand. Chunks now get stable ids
+  (`<file>#<n>`, files in sorted order). `HelpCenterAgent.index_status()`
+  compares the persisted index with `assets/` by content, and the app logs a
+  warning at startup naming any stale tier instead of silently serving the old
+  KB.
+- **Answer prompt (2026-09-19, Sprint 2):** `RetrievalNode._SYSTEM_PROMPT` is
+  now stricter (answer only from context, state applicable limits, exact
+  "I don't have information about that in our help center." when uncovered,
+  no invented contact channels); see `docs/eval/Prompt-Experiment-2026-09-19.md`.
 
 ## Phase 4 — Call-me / ticketing flow ✅ Done
 - `CallCustomerEdge` detects a callback request and extracts the phone
