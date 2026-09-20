@@ -1,4 +1,5 @@
 import abc
+import logging
 import re
 from pathlib import Path
 from typing import List, Optional, Type
@@ -15,6 +16,8 @@ from customer_support_app.domain.chat import MessageHistory, Role
 from customer_support_app.graph.edge import BaseEdge
 from customer_support_app.graph.node import BaseNode
 from customer_support_app.logging_config import log_latency
+
+logger = logging.getLogger(__name__)
 
 NOT_COVERED_REPLY = "I don't have information about that in our help center."
 
@@ -137,6 +140,14 @@ class RetrievalNode(ChainBasedNode, abc.ABC):
                     for doc, score in scored
                 ]
             except Exception:
+                # Logging-only lookup: the answer does not depend on it, but the eval
+                # scores recall and tier leakage from this field, so a failure here
+                # must be visible rather than silently blinding both metrics.
+                logger.warning(
+                    "Could not log the retrieved documents for this turn; recall and "
+                    "tier-leakage scoring will not see it",
+                    exc_info=True,
+                )
                 fields["retrieved_docs"] = None
 
             chain = create_retrieval_chain(retriever, self._combine_docs_chain)

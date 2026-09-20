@@ -81,3 +81,13 @@ def test_predict_passes_a_grounded_answer_through_unchanged():
     answer = "You can update the information in your Shopify Payments settings."
 
     assert _ask(answer) == answer
+
+
+def test_predict_warns_when_the_retrieval_log_cannot_be_built(caplog):
+    # The canned retriever has no vectorstore, so the scored lookup used for the turn
+    # log fails; the answer must still come back, and the failure must not be silent.
+    with caplog.at_level("WARNING", logger="customer_support_app.graph.chain_based_node"):
+        answer = _ask("You can update it in your Shopify Payments settings.")
+
+    assert answer == "You can update it in your Shopify Payments settings."
+    assert any("retrieved documents" in record.getMessage() for record in caplog.records)
