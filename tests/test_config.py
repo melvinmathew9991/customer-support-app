@@ -86,3 +86,16 @@ def test_get_chat_model_bounds_generation_and_wait_time_for_openai(monkeypatch):
 def test_settings_rejects_a_non_positive_llm_bound(field):
     with pytest.raises(ValidationError):
         Settings(**{field: 0})
+
+
+def test_chroma_telemetry_send_failures_are_dropped_but_other_errors_are_not(caplog):
+    import logging
+
+    import customer_support_app.config  # noqa: F401  (installs the filter on import)
+
+    logger = logging.getLogger("chromadb.telemetry.product.posthog")
+    with caplog.at_level("DEBUG"):
+        logger.error("Failed to send telemetry event ClientStartEvent: capture() takes 1 ...")
+        logger.error("something else went wrong in telemetry")
+
+    assert [r.getMessage() for r in caplog.records] == ["something else went wrong in telemetry"]

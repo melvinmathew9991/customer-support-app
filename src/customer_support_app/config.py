@@ -9,6 +9,7 @@ not from the process's current working directory, so the app behaves the
 same whether it's launched from the project root, an IDE, or installed and
 run from elsewhere.
 """
+import logging
 import os
 from functools import lru_cache
 from pathlib import Path
@@ -21,9 +22,23 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # (parents[0] = customer_support_app/, parents[1] = src/)
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-# Silences a harmless "Failed to send telemetry event" warning chromadb emits
-# due to a version mismatch with posthog - not a real error.
+# Turns chromadb's telemetry off, so nothing is sent.
 os.environ.setdefault("ANONYMIZED_TELEMETRY", "False")
+
+
+class _DropChromaTelemetryFailures(logging.Filter):
+    """chromadb 0.5.x calls posthog.capture(user_id, event, properties) positionally, but
+    posthog 6+ only accepts capture(event, **kwargs). The call raises before posthog
+    checks its own disabled flag, so chromadb logs "Failed to send telemetry event" at
+    ERROR on every client start even though telemetry is off (#13). Nothing is being
+    sent, so only that message is dropped; anything else the logger says still shows.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return "Failed to send telemetry event" not in record.getMessage()
+
+
+logging.getLogger("chromadb.telemetry.product.posthog").addFilter(_DropChromaTelemetryFailures())
 
 
 class Settings(BaseSettings):
