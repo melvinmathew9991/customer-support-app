@@ -1,9 +1,9 @@
 # Graph-Orchestrated LLM Customer Support Agent — Project Report
 
 **Repository:** melvinmathew9991/customer-support-app (`main`, with every sprint and fix branch merged and kept)
-**Stack:** Python 3.10.10 · Streamlit 1.39.0 · LangChain 0.3.7 (+ langchain-community/-ollama/-openai/-chroma/-text-splitters) · ChromaDB 0.5.20 · pydantic-settings 2.6.1 · pytest 8.3.3 · ruff 0.7.4 · Ollama (local: `llama3.2:3b` chat, `nomic-embed-text` embeddings). Dependencies are unchanged since the initial commit (`pyproject.toml` was never modified); Python and ruff versions were re-checked at the end of Sprint 2, the rest are as pinned.
-**Status:** End of Sprint 3 (session persistence), following Sprint 2 (knowledge base and retrieval hardening) and the end-to-end audit whose findings were fixed before that sprint was tagged (`docs/eval/Sprint2-Audit-2026-09-20.md`). Core product (Phases 1-5) was built before this engagement; Sprint 1 built the evaluation foundation and Sprint 2 used it to fix what it exposed. Sprint 2's definition of done is met (retrieval recall and tier leakage held at target on a 3x larger set), but **two accuracy targets are not met**: hallucination (about 13% on untuned questions vs ≤5%) and callback precision (83% on a held-out cohort vs ≥95%). The larger local model was tried and did not help. The maintainer accepted carrying both as known limits on 2026-09-20 rather than continuing to tune them in Sprint 2 (`docs/Sprints.md`).
-**Timeline:** 2026-09-18 → 2026-09-20, single contributor (Melvin Mathew). 84 commits and 21 merged pull requests on `main` as of PR #39 (`ee28b6b`); after the Sprint 2 close-out (#32) came three small PRs, the audit's final fixes (#34), the milestone docs fix (#35) and the CLI and telemetry fixes (#36), then Sprint 3's session persistence (#38), and the process evaluation (#39, §17). Pre-Sprint-1 (MVP baseline + out-of-band fixes) → Sprint 1 (evaluation foundation, PRs #1-#3) → git workflow tooling (PR #4) → Sprint 2 (PRs #15, #18-#21, #24-#28, #31, #32, #34-#36) → Sprint 3 (session persistence, PR #38).
+**Stack (this verification, project `.venv`):** Python 3.10.10 · Streamlit 1.39.0 · LangChain 0.3.7 (+ langchain-community 0.3.7, -ollama 0.2.0, -openai 0.2.6, -chroma 0.1.4, -text-splitters 0.3.2) · ChromaDB 0.5.20 · pydantic 2.9.2 / pydantic-settings 2.6.1 · graphviz 0.20.3 · pytest 8.3.3 · ruff 0.7.4 · posthog 7.57.0 (transitive, unpinned) · Ollama with `llama3.2:3b` (chat, default), `nomic-embed-text` (embeddings) and `llama3.1:8b` (tested, not adopted). Not installed: `openai-whisper`, `sentence-transformers`. The dependency pins are unchanged since the initial commit; the only later edit to `pyproject.toml` is the ruff `extend-exclude` for the legacy notebook (#34).
+**Status:** Sprints 1-3 are complete and merged. The graph-orchestrated agent works end to end and was re-exercised live on the merged `main` for this update (identification by email and by phone, tier-scoped answers, a callback, a fail-safe, and a kill-and-resume through the session store; §10.2). 304 unit tests across 18 files pass and lint is clean; a full 122-entry golden-set run at the end of Sprint 3 matches the previous run on every metric. Core product (Phases 1-5) was built before this engagement; Sprint 1 built the evaluation foundation, Sprint 2 used it to fix what it exposed (then an end-to-end audit fixed its own findings), and Sprint 3 made conversations survive a restart. **Two accuracy targets are not met**: hallucination (about 13% on untuned questions vs ≤5%) and callback precision (83% on a held-out cohort vs ≥95%); the larger local model was tried and did not help, and the maintainer accepted both as known limits. A process evaluation (`docs/Process-Evaluation.md`) rated the method strong and the statistics weak; its plan is proposed, not adopted.
+**Timeline:** 2026-09-18 → 2026-09-20 (4, 47 and 35 commits on the three days), single contributor (Melvin Mathew). 86 commits and 22 merged pull requests on `main` as of #40 (`3b16d44`). GitHub numbers issues and PRs together, so the gaps in the PR numbers (#5-#14, #16, #17, #22, #23, #29, #30, #33, #37) are issues. Pre-Sprint-1 (MVP baseline + out-of-band fixes) → Sprint 1 (evaluation foundation, PRs #1-#3) → git workflow tooling (#4) → Sprint 2 (#15, #18-#21, #24-#28, #31, #32) → audit fixes and follow-ups (#34-#36) → Sprint 3, session persistence (#38) → documentation (#39, #40).
 
 **Update cadence:** this file is updated in the same pull request as any change that alters something it states (counts, architecture, behavior, metrics, findings, limitations), and re-verified against the repository at the end of each sprint (see `docs/Sprints.md`'s cross-cutting rules), so it reflects the project's current state rather than a point-in-time snapshot. Counts that name a pull request ("as of #N") describe the repository at that merge.
 
@@ -11,9 +11,9 @@
 
 ## 1. Overview & Purpose
 
-A LangChain customer support agent whose conversation flow is modeled as an explicit graph (`Node`/`Edge` framework in `graph/`) instead of a freeform agent, so behavior at each stage is constrained and predictable: `GreetingNode` (identify the user) → `AuthenticatedUserNode` (answer from a tier-selected RAG knowledge base) → `CallCustomerNode` (detect and route callback requests into a ticket). Runs fully local by default via Ollama — no API key required; OpenAI is available as an opt-in but has not been exercised.
+A LangChain customer support agent whose conversation flow is modeled as an explicit graph (`Node`/`Edge` framework in `graph/`) instead of a freeform agent, so behavior at each stage is constrained and predictable: `GreetingNode` (identify the user) → `AuthenticatedUserNode` (answer from a tier-selected RAG knowledge base) → `CallCustomerNode` (detect and route callback requests into a ticket). Runs fully local by default via Ollama — no API key required; OpenAI is available as an opt-in but has not been exercised. Conversations are saved after every turn, so a closed terminal or a reloaded page resumes where it stopped.
 
-The product itself (Phases 1-5) was already built and unit-tested when this engagement began. The work covered here is what came after: running it end-to-end outside its original development context, building the evaluation infrastructure Sprint 0's retrospective had flagged as the project's one real gap (Sprint 1), and then using that infrastructure to fix the failures it exposed and to test, honestly, which of them a larger model would remove (Sprint 2).
+The product itself (Phases 1-5) was already built and unit-tested when this engagement began. The work covered here is what came after: running it end-to-end outside its original development context, building the evaluation infrastructure Sprint 0's retrospective had flagged as the project's one real gap (Sprint 1), using that infrastructure to fix the failures it exposed and to test, honestly, which of them a larger model would remove (Sprint 2), and adding session persistence (Sprint 3).
 
 ## 2. Use Case & Objectives
 
@@ -23,15 +23,16 @@ Objectives, as they currently stand:
 
 - Identify a user from a natural-language email/phone message and resolve their subscription tier — done. Three fabrication or bypass bugs were found and fixed along the way (§13 findings 6, 7, 20). Phone numbers and mixed-case emails identify correctly since the audit fix (#11); before it, the greeting asked for a phone number the lookup could not use.
 - Answer support questions grounded only in the user's own tier's knowledge base, with zero cross-tier leakage — done for leakage (0% on 39 scored retrieval cases). **Grounding is not at target:** see the hallucination row below.
-- Detect callback requests and route them to a ticketing flow — working, with a caveat that changed in Sprint 2: recall is 97% (36/37) and precision 94.7% (36/38) on the full set, but on a 22-entry cohort held out from design, precision is **83%** (target ≥95%). A callback request must include a phone number (a maintainer decision, #7), and the ticket has no transcript-based summary unless the optional `audio` extra is installed.
+- Detect callback requests and route them to a ticketing flow — working, with a caveat that changed in Sprint 2: recall is 100% (37/37) and precision 94.9% (37/39) on the full set, but on a 22-entry cohort held out from design, precision is **83%** (target ≥95%). A callback request must include a phone number (a maintainer decision, #7), and the ticket has no transcript-based summary unless the optional `audio` extra is installed.
 - Run entirely on a local, free model stack — done (Ollama). A larger local model (`llama3.1:8b`) was tested and rejected (§10.5).
-- Make the system's behavior measurable, not just observable — done: every defined metric has a real number (machine-scored on a 122-entry golden set; hallucination hand-graded). The hallucination rate misses its ≤5% target.
+- Keep a conversation across a restart — done (Sprint 3): saved per turn in a local SQLite file, resumed by session id from the terminal or the page URL.
+- Make the system's behavior measurable, not just observable — done: every defined metric has a real number (machine-scored on a 122-entry golden set; hallucination hand-graded). The hallucination rate misses its ≤5% target, and several targets are too strict to confirm at the sample sizes used (§13 finding 28).
 
 ## 3. Proposed Solution
 
-A single installable package (`src/customer_support_app/`) plus a thin CLI/Streamlit front end — no service layer, no separate database beyond the embedded Chroma store, no orchestration framework beyond LangChain itself and this project's own small `Node`/`Edge` abstraction.
+A single installable package (`src/customer_support_app/`) plus a thin CLI/Streamlit front end — no service layer, no separate database beyond the embedded Chroma store and a local SQLite file for saved conversations, no orchestration framework beyond LangChain itself and this project's own small `Node`/`Edge` abstraction.
 
-`graph/` is the reusable control-flow framework (any project could reuse it); `agents/support.py` is the concrete conversation built on top of it; `tools/` wraps the mock user DB, the RAG retriever build/reuse logic, and call transcription; `tests/eval/` is the evaluation harness, sitting alongside the original `tests/` unit suite rather than replacing it. `scripts/reindex_kb.py` rebuilds the knowledge-base index deterministically.
+`graph/` is the reusable control-flow framework (any project could reuse it); `agents/support.py` is the concrete conversation built on top of it; `tools/` wraps the mock user DB, the RAG retriever build/reuse logic, and call transcription; `session_store.py` and `pipeline.py` save and resume a conversation; `tests/eval/` is the evaluation harness, sitting alongside the original `tests/` unit suite rather than replacing it. `scripts/reindex_kb.py` rebuilds the knowledge-base index deterministically.
 
 ## 4. Project Architecture
 
@@ -57,9 +58,9 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 | Interfaces | `cli.py` | 104 | Terminal chat entrypoint; exits cleanly on end of input or `quit`/`exit` (#12); `--session ID` and `--resume` pick up a saved conversation, nothing resumes implicitly |
 | Interfaces | `app.py` | 109 | Streamlit Chat + Graph tabs; the session id lives in the URL (`?session=<id>`), so a reload or server restart resumes; an ended conversation shows its transcript and a start-again button |
 | UI | `ui/graph_renderer.py` | 55 | Graphviz DAG rendering |
-| Scripts | `scripts/reindex_kb.py` | — | Rebuild the Chroma index from `assets/` (`--tier`, `--check`) |
-| Tests | `tests/**/test_*.py` | 2,185 | 304 tests across 18 files — deterministic graph/domain/config/agent/reindex/lookup/timeout/CLI/persistence logic and the Streamlit app driven headlessly (no live model) |
-| Eval | `tests/eval/` | — | `golden_set.json` (122 hand-labeled conversations, 11 categories), `run_eval.py` (automated scoring harness), `README.md` (schema) |
+| Scripts | `scripts/reindex_kb.py` | 59 | Rebuild the Chroma index from `assets/` (`--tier`, `--check`) |
+| Tests | `tests/**/test_*.py` | 2,185 | 304 tests across 18 files, none needing a live model: agents (`test_call_customer_edge` 38, `test_user_info_edge` 9, `test_call_customer_node` 2), domain (4), graph (`test_retrieval_guard` 14, `test_node` 5, `test_text_based_edge` 3, `test_edge` 2), tools (`test_user_info_db` 16, `test_rag_responder` 8), eval (`test_golden_set` 112, `test_run_eval_scoring` 13), and top level (`test_session_store` 22, `test_pipeline_persistence` 22, `test_cli` 14, `test_config` 12, `test_app_sessions` 7, `test_pipeline_timeout` 1) |
+| Eval | `tests/eval/` | 426 (harness) | `golden_set.json` (122 hand-labeled conversations, 11 categories), `run_eval.py` (automated scoring harness), `README.md` (schema) |
 | CI / tooling | `.github/workflows/ci.yml`, `.githooks/pre-commit`, `.github/pull_request_template.md` | — | pytest + `ruff check` blocking on every PR; local pre-commit test hook |
 | Docs | `docs/*.md` + `docs/eval/*.md` | — | PRD, Architecture, Rules, Phases, Design, Persistence-Design, Process-Evaluation, Sprints, Git-Workflow, Metrics, and 34 dated eval/experiment reports |
 
@@ -108,21 +109,21 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 
 ## 7. Technologies Used
 
-| Category | Technology | Verified |
+| Category | Technology | Verified this update? |
 |---|---|---|
-| App runtime | Streamlit 1.39.0 | Launched headless (HTTP 200) in Sprint 1. In Sprint 3 driven headlessly with Streamlit's `AppTest`: 7 unit tests, plus a live two-process resume check against the real model. Not launched in a browser since Sprint 1 |
-| Orchestration | LangChain 0.3.7 (+ -community/-ollama/-openai/-chroma/-text-splitters) | Exercised live throughout |
-| Session store | SQLite (standard library `sqlite3`) | 22 store tests, including migration rollback and a newer-schema refusal; a live kill-and-resume check. No new dependency, no ORM |
-| Vector store | ChromaDB 0.5.20 | Reindex script, stable chunk ids and staleness check verified on the real index (free 14 / paid 15 chunks, ids unique) |
-| Chat model | Ollama `llama3.2:3b` (local, default) | Exercised across the 122-entry golden set and every experiment |
-| Chat model (tested, not adopted) | Ollama `llama3.1:8b` | Full 122-entry run + targeted experiments; rejected (§10.5) |
-| Embeddings | Ollama `nomic-embed-text` (local) | Exercised |
+| App runtime | Streamlit 1.39.0 | Installed; the real `app.py` is driven headlessly with Streamlit's `AppTest` in 7 unit tests and in a fresh-process resume check on the real model (Sprint 3). **Not launched in a browser since Sprint 1** |
+| Orchestration | LangChain 0.3.7 (+ -community/-ollama/-openai/-chroma/-text-splitters) | Exercised live this update (§10.2) |
+| Session store | SQLite (standard library `sqlite3`) | 22 store tests, including migration rollback and a newer-schema refusal; a save-and-resume check re-run live this update. No new dependency, no ORM |
+| Vector store | ChromaDB 0.5.20 | Index checked against `assets/` this update: free 14 / paid 15 chunks, none stale |
+| Chat model | Ollama `llama3.2:3b` (local, default) | Exercised live this update, and across the 122-entry golden set and every experiment |
+| Chat model (tested, not adopted) | Ollama `llama3.1:8b` | Installed locally. Not re-run this update; results are from the Sprint 2 full run and targeted experiments (§10.5) |
+| Embeddings | Ollama `nomic-embed-text` (local) | Exercised live this update (retrieval) |
 | Chat model (opt-in) | OpenAI via `langchain-openai` | Not exercised — no API key configured |
 | Audio/transcription | `openai-whisper` (optional `audio` extra) | **Not installed.** The app degrades gracefully without it; the with-whisper path (real transcription + ticket) has never been exercised (#10) |
-| Testing | pytest 8.3.3 | 304/304 pass |
-| Lint | ruff 0.7.4 | 0 findings (27 fixed in Sprint 2, #9), including `ruff check .` since the legacy notebook was excluded; a blocking CI gate. `ruff format` is not enforced (19 files would change) |
-| CI | GitHub Actions (`ci.yml`) | pytest + `ruff check src tests scripts`, both blocking on PRs and pushes to `main`; green on the last merged PR |
-| Version control | git + GitHub (`melvinmathew9991/customer-support-app`) | 84 commits, 21 merged PRs as of #39; merge commits, branches kept as history, tags `v0.1.0-sprint1` and `v0.1.0-sprint2` (`docs/Git-Workflow.md`) |
+| Testing | pytest 8.3.3 | 304/304 pass, re-run this update (6.6 s) |
+| Lint | ruff 0.7.4 | 0 findings on `src tests scripts` and on the whole repo, re-run this update; a blocking CI gate. `ruff format` is not enforced (19 files would change) |
+| CI | GitHub Actions (`ci.yml`) | pytest + `ruff check src tests scripts`, both blocking on PRs and pushes to `main`; 40 of 40 runs green, including the run for #40 |
+| Version control | git + GitHub (`melvinmathew9991/customer-support-app`) | 86 commits, 22 merged PRs as of #40; merge commits, branches kept as history, tags `v0.1.0-sprint1` and `v0.1.0-sprint2` (`docs/Git-Workflow.md`); `main` requires a PR and the `test` check |
 
 ## 8. Implementation Details
 
@@ -134,7 +135,7 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 - **Structured per-turn logging** and an **automated eval harness** (`tests/eval/run_eval.py`) built from scratch; three harness bugs found and fixed mid-way.
 - **Whisper crash fixed** (degrades to an honest "callback logged" reply), and **callback recall root-caused** (an internal system message leaking into the intent classifier's prompt) and fixed with system-message exclusion plus a digit pre-check.
 
-**Sprint 2 (this report's addition):**
+**Sprint 2:**
 
 - **Triage before fixing** (`Triage-2026-09-19.md`): for all six problem answers from the Sprint 1 hallucination grade, the deciding KB sentence was in the top-ranked retrieved chunk. Retrieval and chunking were not the cause; the model ignored context it was given. This redirected the work from the retriever to the answer prompt and KB wording.
 - **Answer prompt and KB rewrite:** a stricter "use only the context" prompt fixed an uncovered-question hallucination; rewriting `locations.txt` and `pos.txt` so each tier's limit is unambiguous fixed the self-contradiction (#6) and moved the hand-graded rate from 20% to 6.7% on the 15 entries it was tuned on. On 21 held-out questions the same code scored 9.5%, so the tuned number was optimistic.
@@ -146,7 +147,7 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 - **Callback behavior decision (#7):** a bare "call me" without a number does not trigger a callback; the digit pre-check stays.
 - **Lint and CI (#9):** all 27 ruff findings fixed and verified behavior-neutral (syntax-tree comparison); `ruff check` is a blocking CI step.
 - **Larger-model experiment:** `llama3.1:8b` vs `llama3.2:3b`, model only, with the criteria and decision rule committed before any run (§10.5). Not sufficient. It exposed a gap in the identity guard, fixed as **#29** (guard (c) and (d) above).
-- **End-to-end audit and final fixes** (`docs/eval/Sprint2-Audit-2026-09-20.md`): the sprint's claims held and the live metrics reproduced. The audit found and fixed: a README that recommended the rejected 8B model; the lookup not supporting the phone numbers the greeting asks for (**#11**); no cap or timeout on LLM calls (**#30**); a "no need to call me" phrasing that started a callback; a swallowed exception in the retrieval log; and stale docs. It left open the license (#14, a legal decision) and a compound-phrasing callback case (**#33**).
+- **End-to-end audit and final fixes** (`docs/eval/Sprint2-Audit-2026-09-20.md`): the sprint's claims held and the live metrics reproduced. The audit found and fixed: a README that recommended the rejected 8B model; the lookup not supporting the phone numbers the greeting asks for (**#11**); no cap or timeout on LLM calls (**#30**); a "no need to call me" phrasing that started a callback; a swallowed exception in the retrieval log; and stale docs. It left open the license (#14, a legal decision) and a compound-phrasing callback case (**#33**). Two older small bugs followed in a separate PR: the CLI `EOFError` (**#12**) and chromadb's false telemetry error (**#13**, a `posthog` 6+ signature mismatch, not the environment setting).
 
 **Sprint 3 (session persistence):**
 
@@ -155,31 +156,35 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 - **Verified live** against `llama3.2:3b`: CLI started, user identified, question asked, process killed, `--resume` replayed the transcript, did not ask to identify again and answered a follow-up from the premium KB; the Streamlit app opened in a fresh process on the same URL redrew the 5 saved messages with no second greeting and highlighted `AuthenticatedUserNode`. A full 122-entry golden-set run on the branch matches the previous run on every metric.
 - **Found and not fixed (#37):** after identification fails the bot says it could not verify the user but keeps answering from the free KB. The persistence design refuses to resume such a session.
 
+**Since the Sprint 3 merge (documentation only):** a process evaluation and improvement plan (`docs/Process-Evaluation.md`, #39), and a rule that this report is updated in the same PR as any change that alters it (#40).
+
 ## 9. Methodology — Build History
 
-84 commits and 21 merged pull requests as of #39. By pull request:
+86 commits and 22 merged pull requests as of #40. By pull request:
 
-| PR | What it did |
-|---|---|
-| — | Sprint 0 MVP baseline (graph framework, identification, tiered RAG, call-me flow, Streamlit/CLI, 17 unit tests) plus two out-of-band fixes: stale editable install, Chroma duplicate-embedding bug |
-| #1, #2, #3 | Sprint 1: eval metrics and targets, golden set (12 → 38), structured logging, automated harness, both identification auth-bypass fixes, harness fixes, whisper and callback-recall fixes, first hallucination grade |
-| #4 | Git workflow tooling: CI, pre-commit hook, PR template, line endings |
-| #15 | Sprint 2: KB rewrite, stricter answer prompt, reindex tooling (hallucination 20% → 6.7% on the tuned set) |
-| #18 | 21 held-out `rag-*` entries; untuned hallucination 9.5% |
-| #19 | Fix #16 (manual-payments contradiction), block invented UI steps (#17, partial) |
-| #20 | Fix all 27 ruff findings; lint is a hard CI gate (#9) |
-| #21 | Held-out callback set and stronger scoring (#8); precision 85% |
-| #24, #25 | Fix the wrong-number callback (#22); record it in `Sprints.md` |
-| #26 | Record the #7 decision (keep the digit pre-check) |
-| #27 | Callback precision 67% → 83% on the held-out cohort (#23, not met) |
-| #28 | Larger-model experiment: plan, both full runs, results |
-| #31 | Identity guard fix (#29), sprint log entry |
-| #32 | Sprint 2 close-out and report refresh |
-| #34 | End-to-end audit: doc fixes, #11 lookup, #30 bounds, callback veto, retrieval-log warning; tag `v0.1.0-sprint2` |
-| #35 | Docs: the accepted limits live in a `Known limits` milestone, not Sprint 3 |
-| #36 | CLI exits cleanly on end of input (#12); the false chromadb telemetry error is dropped (#13) |
-| #38 | Sprint 3: session persistence (SQLite store, save and resume in the pipeline, CLI `--session`/`--resume`, Streamlit resume by URL) |
-| #39 | Docs: the process evaluation (`docs/Process-Evaluation.md`) and the report brought up to the Sprint 3 merge |
+| PR | Branch | What it did |
+|---|---|---|
+| — | `main` (initial commit) | Sprint 0 MVP baseline (graph framework, identification, tiered RAG, call-me flow, Streamlit/CLI, 17 unit tests) plus two out-of-band fixes: stale editable install, Chroma duplicate-embedding bug |
+| #1, #2, #3 | `sprint-1` | Sprint 1: eval metrics and targets, golden set (12 → 38), structured logging, automated harness, both identification auth-bypass fixes, harness fixes, whisper and callback-recall fixes, first hallucination grade |
+| #4 | `chore/git-workflow` | Git workflow tooling: CI, pre-commit hook, PR template, line endings |
+| #15 | `sprint-2` | KB rewrite, stricter answer prompt, reindex tooling (hallucination 20% → 6.7% on the tuned set) |
+| #18 | `sprint-2-rag-golden-set` | 21 held-out `rag-*` entries; untuned hallucination 9.5% |
+| #19 | `sprint-2-fix-16-17` | Fix #16 (manual-payments contradiction), block invented UI steps (#17, partial) |
+| #20 | `sprint-2-lint-gate` | Fix all 27 ruff findings; lint is a hard CI gate (#9) |
+| #21 | `sprint-2-callback-heldout` | Held-out callback set and stronger scoring (#8); precision 85% |
+| #24 | `sprint-2-fix-22-extraction-leak` | Fix the wrong-number callback (#22) |
+| #25 | `sprint-2-sprints-md-22` | Record the #22 fix in `Sprints.md` |
+| #26 | `sprint-2-decide-7` | Record the #7 decision (keep the digit pre-check) |
+| #27 | `sprint-2-callback-precision` | Callback precision 67% → 83% on the held-out cohort (#23, not met) |
+| #28 | `sprint-2-larger-model` | Larger-model experiment: plan, both full runs, results |
+| #31 | `fix/subscription-lookup-guard` | Identity guard fix (#29), sprint log entry |
+| #32 | `sprint-2-closeout` | Sprint 2 close-out and report refresh |
+| #34 | `sprint-2-final-fixes` | End-to-end audit: doc fixes, #11 lookup, #30 bounds, callback veto, retrieval-log warning; tag `v0.1.0-sprint2` |
+| #35 | `chore/known-limits-milestone` | Docs: the accepted limits live in a `Known limits` milestone, not Sprint 3 |
+| #36 | `fix/cli-eof-and-telemetry` | CLI exits cleanly on end of input (#12); the false chromadb telemetry error is dropped (#13) |
+| #38 | `sprint-3` | Sprint 3: session persistence (SQLite store, save and resume in the pipeline, CLI `--session`/`--resume`, Streamlit resume by URL) |
+| #39 | `docs/process-evaluation` | Docs: the process evaluation (`docs/Process-Evaluation.md`) and the report brought up to the Sprint 3 merge |
+| #40 | `docs/keep-report-current` | Docs: the report and PR template say the report is updated with every change, not only at sprint end |
 
 The working pattern since Sprint 2: criteria and held-out entries are committed **before** the run, fixes are developed only against entries already in the set, and the untouched cohort is run once afterwards (`docs/Git-Workflow.md`, the `docs/eval/` reports).
 
@@ -189,9 +194,21 @@ The working pattern since Sprint 2: criteria and held-out entries are committed 
 
 304/304 passing across 18 files — deterministic graph/domain/config/agent/reindex/lookup/timeout/CLI/persistence logic and the Streamlit app driven headlessly, no live model required (30 at the end of Sprint 1; 209 at the Sprint 2 close-out; 237 after the audit fixes; 244 after the CLI and telemetry fixes). `ruff check` reports no findings, including the whole repo since the notebook exclusion, and is blocking in CI (`src`, `tests`, `scripts`).
 
-### 10.2 Live end-to-end verification
+### 10.2 Live end-to-end re-verification (this update, merged `main` at `3b16d44`, `llama3.2:3b`)
 
-Driven directly, not just tested: identification (free and premium), tiered RAG answers, the callback flow, and the full 122-entry golden set through the real pipeline, on both models. The Streamlit app was last launched in a browser in Sprint 1; in Sprint 3 it was driven headlessly with Streamlit's `AppTest` (a fresh-process resume check on the real model).
+Driven directly through the real pipeline against the local Ollama server; single conversations, so the timings are single observations, not a latency measurement.
+
+| Conversation | What was sent | What came back | Checked |
+|---|---|---|---|
+| A: premium user | `michaeljackson@gmail.com` | "Hi, Michael Jackson … you have the premium subscription" at `AuthenticatedUserNode` (4.1 s) | identified |
+| A | "Can I sell my products in person with a POS?" | "Yes, you can use Shopify POS to sell your products in person." (2.5 s); sources `assets/paid/{compliance,locations,pos}.txt` | paid KB only |
+| A | "Please call me on 0452 333 666" | `CallCustomerNode`, conversation over: "We've logged your callback request for 0452 333 666 …" (0.3 s; the no-`audio`-extra variant) | callback with the typed number |
+| B: free user | `0452 333 667` (a phone number, with spacing) | "Hi, John Doe … you have the free subscription" (3.9 s) | phone lookup works |
+| B | the same POS question | "No, with a free subscription, you can only sell online. To sell in person with Shopify POS, you need a paid subscription." (2.7 s); sources `assets/free/{compliance,pos}.txt` | free KB only, different answer by tier |
+| C: unknown user | three unidentifiable messages | two retry prompts, then "Sorry, we still couldn't verify your account …" | never authenticated (the follow-on behavior is #37) |
+| D: session store | identify as `carl@sagan.com` with a store, then a new pipeline on the same session id | resumed at `AuthenticatedUserNode` with the 3-line transcript | resume works |
+
+Also checked this update: `scripts/reindex_kb.py --check` (free 14 of 14 chunks, paid 15 of 15, none stale), `ruff` (clean), `pytest` (304 passed). The Streamlit app was not launched in a browser.
 
 ### 10.3 Eval harness — current state (`docs/eval/Sprint3-Persistence-FullEval-2026-09-20.md`, 122 conversations, 11 categories, `llama3.2:3b`; the numbers reproduced the earlier `Precision-FullEval-2026-09-19.md` run)
 
@@ -207,7 +224,7 @@ Driven directly, not just tested: identification (free and premium), tiered RAG 
 | Phone extraction | **100%** | none | not measured (94% before the #22 fix, on a later 100-entry run) |
 | Hallucination rate | see §10.4 — **misses target** | ≤5% | 20% (3/15) |
 
-The callback rows are lower than Sprint 1's, and that is a *better* measurement, not a regression: Sprint 1's three negatives contained no digits, so the digit pre-check rejected them before the model was consulted and they could never fail. Precision only became informative once negatives that contain a number were added. The full-set 94.7% is inflated by entries the callback change was developed on; the held-out 83% is the honest figure. A fresh 3B full run on 2026-09-19 (`Model-Full-llama3-2-3b-2026-09-19.md`) and the audit's two runs scored callback recall 100% against 97% in the earlier full run on the same code, an unexplained small difference. The held-out 83% reproduced exactly, with the same two false triggers (`call-042`, `call-047`).
+The callback rows are lower than Sprint 1's, and that is a *better* measurement, not a regression: Sprint 1's three negatives contained no digits, so the digit pre-check rejected them before the model was consulted and they could never fail. Precision only became informative once negatives that contain a number were added. The full-set 94.9% is inflated by entries the callback change was developed on; the held-out 83% is the honest figure. A fresh 3B full run on 2026-09-19 (`Model-Full-llama3-2-3b-2026-09-19.md`) and the audit's two runs scored callback recall 100% against 97% in the earlier full run on the same code, an unexplained small difference. The held-out 83% reproduced exactly, with the same two false triggers (`call-042`, `call-047`). Entry results: 108 pass, 2 fail, 12 manual review (the hand-graded hallucination set).
 
 ### 10.4 Hallucination trajectory (hand-graded against the KB text, one reader)
 
@@ -219,7 +236,7 @@ The callback rows are lower than Sprint 1's, and that is a *better* measurement,
 | After #16/#17 fixes | 15-entry untuned cohort | fabrication 26.7% → 13.3% (2/15) |
 | Blind grade, both models | 51 answered `rag-*` (3B) | 1 clear hallucination (2%); 7 (14%) counting borderline answers |
 
-Target ≤5% is not clearly met on any untuned measure. The last row disagrees with the earlier ones (2% vs about 10%): it includes entries the fixes were tuned on, and the grade is one reader's judgment, so the model *comparison* in §10.5 is the safer reading than that absolute rate.
+Target ≤5% is not clearly met on any untuned measure. The last row disagrees with the earlier ones (2% vs about 10%): it includes entries the fixes were tuned on, and the grade is one reader's judgment, so the model *comparison* in §10.5 is the safer reading than that absolute rate. None of these figures was re-graded for this update.
 
 ### 10.5 Larger local model (`docs/eval/Model-Experiment-Results-2026-09-20.md`)
 
@@ -238,23 +255,28 @@ The 8B answers "no" to every message in the model-only intent check, so its 100%
 | Metric | Value |
 |---|---|
 | Unit tests passing | 304/304 (18 files) |
+| Live end-to-end checks on merged `main` | 7/7 pass (identify by email and phone, paid-only and free-only retrieval, callback, fail-safe, resume) |
+| CI | 40/40 runs green |
 | Golden-set size | 122 conversations across 11 categories |
+| Golden-set run, Sprint 3 | 108 pass, 2 fail (`call-042`, `call-047`), 12 manual review |
 | Held-out sets written before their run | 21 `rag-*`, 16 + 22 callback, 15 for #16/#17, 10 for #22 |
 | Identity bypass/fabrication bugs found and fixed | 3 |
 | Eval-harness bugs/gaps found and fixed | 3 in Sprint 1, plus a stronger callback scorer in Sprint 2 |
 | KB content defects fixed | 2 (#6, #16) |
 | Ruff findings | 27 → 0, enforced in CI |
 | Retrieval recall / tier leakage | 100% / 0% (n=39) |
-| Callback recall / precision (full set) | 97% / 94.7%; held-out cohort precision 83% |
+| Callback recall / precision (full set) | 100% / 94.9%; held-out cohort precision 83% (95% interval 55% to 95%) |
 | Hallucination | 13.3% fabrication on an untuned cohort; 2%-14% on the blind 51-answer grade; target ≤5% |
 | Issues | 7 open (#5, #10, #14, #17, #23, #33, #37), 11 closed |
-| Commits / PRs | 84 commits, 21 merged PRs as of #39; single contributor |
+| Commits / PRs | 86 commits, 22 merged PRs as of #40; single contributor |
 
 ## 12. Result Analysis
 
 The core product meets its target on every machine-scored metric except callback precision on unseen messages, and misses the hallucination target. Sprint 2's central lesson is about measurement: the numbers that looked good were the ones measured on entries the fixes were built against (6.7% hallucination on the tuned 15, 100% callback precision on negatives with no digits), and each honest re-measure on held-out entries came out worse (9.5%, 83%). Committing the held-out entries before running them, and developing fixes only against entries already in the set, is what made the shortfalls visible instead of hidden.
 
 The levers were spent in order of cost. Triage showed generation, not retrieval, was at fault; a stricter prompt and a KB rewrite helped; a deterministic guard removed one failure class; deterministic patterns bought callback precision but every wording change alone lost recall. The last cheap lever, a larger local model, was tested under criteria fixed in advance and did not help: it removed no hallucinations, lowered callback recall, and broke identification. Its failure was itself useful, exposing an identity-guard gap that would have let any model that skips a tool call silently assign a tier, now fixed. What remains is expensive or risky (more patterns that would overfit a 22-entry cohort, or a second-pass grounding check that adds a model call per answer), which is why the maintainer accepted carrying both accuracy targets as known limits rather than continuing to tune them (`docs/Sprints.md`).
+
+Sprint 3 changed the product's shape, not its accuracy: persistence is opt-in on the pipeline, so the eval harness runs exactly as before and every metric held, and the live checks confirm a saved conversation resumes at the same node. The process evaluation adds a caution about the numbers themselves: at these sample sizes several targets cannot be confirmed either way (held-out callback precision of 10/12 has a 95% interval of 55% to 95%; hallucination of 2/15 has 4% to 38%), so the honest reading of "target not met" is "not shown to be met", and the next gain in trust comes from more and better-separated test data, not more tuning.
 
 ## 13. Auditing & Validation of Outcomes
 
@@ -286,7 +308,8 @@ The levers were spent in order of cost. Triage showed generation, not retrieval,
 | 24 | `RetrievalNode` swallowed any exception in the retrieval-log lookup that recall and tier-leakage scoring read | Low | Fixed: logs a warning |
 | 25 | "No need to call me back, my number is ..." started a callback (the do-not-call veto did not know "no need") | Medium | Fixed. The compound case (declines and requests in one sentence) is open (#33) |
 | 26 | Public repository with no LICENSE; the KB is Shopify-derived | Medium | Open (#14), left to the maintainer: a legal decision |
-| 27 | After three unidentifiable messages the bot says it could not verify the user, then keeps answering from the free KB (confirmed live). Contradicts the PRD; impact limited to the free KB, tier leakage stays 0% | Low | Open (#37). Not caused by persistence; the persistence design does not resume such a session |
+| 27 | After three unidentifiable messages the bot says it could not verify the user, then keeps answering from the free KB (confirmed live again this update, §10.2 conversation C). Contradicts the PRD; impact limited to the free KB, tier leakage stays 0% | Low | Open (#37). Not caused by persistence; the persistence design does not resume such a session |
+| 28 | Process (`docs/Process-Evaluation.md`): targets cannot be confirmed at the sample sizes used, the golden set has been reused across about 15 runs, eval runs carry no manifest (git SHA, model digest, settings), the 20 PRs measured had 0 reviews, and docs plus eval reports are about 9 times the source | Medium | Open. A ten-point plan is proposed, not adopted; suggested first step is one PR for data splits, interval reporting and run manifests |
 
 ## 14. Challenges Faced
 
@@ -296,23 +319,30 @@ The callback work was the hardest in both sprints. In Sprint 1 the fix was found
 
 The larger-model experiment had its own traps. The 8B's failures were first read as "the model is worse"; reproducing them showed one mechanism (a tool call written as text) behind identification, fails-safe, retrieval and tier leakage together, which turned a vague negative result into a concrete code gap. Blind hand-grading had to be adjusted mid-way: 19 of 51 questions were asked by premium users the 8B served the free KB, so answers were graded against the KB actually retrieved, with the wrong-tier effect left to the tier-leakage metric. Finally, an intermittent hang in `ident-011` surfaced while verifying the fix; server logs showed a runaway generation with no stop token, unrelated to the change but a real gap (#30).
 
+Sprint 3's challenge was verifying persistence without trusting the tests alone. The store and pipeline tests passed on the first run, which proves little, so they were mutation-checked (breaking six behaviors and confirming each is caught); the resume path was then proved by killing a real process and restarting it. Streamlit could not be opened in a browser, so the app was driven with `AppTest`, which does not refresh its element tree for a rerun made inside a run, so the start-again test checks the session state and runs the script once more. Reading the code for the persistence design also surfaced #37, an old behavior the golden set had never exercised because its entries check only the fail-safe message on the failing turn.
+
 ## 15. Limitations
 
-**Still true:** hallucination (about 13% on untuned questions) and held-out callback precision (83%) are below target; the with-whisper path (real call transcription and ticket summary) has never been exercised, so ticket quality with the `audio` extra installed is unknown; the mock DB is a mock (identification is a lookup, not authentication: anyone who knows an email or phone number is served that customer's tier); there is no real user store (Phase 7); OpenAI models were never tested (the new token and timeout bounds are configured for them but unexercised); the repository has no LICENSE (#14).
+**Still true:** hallucination (about 13% on untuned questions) and held-out callback precision (83%) are below target; the with-whisper path (real call transcription and ticket summary) has never been exercised, so ticket quality with the `audio` extra installed is unknown; the mock DB is a mock (identification is a lookup, not authentication: anyone who knows an email or phone number is served that customer's tier); there is no real user store (Phase 7); OpenAI models were never tested (the token and timeout bounds are configured for them but unexercised); the repository has no LICENSE (#14).
 
-**No longer true:** no CI; ruff configured but unenforced (27 findings); the free-tier KB contradicting itself (twice); identification bypassable with fabricated input; no way to reindex the KB deterministically; no held-out data; callback extraction returning the wrong number; a model that skips a tool call getting a made-up tier; phone numbers and mixed-case emails not identifying anyone; no cap or timeout on LLM calls (#30); the README steering users to the rejected 8B model. Also no longer true since Sprint 3: a conversation being lost on every restart or page reload.
+**No longer true:** no CI; ruff configured but unenforced (27 findings); the free-tier KB contradicting itself (twice); identification bypassable with fabricated input; no way to reindex the KB deterministically; no held-out data; callback extraction returning the wrong number; a model that skips a tool call getting a made-up tier; phone numbers and mixed-case emails not identifying anyone; no cap or timeout on LLM calls (#30); the README steering users to the rejected 8B model; a conversation being lost on every restart or page reload.
 
 **New, from Sprint 2:**
 - A callback request must include a phone number (maintainer decision, #7); a bare "call me" gets a normal RAG reply.
 - All eval numbers are single runs on a 3B model with small n. One answer is 2-7 points on the hallucination sets, and the 22-entry callback cohort has only 12 negatives.
 - Hallucination is graded by one reader, and the latest blind grade was done by the same assistant that ran the experiment, not a human. Blinding hides the model, not the reader's judgment; the two most recent grades disagree with the earlier ones (2% vs about 10%), so the absolute rate is uncertain.
-- Temperature 0 does not give identical output: a fresh full 3B run differed slightly from the earlier one on the same code, and `ident-011` completed or hung depending on Ollama's state before the #30 bounds (it completed in the audit's post-fix run, which is not proof, since the hang is intermittent). Not investigated.
+- Temperature 0 does not give identical output: a fresh full 3B run differed slightly from the earlier one on the same code, and `ident-011` completed or hung depending on Ollama's state before the #30 bounds. Not investigated.
 - Prompts, guards and patterns were developed around 3B behavior, which favors it in any comparison with another model.
 
 **New, from Sprint 3:**
-- Saved conversations hold the user's name, email and phone number in the clear in `data/sessions.sqlite` (gitignored), and the Streamlit session id in the URL is a bearer token: anyone with the link can read the conversation. Acceptable for a local single-instance app; to be re-decided before any real deployment (Phase 10). Sessions are kept until deleted by hand.
+- Saved conversations hold the user's name, email and phone number in the clear in `data/sessions.sqlite` (gitignored), and the Streamlit session id in the URL is a bearer token: anyone with the link can read the conversation. Acceptable for a local single-instance app; to be re-decided before any real deployment (Phase 10). Sessions are kept until deleted by hand. The turn log (`logs/turns.jsonl`, gitignored) also stores each raw user message.
 - Resume trusts the saved profile, tier included; identification is not re-run, so a tier change in the user store mid-session is not seen until the session ends.
 - Not exercised: a real browser session, and several processes writing the same database at once (out of scope for the sprint).
+
+**New, from the process evaluation** (`docs/Process-Evaluation.md`; one reviewer's judgment, plan not adopted):
+- Retrieval recall@4 on a 14 to 15 chunk index retrieves 27% to 29% of the corpus, so its 100% says little about retrieval quality.
+- There is no dependency lockfile (an unpinned `posthog` already broke chromadb's telemetry), no prompt-injection tests, and no real users; the knowledge base is four files per tier, so results will not generalize to a production store.
+- Docs and eval reports are far larger than the source, and the same facts live in several files, which is how the audit found stale counts.
 
 ## 16. Future Improvements
 
@@ -320,55 +350,16 @@ The larger-model experiment had its own traps. The 8B's failures were first read
 
 **Medium:** exercise the with-whisper transcription-to-ticket path once (#10); if hallucination or callback precision must reach target, scope it as its own sprint with a larger pre-committed held-out set (a second-pass grounding check for #5/#17; a labeled callback-intent set large enough to tune without overfitting for #23); investigate the small 3B run-to-run difference.
 
-**Process (proposed, not adopted):** an evidence bundle first (data splits, interval reporting, run manifests), then a smoke-eval gate and independent review; see §17 and `docs/Process-Evaluation.md`.
+**Process (proposed, not adopted; full plan in `docs/Process-Evaluation.md`):** an evidence bundle first (dev, validation and frozen test splits; intervals on every rate; a run manifest and results index per eval), then a smoke-eval gate before merge, independent review of eval labels and metric-affecting PRs, one source per fact with a generated status block, a threat model with a lockfile, and a small real-user trial.
 
-**Larger:** Sprint 4, Phase 7 (a real user store behind the same function signatures), per `docs/Sprints.md`; then the evaluation regression gate (Sprint 5), UI polish (Sprint 6) and deployment and observability (Sprint 7).
-
-## 17. Process Evaluation and Improvement Plan
-
-Full text: `docs/Process-Evaluation.md`. An evaluation of how the project has been built, from an
-experienced data scientist's point of view, made at the end of Sprint 3 from the repository's own
-record (82 commits, 20 merged PRs, 20 issues, 36 CI runs, 35 files in `docs/eval`). It is
-one reviewer's judgment; the proposals are **not adopted** until the maintainer decides.
-
-**Bottom line.** The process is unusually disciplined for an LLM project: measurement-first, held-out
-tests pre-registered, misses reported honestly. The weak spots are statistical power, independence of
-review, reproducibility of eval runs, and documentation that duplicates itself.
-
-| Dimension | Rating |
-|---|---|
-| Sequencing and strategy | 4.5 / 5 |
-| Experiment discipline | 4 / 5 |
-| Statistical rigor | 2 / 5 |
-| Reproducibility and tracking | 2 / 5 |
-| Testing | 4 / 5 |
-| Engineering hygiene | 4 / 5 |
-| Independent review | 1 / 5 |
-| Documentation | 3 / 5 |
-| Planning and project management | 2.5 / 5 |
-| Risk (privacy, legal, security) | 2.5 / 5 |
-| Product validation | 1.5 / 5 |
-
-**Main findings.**
-- **Power.** 95% intervals for the reported rates: callback precision on held-out negatives 10/12 is 55% to 95%; hallucination 2/15 is 4% to 38%, 2/21 is 3% to 29%, and the blind grade 1/51 to 7/51 is 0.3% to 10% and 7% to 26%. Showing an error rate of 5% or less needs about 60 cases with zero failures, so several targets could not have been confirmed at the sample sizes used.
-- **The golden set is used up.** The same 122 entries fed about 15 runs, the 22-entry callback cohort stopped being held out after repeated use, and hallucination has one grader with no written rubric.
-- **Some metrics cannot fail.** Retrieval recall@4 on a 14 to 15 chunk index retrieves 27% to 29% of the corpus; Sprint 1's callback precision was 100% because its negatives had no digits.
-- **Runs are not reproducible from the artifacts.** No git SHA, model digest or settings header; about 19,700 lines of raw run output instead of structured results; temperature 0 still varied between runs.
-- **No independent review.** 0 reviews on 20 PRs; median PR about 890 added lines and 5 of 20 over 3,000.
-- **Documentation is 9.2 times the source size** and the same facts live in several files, which is how the audit found stale counts.
-- **Planning.** "Two-week" sprints ran in about three days.
-- **Risk.** Plaintext PII in the session file and in the turn log, no license (#14), no dependency lockfile, no prompt-injection tests, no real users.
-
-**Proposed plan, in order** (details and how-to in the full document): (1) split data into dev, validation and a frozen test set, size sets from the target, report intervals and compare runs item by item; (2) a run manifest and a results index for every eval; (3) a smoke-eval gate before merge; (4) independent review of eval labels and metric-affecting PRs; (5) one source per fact and a generated status block; (6) re-baseline planning on real throughput; (7) a threat model, lockfile and license decision; (8) a small real-user trial; (9) baselines (hosted model, a small classifier) before more rules; (10) guardrails for AI-assisted work. **Stop:** committing raw run dumps, hand-typing counts, calling three-day blocks two-week sprints, treating a tuned cohort as held-out. **Suggested first step:** one PR with items 1 and 2.
-
-## 18. Summary
+**Larger:** Sprint 4, Phase 7 (a real user store behind the same function signatures), per `docs/Sprints.md`; then the evaluation regression gate (Sprint 5), UI polish (Sprint 6) and deployment and observability (Sprint 7). The process evaluation suggests the eval gate and a real-user trial may deserve to come before the real user store.
 
 ### Three-bullet summary
 
-- The product (Phases 1-5) already worked before this engagement; it is now *provably* measured — a 122-conversation golden set, 304 unit tests, a blocking CI gate, conversations that survive a restart, and held-out entries committed before each run — up from zero offline metrics at the start.
-- Three identity bypass or fabrication bugs, a wrong-number callback bug and two KB contradictions were found and fixed, most only because the evaluation was built adversarially; retrieval recall (100%) and tier leakage (0%) held at target throughout.
-- Two accuracy targets are still missed with the 3B (an end-to-end audit afterwards reproduced the metrics and fixed its own findings): hallucination (about 13% on untuned questions vs ≤5%) and callback precision on unseen messages (83% vs ≥95%). A larger local model was tried under criteria fixed in advance and did not help, so the maintainer accepted carrying both as known limits. A process evaluation at the end of Sprint 3 rated the method strong and the statistics weak, and proposed a plan that is not yet adopted (§17).
+- The product (Phases 1-5) already worked before this engagement; it is now *provably* measured — a 122-conversation golden set, 304 unit tests, a blocking CI gate, conversations that survive a restart, and held-out entries committed before each run — and was re-exercised live on the merged `main` for this update (7 of 7 checks).
+- Three identity bypass or fabrication bugs, a wrong-number callback bug and two KB contradictions were found and fixed, most only because the evaluation was built adversarially; retrieval recall (100%) and tier leakage (0%) held at target throughout, and Sprint 3 changed nothing on any metric.
+- Two accuracy targets are still missed with the 3B: hallucination (about 13% on untuned questions vs ≤5%) and callback precision on unseen messages (83% vs ≥95%). A larger local model was tried under criteria fixed in advance and did not help, so the maintainer accepted carrying both as known limits. A process evaluation found the method strong and the statistics weak (several targets cannot be confirmed at the sample sizes used) and proposed a plan that is not yet adopted.
 
 ### One-line description
 
-A graph-orchestrated, fully-local LLM customer support agent whose original build was sound but unmeasured — this engagement built the evaluation infrastructure that measured it, fixed the real bugs it exposed, and reports honestly which accuracy targets a small local model still does not reach.
+A graph-orchestrated, fully-local LLM customer support agent whose original build was sound but unmeasured — this engagement built the evaluation infrastructure that measured it, fixed the real bugs it exposed, made conversations survive a restart, and reports honestly which accuracy targets a small local model still does not reach and how far the evidence can be trusted.
