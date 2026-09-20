@@ -58,3 +58,31 @@ def test_get_embeddings_builds_ollama_embeddings_by_default(monkeypatch):
 
     assert isinstance(embeddings, OllamaEmbeddings)
     assert embeddings.model == "nomic-embed-text"
+
+
+def test_get_chat_model_bounds_generation_and_wait_time_for_ollama(monkeypatch):
+    settings = Settings(llm_provider="ollama", llm_max_tokens=256, llm_timeout_seconds=30)
+    monkeypatch.setattr("customer_support_app.config.get_settings", lambda: settings)
+
+    model = get_chat_model()
+
+    assert model.num_predict == 256
+    assert model.client_kwargs == {"timeout": 30.0}
+
+
+def test_get_chat_model_bounds_generation_and_wait_time_for_openai(monkeypatch):
+    settings = Settings(
+        llm_provider="openai", openai_api_key="sk-test", llm_max_tokens=256, llm_timeout_seconds=30
+    )
+    monkeypatch.setattr("customer_support_app.config.get_settings", lambda: settings)
+
+    model = get_chat_model()
+
+    assert model.max_tokens == 256
+    assert model.request_timeout == 30
+
+
+@pytest.mark.parametrize("field", ["llm_max_tokens", "llm_timeout_seconds"])
+def test_settings_rejects_a_non_positive_llm_bound(field):
+    with pytest.raises(ValidationError):
+        Settings(**{field: 0})
