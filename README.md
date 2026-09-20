@@ -130,6 +130,9 @@ Or a terminal chat (installed as a console script):
 customer-support-chat
 ```
 
+Type `quit` or `exit` to leave, or press Ctrl+D (Ctrl+Z then Enter on Windows). Piped
+input that runs out ends the session the same way, with exit code 0.
+
 ## Tests
 
 ```bash

@@ -3,7 +3,7 @@
 **Repository:** melvinmathew9991/customer-support-app (`main`, with every sprint and fix branch merged and kept)
 **Stack:** Python 3.10.10 · Streamlit 1.39.0 · LangChain 0.3.7 (+ langchain-community/-ollama/-openai/-chroma/-text-splitters) · ChromaDB 0.5.20 · pydantic-settings 2.6.1 · pytest 8.3.3 · ruff 0.7.4 · Ollama (local: `llama3.2:3b` chat, `nomic-embed-text` embeddings). Dependencies are unchanged since the initial commit (`pyproject.toml` was never modified); Python and ruff versions were re-checked at the end of Sprint 2, the rest are as pinned.
 **Status:** End of Sprint 2 (knowledge base and retrieval hardening), after an end-to-end audit whose findings were fixed before the sprint was tagged (`docs/eval/Sprint2-Audit-2026-09-20.md`). Core product (Phases 1-5) was built before this engagement; Sprint 1 built the evaluation foundation and Sprint 2 used it to fix what it exposed. Sprint 2's definition of done is met (retrieval recall and tier leakage held at target on a 3x larger set), but **two accuracy targets are not met**: hallucination (about 13% on untuned questions vs ≤5%) and callback precision (83% on a held-out cohort vs ≥95%). The larger local model was tried and did not help. The maintainer accepted carrying both as known limits on 2026-09-20 rather than continuing to tune them in Sprint 2 (`docs/Sprints.md`).
-**Timeline:** 2026-09-18 → 2026-09-20, single contributor (Melvin Mathew). 58 commits and 16 merged pull requests on `main` at the Sprint 2 close-out (#32), plus the audit's final-fixes PR (#34). Pre-Sprint-1 (MVP baseline + out-of-band fixes) → Sprint 1 (evaluation foundation, PRs #1-#3) → git workflow tooling (PR #4) → Sprint 2 (PRs #15, #18-#21, #24-#28, #31, #32, #34).
+**Timeline:** 2026-09-18 → 2026-09-20, single contributor (Melvin Mathew). 58 commits and 16 merged pull requests on `main` at the Sprint 2 close-out (#32), plus three small PRs after it: the audit's final fixes (#34), the milestone docs fix (#35) and the CLI and telemetry fixes (#36). Pre-Sprint-1 (MVP baseline + out-of-band fixes) → Sprint 1 (evaluation foundation, PRs #1-#3) → git workflow tooling (PR #4) → Sprint 2 (PRs #15, #18-#21, #24-#28, #31, #32, #34-#36).
 
 **Update cadence:** this file is refreshed at the end of each sprint (see `docs/Sprints.md`'s cross-cutting rules) so it always reflects the project's current, verified state rather than a point-in-time snapshot.
 
@@ -37,7 +37,7 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 
 | Layer | Module | Lines | Responsibility |
 |---|---|---|---|
-| Config | `config.py` | 117 | pydantic-settings `Settings`: LLM/embeddings provider, paths, `turn_log_path`, `llm_max_tokens` and `llm_timeout_seconds` (#30) |
+| Config | `config.py` | 132 | pydantic-settings `Settings`: LLM/embeddings provider, paths, `turn_log_path`, `llm_max_tokens` and `llm_timeout_seconds` (#30); drops chromadb's false "Failed to send telemetry event" error (#13) |
 | Logging | `logging_config.py` | 78 | Console logger + structured JSON-line turn logger (`logs/turns.jsonl`) |
 | Domain | `domain/chat.py` | 63 | `MessageHistory`, `Role`, `model_input()` |
 | Domain | `domain/graph.py` | 25 | `MessageOutput`, `EdgeOutput` |
@@ -53,16 +53,16 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 | Tools | `tools/rag_responder.py` | 161 | `HelpCenterAgent`: idempotent index, stable chunk ids, content-based staleness check |
 | Tools | `tools/audio_transcribe.py` | 79 | Whisper-based call transcription; `transcription_available()` lets callers degrade instead of crashing |
 | Pipeline | `pipeline.py` | 124 | `CustomerSupportPipeline` orchestration + per-turn structured logging; a model timeout becomes a reply (#30) |
-| Interfaces | `cli.py` | 30 | Terminal chat entrypoint |
+| Interfaces | `cli.py` | 41 | Terminal chat entrypoint; exits cleanly on end of input or `quit`/`exit` (#12) |
 | Interfaces | `app.py` | 72 | Streamlit Chat + Graph tabs |
 | UI | `ui/graph_renderer.py` | 55 | Graphviz DAG rendering |
 | Scripts | `scripts/reindex_kb.py` | — | Rebuild the Chroma index from `assets/` (`--tier`, `--check`) |
-| Tests | `tests/**/test_*.py` | 1,239 | 237 tests across 14 files — deterministic graph/domain/config/agent/reindex/lookup/timeout logic only (no live model) |
+| Tests | `tests/**/test_*.py` | 1,320 | 244 tests across 15 files — deterministic graph/domain/config/agent/reindex/lookup/timeout/CLI logic only (no live model) |
 | Eval | `tests/eval/` | — | `golden_set.json` (122 hand-labeled conversations, 11 categories), `run_eval.py` (automated scoring harness), `README.md` (schema) |
 | CI / tooling | `.github/workflows/ci.yml`, `.githooks/pre-commit`, `.github/pull_request_template.md` | — | pytest + `ruff check` blocking on every PR; local pre-commit test hook |
 | Docs | `docs/*.md` + `docs/eval/*.md` | — | PRD, Architecture, Rules, Phases, Design, Sprints, Git-Workflow, Metrics, and 33 dated eval/experiment reports |
 
-**1,920** total lines across `src/customer_support_app/`.
+**1,946** total lines across `src/customer_support_app/`.
 
 ## 5. Folder Structure
 
@@ -87,7 +87,7 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 │   ├── graph/             # the reusable Node/Edge framework
 │   ├── tools/              # user_info_db.py, rag_responder.py, audio_transcribe.py
 │   └── ui/graph_renderer.py
-├── tests/                 # 237 unit tests (deterministic logic only)
+├── tests/                 # 244 unit tests (deterministic logic only)
 │   └── eval/               # golden_set.json, run_eval.py, README.md
 ├── assets/                # free/ + paid/ knowledge base .txt files, sample call audio
 ├── notebooks/             # legacy exploratory prototype
@@ -115,10 +115,10 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 | Embeddings | Ollama `nomic-embed-text` (local) | Exercised |
 | Chat model (opt-in) | OpenAI via `langchain-openai` | Not exercised — no API key configured |
 | Audio/transcription | `openai-whisper` (optional `audio` extra) | **Not installed.** The app degrades gracefully without it; the with-whisper path (real transcription + ticket) has never been exercised (#10) |
-| Testing | pytest 8.3.3 | 237/237 pass |
+| Testing | pytest 8.3.3 | 244/244 pass |
 | Lint | ruff 0.7.4 | 0 findings (27 fixed in Sprint 2, #9), including `ruff check .` since the legacy notebook was excluded; a blocking CI gate. `ruff format` is not enforced (19 files would change) |
 | CI | GitHub Actions (`ci.yml`) | pytest + `ruff check src tests scripts`, both blocking on PRs and pushes to `main`; green on the last merged PR |
-| Version control | git + GitHub (`melvinmathew9991/customer-support-app`) | 58 commits, 16 merged PRs at the close-out merge (#32), plus #34; merge commits, branches kept as history, tags `v0.1.0-sprint1` and `v0.1.0-sprint2` (`docs/Git-Workflow.md`) |
+| Version control | git + GitHub (`melvinmathew9991/customer-support-app`) | 58 commits, 16 merged PRs at the close-out merge (#32), plus #34-#36; merge commits, branches kept as history, tags `v0.1.0-sprint1` and `v0.1.0-sprint2` (`docs/Git-Workflow.md`) |
 
 ## 8. Implementation Details
 
@@ -146,7 +146,7 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 
 ## 9. Methodology — Build History
 
-58 commits and 16 merged pull requests at the close-out merge, plus the audit's final-fixes PR. By pull request:
+58 commits and 16 merged pull requests at the close-out merge, plus three small PRs after it. By pull request:
 
 | PR | What it did |
 |---|---|
@@ -165,6 +165,8 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 | #31 | Identity guard fix (#29), sprint log entry |
 | #32 | Sprint 2 close-out and report refresh |
 | #34 | End-to-end audit: doc fixes, #11 lookup, #30 bounds, callback veto, retrieval-log warning; tag `v0.1.0-sprint2` |
+| #35 | Docs: the accepted limits live in a `Known limits` milestone, not Sprint 3 |
+| #36 | CLI exits cleanly on end of input (#12); the false chromadb telemetry error is dropped (#13) |
 
 The working pattern since Sprint 2: criteria and held-out entries are committed **before** the run, fixes are developed only against entries already in the set, and the untouched cohort is run once afterwards (`docs/Git-Workflow.md`, the `docs/eval/` reports).
 
@@ -172,7 +174,7 @@ The working pattern since Sprint 2: criteria and held-out entries are committed 
 
 ### 10.1 Unit tests and lint
 
-237/237 passing across 14 files — deterministic graph/domain/config/agent/reindex/lookup/timeout logic, no live model required (30 at the end of Sprint 1; 209 at the Sprint 2 close-out). `ruff check` reports no findings, including the whole repo since the notebook exclusion, and is blocking in CI (`src`, `tests`, `scripts`).
+244/244 passing across 15 files — deterministic graph/domain/config/agent/reindex/lookup/timeout/CLI logic, no live model required (30 at the end of Sprint 1; 209 at the Sprint 2 close-out; 237 after the audit fixes). `ruff check` reports no findings, including the whole repo since the notebook exclusion, and is blocking in CI (`src`, `tests`, `scripts`).
 
 ### 10.2 Live end-to-end verification
 
@@ -222,7 +224,7 @@ The 8B answers "no" to every message in the model-only intent check, so its 100%
 
 | Metric | Value |
 |---|---|
-| Unit tests passing | 237/237 (14 files) |
+| Unit tests passing | 244/244 (15 files) |
 | Golden-set size | 122 conversations across 11 categories |
 | Held-out sets written before their run | 21 `rag-*`, 16 + 22 callback, 15 for #16/#17, 10 for #22 |
 | Identity bypass/fabrication bugs found and fixed | 3 |
@@ -232,8 +234,8 @@ The 8B answers "no" to every message in the model-only intent check, so its 100%
 | Retrieval recall / tier leakage | 100% / 0% (n=39) |
 | Callback recall / precision (full set) | 97% / 94.7%; held-out cohort precision 83% |
 | Hallucination | 13.3% fabrication on an untuned cohort; 2%-14% on the blind 51-answer grade; target ≤5% |
-| Issues | 8 open (#5, #10, #12, #13, #14, #17, #23, #33), 9 closed |
-| Commits / PRs | 58 commits, 16 merged PRs at the close-out merge, plus #34; single contributor |
+| Issues | 6 open (#5, #10, #14, #17, #23, #33), 11 closed |
+| Commits / PRs | 58 commits, 16 merged PRs at the close-out merge, plus #34-#36; single contributor |
 
 ## 12. Result Analysis
 
@@ -248,8 +250,8 @@ The levers were spent in order of cost. Triage showed generation, not retrieval,
 | 1 | Stale editable install — `customer_support_app` failed to import at all | High | Fixed |
 | 2 | Chroma RAG index re-embedded and duplicated on every process start | High | Fixed |
 | 3 | Callback-intent detection missed genuine requests. Originally recorded as "non-deterministic"; actually a deterministic bias from the internal `system:` message shown to the intent classifier | Medium | Fixed. Behavior change: a callback request must include a number (#7 decision) |
-| 4 | `ANONYMIZED_TELEMETRY=False` doesn't silence chromadb's telemetry warnings | Low (cosmetic) | Open (#13) |
-| 5 | CLI has no graceful exit path (`EOFError` on stdin exhaustion) | Low | Open (#12) |
+| 4 | `ANONYMIZED_TELEMETRY=False` doesn't silence chromadb's telemetry warnings | Low (cosmetic) | Fixed (#13). The setting worked; the errors came from chromadb calling `posthog.capture` in a way `posthog` 6+ rejects, so that one message is now dropped from that one logger |
+| 5 | CLI has no graceful exit path (`EOFError` on stdin exhaustion) | Low | Fixed (#12): "Goodbye.", exit code 0 on end of input, `quit` or `exit` |
 | 6 | Identification accepted garbage/unmatched input and fabricated a schema-valid `UserProfile` | Critical | Fixed |
 | 7 | Sharper variant of #6: a fabricated tool-call argument matched a *real* account | Critical | Fixed |
 | 8 | Call-me ticketing crashes (`ModuleNotFoundError: whisper`) without the optional `audio` extra | High | Fixed (degrades to "callback logged"); the with-whisper path remains unexercised (#10) |
@@ -295,7 +297,7 @@ The larger-model experiment had its own traps. The 8B's failures were first read
 
 ## 16. Future Improvements
 
-**Quick:** #14 (license, and whether the Shopify-derived KB stays public: a maintainer decision), #12 (CLI `EOFError`). #5, #17, #23 and #33 stay open as accepted known limits (`docs/Sprints.md`).
+**Quick:** #14 (license, and whether the Shopify-derived KB stays public: a maintainer decision). #5, #17, #23 and #33 stay open as accepted known limits (`docs/Sprints.md`).
 
 **Medium:** exercise the with-whisper transcription-to-ticket path once (#10); if hallucination or callback precision must reach target, scope it as its own sprint with a larger pre-committed held-out set (a second-pass grounding check for #5/#17; a labeled callback-intent set large enough to tune without overfitting for #23); investigate the small 3B run-to-run difference.
 
@@ -303,7 +305,7 @@ The larger-model experiment had its own traps. The 8B's failures were first read
 
 ### Three-bullet summary
 
-- The product (Phases 1-5) already worked before this engagement; it is now *provably* measured — a 122-conversation golden set, 237 unit tests, a blocking CI gate, and held-out entries committed before each run — up from zero offline metrics at the start.
+- The product (Phases 1-5) already worked before this engagement; it is now *provably* measured — a 122-conversation golden set, 244 unit tests, a blocking CI gate, and held-out entries committed before each run — up from zero offline metrics at the start.
 - Three identity bypass or fabrication bugs, a wrong-number callback bug and two KB contradictions were found and fixed, most only because the evaluation was built adversarially; retrieval recall (100%) and tier leakage (0%) held at target throughout.
 - Two accuracy targets are still missed with the 3B (an end-to-end audit afterwards reproduced the metrics and fixed its own findings): hallucination (about 13% on untuned questions vs ≤5%) and callback precision on unseen messages (83% vs ≥95%). A larger local model was tried under criteria fixed in advance and did not help, so the maintainer accepted carrying both as known limits.
 
