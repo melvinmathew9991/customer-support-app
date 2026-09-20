@@ -18,4 +18,4 @@
 - [ ] `pytest` passes locally
 - [ ] Eval re-run if LLM-dependent behavior changed (`docs/eval/` report added)
 - [ ] `docs/Sprints.md` / `docs/Phases.md` updated
-- [ ] `docs/report.md` refreshed (required at the end of each sprint)
+- [ ] `docs/report.md` updated if this change alters anything it states (counts, behavior, metrics, findings, limits)
