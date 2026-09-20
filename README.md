@@ -170,5 +170,6 @@ instead of silently answering from the old content.
 All settings are read from environment variables / `.env` via
 `src/customer_support_app/config.py`'s `Settings` (pydantic-settings). See
 `.env.example` for the full list, including `AGENT_VERBOSE` (LangChain's
-step-by-step tool-call tracing, off by default) and `ASSETS_DIR`/`CHROMA_DIR`
-overrides.
+step-by-step tool-call tracing, off by default), `ASSETS_DIR`/`CHROMA_DIR`
+overrides, and `LLM_MAX_TOKENS` / `LLM_TIMEOUT_SECONDS` (the per-call generation cap and
+wait limit; a call that times out becomes a "please try again" reply).
