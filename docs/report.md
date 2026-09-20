@@ -3,9 +3,9 @@
 **Repository:** melvinmathew9991/customer-support-app (`main`, with every sprint and fix branch merged and kept)
 **Stack:** Python 3.10.10 · Streamlit 1.39.0 · LangChain 0.3.7 (+ langchain-community/-ollama/-openai/-chroma/-text-splitters) · ChromaDB 0.5.20 · pydantic-settings 2.6.1 · pytest 8.3.3 · ruff 0.7.4 · Ollama (local: `llama3.2:3b` chat, `nomic-embed-text` embeddings). Dependencies are unchanged since the initial commit (`pyproject.toml` was never modified); Python and ruff versions were re-checked at the end of Sprint 2, the rest are as pinned.
 **Status:** End of Sprint 3 (session persistence), following Sprint 2 (knowledge base and retrieval hardening) and the end-to-end audit whose findings were fixed before that sprint was tagged (`docs/eval/Sprint2-Audit-2026-09-20.md`). Core product (Phases 1-5) was built before this engagement; Sprint 1 built the evaluation foundation and Sprint 2 used it to fix what it exposed. Sprint 2's definition of done is met (retrieval recall and tier leakage held at target on a 3x larger set), but **two accuracy targets are not met**: hallucination (about 13% on untuned questions vs ≤5%) and callback precision (83% on a held-out cohort vs ≥95%). The larger local model was tried and did not help. The maintainer accepted carrying both as known limits on 2026-09-20 rather than continuing to tune them in Sprint 2 (`docs/Sprints.md`).
-**Timeline:** 2026-09-18 → 2026-09-20, single contributor (Melvin Mathew). 82 commits and 20 merged pull requests on `main` as of the Sprint 3 merge (`237e95c`); after the Sprint 2 close-out (#32) came three small PRs, the audit's final fixes (#34), the milestone docs fix (#35) and the CLI and telemetry fixes (#36), then Sprint 3's session persistence (#38), and a process evaluation (§17). Pre-Sprint-1 (MVP baseline + out-of-band fixes) → Sprint 1 (evaluation foundation, PRs #1-#3) → git workflow tooling (PR #4) → Sprint 2 (PRs #15, #18-#21, #24-#28, #31, #32, #34-#36) → Sprint 3 (session persistence, PR #38).
+**Timeline:** 2026-09-18 → 2026-09-20, single contributor (Melvin Mathew). 84 commits and 21 merged pull requests on `main` as of PR #39 (`ee28b6b`); after the Sprint 2 close-out (#32) came three small PRs, the audit's final fixes (#34), the milestone docs fix (#35) and the CLI and telemetry fixes (#36), then Sprint 3's session persistence (#38), and the process evaluation (#39, §17). Pre-Sprint-1 (MVP baseline + out-of-band fixes) → Sprint 1 (evaluation foundation, PRs #1-#3) → git workflow tooling (PR #4) → Sprint 2 (PRs #15, #18-#21, #24-#28, #31, #32, #34-#36) → Sprint 3 (session persistence, PR #38).
 
-**Update cadence:** this file is refreshed at the end of each sprint (see `docs/Sprints.md`'s cross-cutting rules) so it always reflects the project's current, verified state rather than a point-in-time snapshot.
+**Update cadence:** this file is updated in the same pull request as any change that alters something it states (counts, architecture, behavior, metrics, findings, limitations), and re-verified against the repository at the end of each sprint (see `docs/Sprints.md`'s cross-cutting rules), so it reflects the project's current state rather than a point-in-time snapshot. Counts that name a pull request ("as of #N") describe the repository at that merge.
 
 ---
 
@@ -122,7 +122,7 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 | Testing | pytest 8.3.3 | 304/304 pass |
 | Lint | ruff 0.7.4 | 0 findings (27 fixed in Sprint 2, #9), including `ruff check .` since the legacy notebook was excluded; a blocking CI gate. `ruff format` is not enforced (19 files would change) |
 | CI | GitHub Actions (`ci.yml`) | pytest + `ruff check src tests scripts`, both blocking on PRs and pushes to `main`; green on the last merged PR |
-| Version control | git + GitHub (`melvinmathew9991/customer-support-app`) | 82 commits, 20 merged PRs as of the Sprint 3 merge (#38); merge commits, branches kept as history, tags `v0.1.0-sprint1` and `v0.1.0-sprint2` (`docs/Git-Workflow.md`) |
+| Version control | git + GitHub (`melvinmathew9991/customer-support-app`) | 84 commits, 21 merged PRs as of #39; merge commits, branches kept as history, tags `v0.1.0-sprint1` and `v0.1.0-sprint2` (`docs/Git-Workflow.md`) |
 
 ## 8. Implementation Details
 
@@ -157,7 +157,7 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 
 ## 9. Methodology — Build History
 
-82 commits and 20 merged pull requests as of the Sprint 3 merge. By pull request:
+84 commits and 21 merged pull requests as of #39. By pull request:
 
 | PR | What it did |
 |---|---|
@@ -179,6 +179,7 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 | #35 | Docs: the accepted limits live in a `Known limits` milestone, not Sprint 3 |
 | #36 | CLI exits cleanly on end of input (#12); the false chromadb telemetry error is dropped (#13) |
 | #38 | Sprint 3: session persistence (SQLite store, save and resume in the pipeline, CLI `--session`/`--resume`, Streamlit resume by URL) |
+| #39 | Docs: the process evaluation (`docs/Process-Evaluation.md`) and the report brought up to the Sprint 3 merge |
 
 The working pattern since Sprint 2: criteria and held-out entries are committed **before** the run, fixes are developed only against entries already in the set, and the untouched cohort is run once afterwards (`docs/Git-Workflow.md`, the `docs/eval/` reports).
 
@@ -247,7 +248,7 @@ The 8B answers "no" to every message in the model-only intent check, so its 100%
 | Callback recall / precision (full set) | 97% / 94.7%; held-out cohort precision 83% |
 | Hallucination | 13.3% fabrication on an untuned cohort; 2%-14% on the blind 51-answer grade; target ≤5% |
 | Issues | 7 open (#5, #10, #14, #17, #23, #33, #37), 11 closed |
-| Commits / PRs | 82 commits, 20 merged PRs as of the Sprint 3 merge; single contributor |
+| Commits / PRs | 84 commits, 21 merged PRs as of #39; single contributor |
 
 ## 12. Result Analysis
 
