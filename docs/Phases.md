@@ -36,6 +36,19 @@ phases are the actual next steps.
   the looked-up value to actually appear in the user's latest message
   before trusting the match. Verified: the exploit sequence now correctly
   fails safe, and happy-path identification still works.
+- **Bugfix (2026-09-20, #29, found via the larger-model experiment - see
+  `docs/eval/Model-Experiment-Results-2026-09-20.md`):** the guards only
+  rejected an *empty* subscription result, not a subscription lookup that never
+  ran. `llama3.1:8b` writes its second tool call out as text instead of calling
+  it, and the extractor then invented the tier ("free" for premium users), so
+  premium users were served the free KB. `UserInfoChainBasedEdge._parse` now
+  requires the subscription lookup to have run, takes `subscription` from the DB
+  record rather than the extractor, and rejects a record that belongs to a
+  different user. Behavior change: a model that skips the call now fails safe at
+  the greeting instead of silently assigning a tier. The 3B is unaffected: every
+  `ident-*` entry that completes still passes and `ident-005/013` still fail safe
+  (`ident-011` hangs on the 3B on unmodified `main` too: the model generates to
+  the context limit with no stop token, tracked in #30; unrelated to this change).
 
 ## Phase 3 — Tiered RAG support answers ✅ Done
 - `AuthenticatedUserNode` (`RetrievalNode`) answers from Chroma, retriever

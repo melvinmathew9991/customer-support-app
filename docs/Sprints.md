@@ -290,6 +290,32 @@ phrasings), #9 (ruff findings + lint gate).
   chunk ids, content-based staleness check, and a startup warning when the
   index is out of date. 8 unit tests (fake embeddings, no Ollama); verified on
   the real index (free 14 / paid 15 chunks, ids unique).
+- ❌ **Larger local model tried for #5, #17 and #23: not sufficient**
+  (`docs/eval/Model-Experiment-Plan-2026-09-19.md`, criteria fixed before the run;
+  `docs/eval/Model-Experiment-Results-2026-09-20.md`). `llama3.1:8b` vs `llama3.2:3b`,
+  model only, same code/KB/golden set (122 entries), one run each. **The 8B fails all
+  three conditions of the decision rule.** Held-out callback (`call-037`..`058`):
+  precision 100% but recall 80% (3B: 83% / 100%); the 8B answers "no" to every message
+  in the model-only intent check, so its precision is not judgment. Hallucination,
+  hand-graded blind on 51 answers: 1 clear hallucination each (needed 3 fewer); the 8B
+  refuses far more (20 vs 11), mostly premium users served the wrong KB. Regressions:
+  identification 100% -> 50%, fails-safe 100% -> 60%, retrieval recall 100% -> 62%, tier
+  leakage 0% -> 38%. Cause: the 8B writes its second tool call
+  (`user_subscription_db_search`) as text instead of calling it. Cost: about 1.3x slower
+  per entry, 4.9 GB vs 2.0 GB. Caveats: one run per model, one reader who is also the
+  assistant that ran it, and the 3B's clear-hallucination rate here (2%) is lower than the
+  earlier 9.5% on the same kind of set, so the model comparison is the safer reading.
+  **#5, #17 and #23 remain unmet with the 3B** (about 13% fabrication on untuned
+  questions vs 5%; callback precision 83% vs 95%).
+- ✅ **Identity guard now requires the subscription lookup (#29)**, found by the
+  experiment above. The guards rejected an empty subscription result but not a lookup
+  that never ran, so the extractor invented the tier. `_parse` now requires the lookup,
+  takes `subscription` from the DB record, and rejects a record for a different user.
+  Five unit tests (four fail on the old code). 3B: every `ident-*` entry that completes
+  passes, `ident-005/013` still fail safe; 8B: now fails safe instead of silently
+  downgrading premium users. Behavior change: a model that skips the call stays at the
+  greeting. Also found: a runaway 3B generation that hangs `ident-011` on unmodified
+  `main` (#30, not fixed).
 
 **Deliverables:** updated KB content, `scripts/reindex_kb.py` (or similar),
 a before/after retrieval-metrics comparison.

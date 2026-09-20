@@ -118,6 +118,15 @@ To achieve this you have access to the following tools:"""
                 return str(tool_input) if tool_input is not None else None
         return None
 
+    @staticmethod
+    def _observed_record(intermediate_steps, tool_name: str) -> Optional[dict]:
+        """The first record a tool actually returned, or None if it returned none."""
+        for action, observation in intermediate_steps:
+            if action.tool == tool_name and isinstance(observation, list) and observation:
+                if isinstance(observation[0], dict):
+                    return observation[0]
+        return None
+
     def _parse(self, message_history: MessageHistory) -> Union[str, BaseModel]:
         model_input = message_history.model_input()
         findings = self._gather_findings(model_input)
@@ -129,6 +138,14 @@ To achieve this you have access to the following tools:"""
         if self._NO_USER_MATCH.search(findings):
             raise OutputParserException(
                 "No user record matches the email or phone number provided."
+            )
+        # A model can skip the second tool call (llama3.1:8b writes it out as text
+        # instead of calling it), leaving no subscription in the findings. The
+        # extractor would then invent one, so a missing lookup must fail like an
+        # empty one. See the larger-model experiment results.
+        if "user_subscription_db_search result:" not in findings:
+            raise OutputParserException(
+                "The subscription lookup never ran - can't determine the user's tier."
             )
         if self._NO_SUBSCRIPTION_MATCH.search(findings):
             raise OutputParserException(
@@ -153,9 +170,25 @@ To achieve this you have access to the following tools:"""
                 "user's own message - refusing to trust a fabricated identity."
             )
 
-        return self._structured_llm.invoke(
+        # The tier decides which KB the user is served, so it comes from the DB
+        # record itself, never from the extractor's reading of the findings, and
+        # only if that record belongs to the user who was identified.
+        steps = getattr(self, "_last_intermediate_steps", [])
+        user_record = self._observed_record(steps, "user_info_db_search")
+        subscription_record = self._observed_record(steps, "user_subscription_db_search")
+        if (
+            user_record is None
+            or subscription_record is None
+            or str(user_record.get("user_id")) != str(subscription_record.get("user_id"))
+        ):
+            raise OutputParserException(
+                "The subscription record doesn't belong to the user that was looked up."
+            )
+
+        profile = self._structured_llm.invoke(
             f"Extract the requested information from these findings:\n{findings}"
         )
+        return profile.model_copy(update={"subscription": subscription_record["subscription"]})
 
 
 class AuthenticatedUserNode(RetrievalNode):
