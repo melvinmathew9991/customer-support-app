@@ -65,7 +65,8 @@ To achieve this you have access to the following tools:"""
                 func=search_user_info_on_db,
                 description=(
                     "Database tool to search user information. "
-                    "Input must be the user's email address as text, e.g. 'john@doe.com'. "
+                    "Input must be the user's email address or phone number exactly as "
+                    "they gave it, e.g. 'john@doe.com' or '0452 333 667'. "
                     "The result includes a numeric 'user_id' field to use with "
                     "user_subscription_db_search."
                 ),
@@ -119,6 +120,16 @@ To achieve this you have access to the following tools:"""
         return None
 
     @staticmethod
+    def _appears_in(value: str, message: str) -> bool:
+        """True if the looked-up value is in the user's own message, ignoring case and, for
+        phone numbers, spacing and punctuation."""
+        value, message = value.strip().lower(), message.lower()
+        if value in message:
+            return True
+        digits = re.sub(r"\D", "", value)
+        return len(digits) >= 6 and digits in re.sub(r"\D", "", message)
+
+    @staticmethod
     def _observed_record(intermediate_steps, tool_name: str) -> Optional[dict]:
         """The first record a tool actually returned, or None if it returned none."""
         for action, observation in intermediate_steps:
@@ -164,7 +175,7 @@ To achieve this you have access to the following tools:"""
         lookup_value = self._tool_call_input(
             getattr(self, "_last_intermediate_steps", []), "user_info_db_search"
         )
-        if not lookup_value or lookup_value.strip().lower() not in last_user_message.lower():
+        if not lookup_value or not self._appears_in(lookup_value, last_user_message):
             raise OutputParserException(
                 "The user lookup was performed with a value that doesn't appear in the "
                 "user's own message - refusing to trust a fabricated identity."
@@ -273,7 +284,8 @@ class CallCustomerEdge(PydanticTextBasedEdge):
         re.IGNORECASE,
     )
     _DO_NOT_CALL_RE = re.compile(
-        r"\b(?:don'?t|do\s+not|not|never|no)\s+(?:to\s+)?(?:call|phone|ring)\b|\bno\s+calls?\b",
+        r"\b(?:don'?t|do\s+not|not|never|no)\s+(?:to\s+)?(?:call|phone|ring)\b|\bno\s+calls?\b"
+        r"|\bno\s+need\s+(?:to\s+|for\s+(?:you\s+to\s+|a\s+)?)?(?:call|phone|ring)\b",
         re.IGNORECASE,
     )
 

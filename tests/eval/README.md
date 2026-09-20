@@ -4,11 +4,12 @@
 every later sprint's regression gate) is measured against. See
 `docs/eval/Metrics.md` for how each field below feeds a specific metric.
 
-This is a **draft structure** - one illustrative record per category, not
-yet the full 30-50 conversations `docs/Sprints.md` scopes for Sprint 1.
-Once the shape below is approved, the plan is to add more phrasing/topic
-variations within each existing category rather than invent new ones,
-so the category list stays the taxonomy every metric is defined against.
+The set is 122 conversations across the 11 categories below (`ident-*` 13,
+`rag-*` 51, `call-*` 58). Growth since Sprint 1 added phrasing and topic
+variations within the existing categories rather than new ones, so the
+category list stays the taxonomy every metric is defined against. Entries
+written as held-out cohorts were committed before the run that scored them
+(see the `docs/eval/` reports); do not tune a fix against them afterwards.
 
 ## Record schema
 
@@ -41,7 +42,7 @@ has no `retrieval` block, a RAG record has no `identified_user` block
 (identification already happened in a prior turn and isn't being tested
 again), etc. Leave irrelevant fields out rather than null-filling them.
 
-## Categories (draft set covers one example of each)
+## Categories
 
 | category | tests | metric(s) it feeds |
 |---|---|---|

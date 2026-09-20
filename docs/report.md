@@ -2,8 +2,8 @@
 
 **Repository:** melvinmathew9991/customer-support-app (`main`, with every sprint and fix branch merged and kept)
 **Stack:** Python 3.10.10 · Streamlit 1.39.0 · LangChain 0.3.7 (+ langchain-community/-ollama/-openai/-chroma/-text-splitters) · ChromaDB 0.5.20 · pydantic-settings 2.6.1 · pytest 8.3.3 · ruff 0.7.4 · Ollama (local: `llama3.2:3b` chat, `nomic-embed-text` embeddings). Dependencies are unchanged since the initial commit (`pyproject.toml` was never modified); Python and ruff versions were re-checked at the end of Sprint 2, the rest are as pinned.
-**Status:** End of Sprint 2 (knowledge base and retrieval hardening). Core product (Phases 1-5) was built before this engagement; Sprint 1 built the evaluation foundation and Sprint 2 used it to fix what it exposed. Sprint 2's definition of done is met (retrieval recall and tier leakage held at target on a 3x larger set), but **two accuracy targets are not met**: hallucination (about 13% on untuned questions vs ≤5%) and callback precision (83% on a held-out cohort vs ≥95%). The larger local model was tried and did not help. The maintainer accepted carrying both as known limits on 2026-09-20 rather than continuing to tune them in Sprint 2 (`docs/Sprints.md`).
-**Timeline:** 56 commits on `main`, 15 merged pull requests, 2026-09-18 → 2026-09-20, single contributor (Melvin Mathew). Pre-Sprint-1 (MVP baseline + out-of-band fixes) → Sprint 1 (evaluation foundation, PRs #1-#3) → git workflow tooling (PR #4) → Sprint 2 (PRs #15, #18-#21, #24-#28, #31).
+**Status:** End of Sprint 2 (knowledge base and retrieval hardening), after an end-to-end audit whose findings were fixed before the sprint was tagged (`docs/eval/Sprint2-Audit-2026-09-20.md`). Core product (Phases 1-5) was built before this engagement; Sprint 1 built the evaluation foundation and Sprint 2 used it to fix what it exposed. Sprint 2's definition of done is met (retrieval recall and tier leakage held at target on a 3x larger set), but **two accuracy targets are not met**: hallucination (about 13% on untuned questions vs ≤5%) and callback precision (83% on a held-out cohort vs ≥95%). The larger local model was tried and did not help. The maintainer accepted carrying both as known limits on 2026-09-20 rather than continuing to tune them in Sprint 2 (`docs/Sprints.md`).
+**Timeline:** 2026-09-18 → 2026-09-20, single contributor (Melvin Mathew). 58 commits and 16 merged pull requests on `main` at the Sprint 2 close-out (#32), plus the audit's final-fixes PR (#34). Pre-Sprint-1 (MVP baseline + out-of-band fixes) → Sprint 1 (evaluation foundation, PRs #1-#3) → git workflow tooling (PR #4) → Sprint 2 (PRs #15, #18-#21, #24-#28, #31, #32, #34).
 
 **Update cadence:** this file is refreshed at the end of each sprint (see `docs/Sprints.md`'s cross-cutting rules) so it always reflects the project's current, verified state rather than a point-in-time snapshot.
 
@@ -21,7 +21,7 @@ Primary use case: a tiered (free/paid) e-commerce support chatbot that identifie
 
 Objectives, as they currently stand:
 
-- Identify a user from a natural-language email/phone message and resolve their subscription tier — done. Three fabrication or bypass bugs were found and fixed along the way (§13 findings 6, 7, 20).
+- Identify a user from a natural-language email/phone message and resolve their subscription tier — done. Three fabrication or bypass bugs were found and fixed along the way (§13 findings 6, 7, 20). Phone numbers and mixed-case emails identify correctly since the audit fix (#11); before it, the greeting asked for a phone number the lookup could not use.
 - Answer support questions grounded only in the user's own tier's knowledge base, with zero cross-tier leakage — done for leakage (0% on 39 scored retrieval cases). **Grounding is not at target:** see the hallucination row below.
 - Detect callback requests and route them to a ticketing flow — working, with a caveat that changed in Sprint 2: recall is 97% (36/37) and precision 94.7% (36/38) on the full set, but on a 22-entry cohort held out from design, precision is **83%** (target ≥95%). A callback request must include a phone number (a maintainer decision, #7), and the ticket has no transcript-based summary unless the optional `audio` extra is installed.
 - Run entirely on a local, free model stack — done (Ollama). A larger local model (`llama3.1:8b`) was tested and rejected (§10.5).
@@ -37,32 +37,32 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 
 | Layer | Module | Lines | Responsibility |
 |---|---|---|---|
-| Config | `config.py` | 108 | pydantic-settings `Settings`: LLM/embeddings provider, paths, `turn_log_path` |
+| Config | `config.py` | 117 | pydantic-settings `Settings`: LLM/embeddings provider, paths, `turn_log_path`, `llm_max_tokens` and `llm_timeout_seconds` (#30) |
 | Logging | `logging_config.py` | 78 | Console logger + structured JSON-line turn logger (`logs/turns.jsonl`) |
 | Domain | `domain/chat.py` | 63 | `MessageHistory`, `Role`, `model_input()` |
 | Domain | `domain/graph.py` | 25 | `MessageOutput`, `EdgeOutput` |
 | Domain | `domain/validation.py` | 28 | `UserProfile`, `PhoneCallRequest`, `PhoneCallTicket`, `Validation` |
 | Graph framework | `graph/node.py` | 67 | `BaseNode`: `run_to_continue`, `execute` |
 | Graph framework | `graph/edge.py` | 89 | `BaseEdge`: parse/retry/exhaustion lifecycle |
-| Graph framework | `graph/chain_based_node.py` | 177 | `RetrievalNode` (RAG, strict answer prompt, `invents_steps()` guard, retrieval logging), `MultifunctionNode` |
+| Graph framework | `graph/chain_based_node.py` | 188 | `RetrievalNode` (RAG, strict answer prompt, `invents_steps()` guard, retrieval logging), `MultifunctionNode` |
 | Graph framework | `graph/chain_based_edge.py` | 157 | `ZeroShotChainBasedEdge` (tool-calling agent; exposes raw intermediate tool-call steps) |
 | Graph framework | `graph/text_based_edge.py` | 91 | `PydanticTextBasedEdge` (condition-check + structured extraction; system messages excluded from both) |
 | Graph framework | `graph/static_text_node.py` | 30 | Fixed-text node |
-| Agents | `agents/support.py` | 385 | `GreetingNode`, `UserInfoChainBasedEdge` (identity guards, tier taken from the DB record), `AuthenticatedUserNode`, `CallCustomerEdge` (digit pre-check, do-not-call veto, explicit-request patterns, typed-number check) / `CallCustomerNode` |
-| Tools | `tools/user_info_db.py` | 49 | Mock user/subscription DB (email-only, case-sensitive lookup, #11) |
+| Agents | `agents/support.py` | 397 | `GreetingNode`, `UserInfoChainBasedEdge` (identity guards, tier taken from the DB record), `AuthenticatedUserNode`, `CallCustomerEdge` (digit pre-check, do-not-call veto, explicit-request patterns, typed-number check) / `CallCustomerNode` |
+| Tools | `tools/user_info_db.py` | 65 | Mock user/subscription DB (email lookup ignores case, phone lookup by digits, #11) |
 | Tools | `tools/rag_responder.py` | 161 | `HelpCenterAgent`: idempotent index, stable chunk ids, content-based staleness check |
 | Tools | `tools/audio_transcribe.py` | 79 | Whisper-based call transcription; `transcription_available()` lets callers degrade instead of crashing |
-| Pipeline | `pipeline.py` | 105 | `CustomerSupportPipeline` orchestration + per-turn structured logging |
+| Pipeline | `pipeline.py` | 124 | `CustomerSupportPipeline` orchestration + per-turn structured logging; a model timeout becomes a reply (#30) |
 | Interfaces | `cli.py` | 30 | Terminal chat entrypoint |
 | Interfaces | `app.py` | 72 | Streamlit Chat + Graph tabs |
 | UI | `ui/graph_renderer.py` | 55 | Graphviz DAG rendering |
 | Scripts | `scripts/reindex_kb.py` | — | Rebuild the Chroma index from `assets/` (`--tier`, `--check`) |
-| Tests | `tests/**/test_*.py` | 1,068 | 209 tests across 12 files — deterministic graph/domain/config/agent/reindex logic only (no live model) |
+| Tests | `tests/**/test_*.py` | 1,239 | 237 tests across 14 files — deterministic graph/domain/config/agent/reindex/lookup/timeout logic only (no live model) |
 | Eval | `tests/eval/` | — | `golden_set.json` (122 hand-labeled conversations, 11 categories), `run_eval.py` (automated scoring harness), `README.md` (schema) |
 | CI / tooling | `.github/workflows/ci.yml`, `.githooks/pre-commit`, `.github/pull_request_template.md` | — | pytest + `ruff check` blocking on every PR; local pre-commit test hook |
-| Docs | `docs/*.md` + `docs/eval/*.md` | — | PRD, Architecture, Rules, Phases, Design, Sprints, Git-Workflow, Metrics, and 30 dated eval/experiment reports |
+| Docs | `docs/*.md` + `docs/eval/*.md` | — | PRD, Architecture, Rules, Phases, Design, Sprints, Git-Workflow, Metrics, and 33 dated eval/experiment reports |
 
-**1,853** total lines across `src/customer_support_app/`.
+**1,920** total lines across `src/customer_support_app/`.
 
 ## 5. Folder Structure
 
@@ -78,7 +78,7 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 │   ├── Phases.md            # what's built, phase by phase, with dated bugfix notes
 │   ├── Sprints.md           # the SDLC plan + live status of each sprint
 │   ├── report.md            # this file
-│   └── eval/                # Metrics.md + 30 dated baseline, held-out, fix-verification and experiment reports
+│   └── eval/                # Metrics.md + 33 dated baseline, held-out, fix-verification, audit and experiment reports
 ├── scripts/reindex_kb.py
 ├── src/customer_support_app/
 │   ├── config.py, logging_config.py, pipeline.py, cli.py, app.py
@@ -87,7 +87,7 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 │   ├── graph/             # the reusable Node/Edge framework
 │   ├── tools/              # user_info_db.py, rag_responder.py, audio_transcribe.py
 │   └── ui/graph_renderer.py
-├── tests/                 # 209 unit tests (deterministic logic only)
+├── tests/                 # 237 unit tests (deterministic logic only)
 │   └── eval/               # golden_set.json, run_eval.py, README.md
 ├── assets/                # free/ + paid/ knowledge base .txt files, sample call audio
 ├── notebooks/             # legacy exploratory prototype
@@ -98,10 +98,10 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 ## 6. End-to-End Workflow
 
 1. `GreetingNode` asks for an email/phone number.
-2. `UserInfoChainBasedEdge` (tool-calling agent over `tools/user_info_db.py`) resolves a `UserProfile`. **Four guards must all pass before a match is trusted:** (a) the user lookup tool must have run and returned a non-empty result; (b) the value it was called with must appear in the user's own message (closes a bug where the model invented a lookup argument that matched a real account); (c) the subscription lookup must have run and returned a record (#29: without this, a model that skipped the call had its tier invented by the extractor); (d) the subscription is taken from the DB record itself, and that record must belong to the user who was identified, never from the extractor's reading of the findings. Any failure fails safe with a "couldn't verify your account" reply.
+2. `UserInfoChainBasedEdge` (tool-calling agent over `tools/user_info_db.py`) resolves a `UserProfile`. **Four guards must all pass before a match is trusted:** (a) the user lookup tool must have run and returned a non-empty result (an email, matched ignoring case, or a phone number, matched by digits, #11); (b) the value it was called with must appear in the user's own message, compared by digits for phone numbers (closes a bug where the model invented a lookup argument that matched a real account); (c) the subscription lookup must have run and returned a record (#29: without this, a model that skipped the call had its tier invented by the extractor); (d) the subscription is taken from the DB record itself, and that record must belong to the user who was identified, never from the extractor's reading of the findings. Any failure fails safe with a "couldn't verify your account" reply.
 3. `AuthenticatedUserNode` (`RetrievalNode`) answers from Chroma, with the retriever chosen deterministically by `UserProfile.subscription`. The answer prompt requires the model to use only the retrieved context and to say the topic isn't covered otherwise; `invents_steps()` replaces an answer containing UI navigation wording absent from the retrieved context with the not-covered reply. `HelpCenterAgent` reuses a populated collection and warns at startup if the index is out of date with `assets/`.
-4. Every turn emits a structured JSON-line record (`logs/turns.jsonl`) — node transitions, retrieved doc sources + similarity scores, tool calls made, latency — the raw material the eval harness scores against.
-5. `CallCustomerEdge` decides whether the user asked to be called, in this order: no phone number (6+ digits) in the latest message → reject; a "don't call" phrasing → reject; a plain request ("call me", "give me a call", "someone should phone", "callback") → accept, all without the model; otherwise the LLM intent check decides, shown only user/assistant messages, with a short condition that mentioning, giving, changing or asking about a number is not a request. The number it will call must appear in the user's own message; if the model mis-copies it and the message holds exactly one number, that number is used. If it fires, `CallCustomerNode` produces a ticket from a Whisper transcription when the optional `audio` extra is installed, and otherwise replies that the callback was logged, with no ticket summary.
+4. Every LLM call is bounded (`LLM_MAX_TOKENS`, `LLM_TIMEOUT_SECONDS`); a timeout inside a turn becomes a "took too long, please try again" reply and the conversation stays on the same node (#30). Every turn emits a structured JSON-line record (`logs/turns.jsonl`) — node transitions, retrieved doc sources + similarity scores, tool calls made, latency — the raw material the eval harness scores against.
+5. `CallCustomerEdge` decides whether the user asked to be called, in this order: no phone number (6+ digits) in the latest message → reject; a "don't call" or "no need to call" phrasing → reject; a plain request ("call me", "give me a call", "someone should phone", "callback") → accept, all without the model; otherwise the LLM intent check decides, shown only user/assistant messages, with a short condition that mentioning, giving, changing or asking about a number is not a request. The number it will call must appear in the user's own message; if the model mis-copies it and the message holds exactly one number, that number is used. If it fires, `CallCustomerNode` produces a ticket from a Whisper transcription when the optional `audio` extra is installed, and otherwise replies that the callback was logged, with no ticket summary.
 
 ## 7. Technologies Used
 
@@ -115,10 +115,10 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 | Embeddings | Ollama `nomic-embed-text` (local) | Exercised |
 | Chat model (opt-in) | OpenAI via `langchain-openai` | Not exercised — no API key configured |
 | Audio/transcription | `openai-whisper` (optional `audio` extra) | **Not installed.** The app degrades gracefully without it; the with-whisper path (real transcription + ticket) has never been exercised (#10) |
-| Testing | pytest 8.3.3 | 209/209 pass |
-| Lint | ruff 0.7.4 | 0 findings (27 fixed in Sprint 2, #9); a blocking CI gate |
+| Testing | pytest 8.3.3 | 237/237 pass |
+| Lint | ruff 0.7.4 | 0 findings (27 fixed in Sprint 2, #9), including `ruff check .` since the legacy notebook was excluded; a blocking CI gate. `ruff format` is not enforced (19 files would change) |
 | CI | GitHub Actions (`ci.yml`) | pytest + `ruff check src tests scripts`, both blocking on PRs and pushes to `main`; green on the last merged PR |
-| Version control | git + GitHub (`melvinmathew9991/customer-support-app`) | 56 commits, 15 merged PRs; merge commits, branches kept as history (`docs/Git-Workflow.md`) |
+| Version control | git + GitHub (`melvinmathew9991/customer-support-app`) | 58 commits, 16 merged PRs at the close-out merge (#32), plus #34; merge commits, branches kept as history, tags `v0.1.0-sprint1` and `v0.1.0-sprint2` (`docs/Git-Workflow.md`) |
 
 ## 8. Implementation Details
 
@@ -142,10 +142,11 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 - **Callback behavior decision (#7):** a bare "call me" without a number does not trigger a callback; the digit pre-check stays.
 - **Lint and CI (#9):** all 27 ruff findings fixed and verified behavior-neutral (syntax-tree comparison); `ruff check` is a blocking CI step.
 - **Larger-model experiment:** `llama3.1:8b` vs `llama3.2:3b`, model only, with the criteria and decision rule committed before any run (§10.5). Not sufficient. It exposed a gap in the identity guard, fixed as **#29** (guard (c) and (d) above).
+- **End-to-end audit and final fixes** (`docs/eval/Sprint2-Audit-2026-09-20.md`): the sprint's claims held and the live metrics reproduced. The audit found and fixed: a README that recommended the rejected 8B model; the lookup not supporting the phone numbers the greeting asks for (**#11**); no cap or timeout on LLM calls (**#30**); a "no need to call me" phrasing that started a callback; a swallowed exception in the retrieval log; and stale docs. It left open the license (#14, a legal decision) and a compound-phrasing callback case (**#33**).
 
 ## 9. Methodology — Build History
 
-56 commits, 15 merged pull requests. By pull request:
+58 commits and 16 merged pull requests at the close-out merge, plus the audit's final-fixes PR. By pull request:
 
 | PR | What it did |
 |---|---|
@@ -162,6 +163,8 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 | #27 | Callback precision 67% → 83% on the held-out cohort (#23, not met) |
 | #28 | Larger-model experiment: plan, both full runs, results |
 | #31 | Identity guard fix (#29), sprint log entry |
+| #32 | Sprint 2 close-out and report refresh |
+| #34 | End-to-end audit: doc fixes, #11 lookup, #30 bounds, callback veto, retrieval-log warning; tag `v0.1.0-sprint2` |
 
 The working pattern since Sprint 2: criteria and held-out entries are committed **before** the run, fixes are developed only against entries already in the set, and the untouched cohort is run once afterwards (`docs/Git-Workflow.md`, the `docs/eval/` reports).
 
@@ -169,27 +172,27 @@ The working pattern since Sprint 2: criteria and held-out entries are committed 
 
 ### 10.1 Unit tests and lint
 
-209/209 passing across 12 files — deterministic graph/domain/config/agent/reindex logic, no live model required (30 at the end of Sprint 1). `ruff check` reports no findings and is blocking in CI.
+237/237 passing across 14 files — deterministic graph/domain/config/agent/reindex/lookup/timeout logic, no live model required (30 at the end of Sprint 1; 209 at the Sprint 2 close-out). `ruff check` reports no findings, including the whole repo since the notebook exclusion, and is blocking in CI (`src`, `tests`, `scripts`).
 
 ### 10.2 Live end-to-end verification
 
 Driven directly, not just tested: identification (free and premium), tiered RAG answers, the callback flow, and the full 122-entry golden set through the real pipeline, on both models. The Streamlit app was last launched in Sprint 1 (no re-run is recorded for Sprint 2).
 
-### 10.3 Eval harness — current state (`docs/eval/Precision-FullEval-2026-09-19.md`, 122 conversations, 11 categories, `llama3.2:3b`)
+### 10.3 Eval harness — current state (`docs/eval/Sprint2-Audit-PostFix-FullEval-2026-09-20.md`, 122 conversations, 11 categories, `llama3.2:3b`; the numbers reproduced the earlier `Precision-FullEval-2026-09-19.md` run)
 
 | Metric | Now | Target | End of Sprint 1 (38 entries) |
 |---|---|---|---|
-| Identification success rate | **100%** (n=6) | ≥95% clean / ≥80% ambiguous | 100% |
+| Identification success rate | **100%** (n=8: `ident-007` and `ident-010` became scored after #11) | ≥95% clean / ≥80% ambiguous | 100% |
 | Fails-safe rate | **100%** (n=5) | 100% | 100% |
 | Retrieval recall@k | **100%** (n=39) | ≥90% | 100% (n=12) |
 | Tier-leakage rate | **0%** (n=39) | 0% | 0% (n=12) |
-| Callback recall | **97%** (36/37) | ≥90% | 100% (n=7) |
-| Callback precision, full set | **94.7%** (36/38) | ≥95% | 100% (n=7) |
+| Callback recall | **100%** (37/37; 97% in the earlier run) | ≥90% | 100% (n=7) |
+| Callback precision, full set | **94.9%** (37/39; 94.7% in the earlier run) | ≥95% | 100% (n=7) |
 | Callback precision, held-out cohort (`call-037`..`058`) | **83%** (10/12) — **misses target** | ≥95% | not measured |
 | Phone extraction | **100%** | none | not measured (94% before the #22 fix, on a later 100-entry run) |
 | Hallucination rate | see §10.4 — **misses target** | ≤5% | 20% (3/15) |
 
-The callback rows are lower than Sprint 1's, and that is a *better* measurement, not a regression: Sprint 1's three negatives contained no digits, so the digit pre-check rejected them before the model was consulted and they could never fail. Precision only became informative once negatives that contain a number were added. The full-set 94.7% is inflated by entries the callback change was developed on; the held-out 83% is the honest figure. A fresh 3B full run on 2026-09-19 (`Model-Full-llama3-2-3b-2026-09-19.md`) scored callback recall 100% and precision 95% on the same code, an unexplained small difference.
+The callback rows are lower than Sprint 1's, and that is a *better* measurement, not a regression: Sprint 1's three negatives contained no digits, so the digit pre-check rejected them before the model was consulted and they could never fail. Precision only became informative once negatives that contain a number were added. The full-set 94.7% is inflated by entries the callback change was developed on; the held-out 83% is the honest figure. A fresh 3B full run on 2026-09-19 (`Model-Full-llama3-2-3b-2026-09-19.md`) and the audit's two runs scored callback recall 100% against 97% in the earlier full run on the same code, an unexplained small difference. The held-out 83% reproduced exactly, with the same two false triggers (`call-042`, `call-047`).
 
 ### 10.4 Hallucination trajectory (hand-graded against the KB text, one reader)
 
@@ -219,7 +222,7 @@ The 8B answers "no" to every message in the model-only intent check, so its 100%
 
 | Metric | Value |
 |---|---|
-| Unit tests passing | 209/209 (12 files) |
+| Unit tests passing | 237/237 (14 files) |
 | Golden-set size | 122 conversations across 11 categories |
 | Held-out sets written before their run | 21 `rag-*`, 16 + 22 callback, 15 for #16/#17, 10 for #22 |
 | Identity bypass/fabrication bugs found and fixed | 3 |
@@ -229,8 +232,8 @@ The 8B answers "no" to every message in the model-only intent check, so its 100%
 | Retrieval recall / tier leakage | 100% / 0% (n=39) |
 | Callback recall / precision (full set) | 97% / 94.7%; held-out cohort precision 83% |
 | Hallucination | 13.3% fabrication on an untuned cohort; 2%-14% on the blind 51-answer grade; target ≤5% |
-| Issues | 9 open (#5, #10, #11, #12, #13, #14, #17, #23, #30), 7 closed |
-| Commits / PRs | 56 commits, 15 merged PRs, single contributor |
+| Issues | 8 open (#5, #10, #12, #13, #14, #17, #23, #33), 9 closed |
+| Commits / PRs | 58 commits, 16 merged PRs at the close-out merge, plus #34; single contributor |
 
 ## 12. Result Analysis
 
@@ -253,7 +256,7 @@ The levers were spent in order of cost. Triage showed generation, not retrieval,
 | 9 | Hallucination on adversarial tier-crossing questions: retrieval stayed scoped but the answer contradicted its own context | Medium | Partly fixed, open (#5): see finding 19 and §10.4 |
 | 10 | Eval harness: `KeyError` on two open-ended golden entries | Medium | Fixed |
 | 11 | Eval harness: callback recall conflated "never fired" with "fired, then crashed" | Medium | Fixed |
-| 12 | Mock DB lookup is case-sensitive and email-only, despite the prompt advertising phone lookup | Low | Open (#11), flagged for Phase 7 |
+| 12 | Mock DB lookup is case-sensitive and email-only, despite the greeting asking for a phone number | Low | Fixed (#11), in the final audit fixes |
 | 13 | Hallucination rate 3/15 = 20% against ≤5% (Sprint 1 grade) | Medium | Superseded by §10.4; target not met |
 | 14 | Free-tier KB contradicts itself on in-person selling | Low | Fixed (#6, KB rewrite) |
 | 15 | Harness gap: out-of-scope entries had no `final_node` check, hiding a false callback trigger | Medium | Fixed |
@@ -262,8 +265,12 @@ The levers were spent in order of cost. Triage showed generation, not retrieval,
 | 18 | Free KB contradicts itself on manual payments (`payments.txt` lines 8 vs 46) | Medium | Fixed (#16) |
 | 19 | Model invents UI steps for "how do I..." questions the KB doesn't answer | Medium | Partly fixed: guard removes click paths; 13.3% fabrication remains on an untuned cohort. Open (#17) |
 | 20 | Identity guard rejected an *empty* subscription result but not a lookup that never ran, so the extractor invented the tier (assigned "free" to premium users). Latent with the shipped 3B; found via the 8B | Medium | Fixed (#29): lookup required, tier from the DB record, record must match the user |
-| 21 | LLM calls have no generation cap or timeout; the 3B intermittently generates to the context limit, hanging `ident-011` (also on unmodified `main`) | Medium | Open (#30) |
+| 21 | LLM calls have no generation cap or timeout; the 3B intermittently generates to the context limit, hanging `ident-011` (also on unmodified `main`) | Medium | Fixed (#30): bounded calls, timeout becomes a reply. Verified by unit tests; the hang is intermittent, so one clean live run is not proof |
 | 22 | The larger local model (`llama3.1:8b`) writes tool calls as text and answers "no" to every callback intent check | Info | Documented; not adopted (§10.5) |
+| 23 | README recommended `llama3.1:8b` for flaky flows, contradicting the experiment that rejected it | Low | Fixed |
+| 24 | `RetrievalNode` swallowed any exception in the retrieval-log lookup that recall and tier-leakage scoring read | Low | Fixed: logs a warning |
+| 25 | "No need to call me back, my number is ..." started a callback (the do-not-call veto did not know "no need") | Medium | Fixed. The compound case (declines and requests in one sentence) is open (#33) |
+| 26 | Public repository with no LICENSE; the KB is Shopify-derived | Medium | Open (#14), left to the maintainer: a legal decision |
 
 ## 14. Challenges Faced
 
@@ -275,30 +282,30 @@ The larger-model experiment had its own traps. The 8B's failures were first read
 
 ## 15. Limitations
 
-**Still true:** hallucination (about 13% on untuned questions) and held-out callback precision (83%) are below target; the with-whisper path (real call transcription and ticket summary) has never been exercised, so ticket quality with the `audio` extra installed is unknown; the mock DB is email-only and case-sensitive; there is no session persistence (Phase 6) and no real user store (Phase 7); OpenAI models were never tested.
+**Still true:** hallucination (about 13% on untuned questions) and held-out callback precision (83%) are below target; the with-whisper path (real call transcription and ticket summary) has never been exercised, so ticket quality with the `audio` extra installed is unknown; the mock DB is a mock (identification is a lookup, not authentication: anyone who knows an email or phone number is served that customer's tier); there is no session persistence (Phase 6) and no real user store (Phase 7); OpenAI models were never tested (the new token and timeout bounds are configured for them but unexercised); the repository has no LICENSE (#14).
 
-**No longer true:** no CI; ruff configured but unenforced (27 findings); the free-tier KB contradicting itself (twice); identification bypassable with fabricated input; no way to reindex the KB deterministically; no held-out data; callback extraction returning the wrong number; a model that skips a tool call getting a made-up tier.
+**No longer true:** no CI; ruff configured but unenforced (27 findings); the free-tier KB contradicting itself (twice); identification bypassable with fabricated input; no way to reindex the KB deterministically; no held-out data; callback extraction returning the wrong number; a model that skips a tool call getting a made-up tier; phone numbers and mixed-case emails not identifying anyone; no cap or timeout on LLM calls (#30); the README steering users to the rejected 8B model.
 
 **New, from Sprint 2:**
 - A callback request must include a phone number (maintainer decision, #7); a bare "call me" gets a normal RAG reply.
 - All eval numbers are single runs on a 3B model with small n. One answer is 2-7 points on the hallucination sets, and the 22-entry callback cohort has only 12 negatives.
 - Hallucination is graded by one reader, and the latest blind grade was done by the same assistant that ran the experiment, not a human. Blinding hides the model, not the reader's judgment; the two most recent grades disagree with the earlier ones (2% vs about 10%), so the absolute rate is uncertain.
-- Temperature 0 does not give identical output: a fresh full 3B run differed slightly from the earlier one on the same code, and `ident-011` completes or hangs depending on Ollama's state (#30). Not investigated.
+- Temperature 0 does not give identical output: a fresh full 3B run differed slightly from the earlier one on the same code, and `ident-011` completed or hung depending on Ollama's state before the #30 bounds (it completed in the audit's post-fix run, which is not proof, since the hang is intermittent). Not investigated.
 - Prompts, guards and patterns were developed around 3B behavior, which favors it in any comparison with another model.
 
 ## 16. Future Improvements
 
-**Quick:** #30 (cap and time-limit LLM calls; a self-contained first task for Sprint 3). #5, #17 and #23 stay open as accepted known limits (`docs/Sprints.md`).
+**Quick:** #14 (license, and whether the Shopify-derived KB stays public: a maintainer decision), #12 (CLI `EOFError`). #5, #17, #23 and #33 stay open as accepted known limits (`docs/Sprints.md`).
 
-**Medium:** exercise the with-whisper transcription-to-ticket path once (#10); a case-insensitive, phone-capable lookup ahead of Phase 7 (#11); decide the license and whether the Shopify-derived KB stays public (#14); if hallucination or callback precision must reach target, scope it as its own sprint with a larger pre-committed held-out set (a second-pass grounding check for #5/#17; a labeled callback-intent set large enough to tune without overfitting for #23); investigate the small 3B run-to-run difference.
+**Medium:** exercise the with-whisper transcription-to-ticket path once (#10); if hallucination or callback precision must reach target, scope it as its own sprint with a larger pre-committed held-out set (a second-pass grounding check for #5/#17; a labeled callback-intent set large enough to tune without overfitting for #23); investigate the small 3B run-to-run difference.
 
 **Larger:** Phase 6 (session persistence) is next per `docs/Sprints.md`, then Phase 7 (real user store) per `docs/Phases.md`.
 
 ### Three-bullet summary
 
-- The product (Phases 1-5) already worked before this engagement; it is now *provably* measured — a 122-conversation golden set, 209 unit tests, a blocking CI gate, and held-out entries committed before each run — up from zero offline metrics at the start.
+- The product (Phases 1-5) already worked before this engagement; it is now *provably* measured — a 122-conversation golden set, 237 unit tests, a blocking CI gate, and held-out entries committed before each run — up from zero offline metrics at the start.
 - Three identity bypass or fabrication bugs, a wrong-number callback bug and two KB contradictions were found and fixed, most only because the evaluation was built adversarially; retrieval recall (100%) and tier leakage (0%) held at target throughout.
-- Two accuracy targets are still missed with the 3B: hallucination (about 13% on untuned questions vs ≤5%) and callback precision on unseen messages (83% vs ≥95%). A larger local model was tried under criteria fixed in advance and did not help, so the maintainer accepted carrying both as known limits.
+- Two accuracy targets are still missed with the 3B (an end-to-end audit afterwards reproduced the metrics and fixed its own findings): hallucination (about 13% on untuned questions vs ≤5%) and callback precision on unseen messages (83% vs ≥95%). A larger local model was tried under criteria fixed in advance and did not help, so the maintainer accepted carrying both as known limits.
 
 ### One-line description
 

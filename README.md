@@ -85,9 +85,12 @@ Optional extras:
 
 Any Ollama model that supports tool/function calling can be used (e.g.
 `llama3.2`, `llama3.1`, `qwen2.5`, `mistral-nemo`) - set `OLLAMA_MODEL`
-accordingly. The 3B model above is reliable for identification/RAG/call-me
-detection in testing; if you see flakiness on tool-heavy flows, a larger
-model (`llama3.1:8b`, `qwen2.5`) will be more consistent.
+accordingly. The 3B model above is the one this project is tuned and measured
+against. A larger model is **not** automatically better here: `llama3.1:8b` was
+tested on the full golden set and was worse (it writes its second tool call as
+text, which broke identification, and it answers "no" to every callback check);
+see `docs/eval/Model-Experiment-Results-2026-09-20.md`. Re-run the golden set
+(`tests/eval/run_eval.py`) before switching models.
 
 ### Switching to OpenAI instead
 
@@ -167,5 +170,6 @@ instead of silently answering from the old content.
 All settings are read from environment variables / `.env` via
 `src/customer_support_app/config.py`'s `Settings` (pydantic-settings). See
 `.env.example` for the full list, including `AGENT_VERBOSE` (LangChain's
-step-by-step tool-call tracing, off by default) and `ASSETS_DIR`/`CHROMA_DIR`
-overrides.
+step-by-step tool-call tracing, off by default), `ASSETS_DIR`/`CHROMA_DIR`
+overrides, and `LLM_MAX_TOKENS` / `LLM_TIMEOUT_SECONDS` (the per-call generation cap and
+wait limit; a call that times out becomes a "please try again" reply).

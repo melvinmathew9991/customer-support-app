@@ -1,5 +1,8 @@
+import logging
 import uuid
 from typing import List, Optional, Tuple
+
+import httpx
 
 from customer_support_app.agents.support import (
     AuthenticatedUserNode,
@@ -14,6 +17,10 @@ from customer_support_app.domain.graph import EdgeOutput, MessageOutput
 from customer_support_app.domain.validation import PhoneCallTicket, UserProfile
 from customer_support_app.graph.node import BaseNode
 from customer_support_app.logging_config import log_latency
+
+logger = logging.getLogger(__name__)
+
+TIMEOUT_REPLY = "Sorry, that took too long to answer. Please try again."
 
 
 class CustomerSupportPipeline:
@@ -76,7 +83,19 @@ class CustomerSupportPipeline:
                 return [greeting], self._current_node.is_node_final()
 
             else:
-                output = self._current_node.execute(self._message_history)
+                try:
+                    output = self._current_node.execute(self._message_history)
+                except httpx.TimeoutException:
+                    # The model did not answer within LLM_TIMEOUT_SECONDS. Stay on the same
+                    # node so the user can simply ask again, instead of crashing the session.
+                    logger.warning("LLM call timed out on %s", node_before, exc_info=True)
+                    turn_fields["timed_out"] = True
+                    turn_fields["node_after"] = type(self._current_node).__name__
+                    self._message_history.add_assistant_message(content=TIMEOUT_REPLY)
+                    return (
+                        [MessageOutput(TIMEOUT_REPLY, role=Role.ASSISTANT)],
+                        self._current_node.is_node_final(),
+                    )
                 if isinstance(output, EdgeOutput):
                     if output.message_output is not None:
                         for msg_output in output.message_output:

@@ -176,7 +176,7 @@ skipping it; every subsequent sprint reuses it.
 
 ---
 
-## Sprint 2 (2 weeks) — Knowledge base & retrieval hardening
+## Sprint 2 (2 weeks) — Knowledge base & retrieval hardening ✅ Done (closed 2026-09-20, PR #32 and the final-fixes PR #34; tag `v0.1.0-sprint2`)
 **SDLC stage:** Data engineering + iterative build
 **Goal:** Fix retrieval/content gaps the Sprint 1 baseline exposed.
 
@@ -350,16 +350,35 @@ second-pass grounding check for #5/#17 adds a model call per answer for uncertai
 gain. If the maintainer wants either pursued, it should be scoped as its own sprint
 with a bigger, pre-committed held-out set.
 
+**End-to-end audit and final fixes (2026-09-20, after the close-out merge):** the
+maintainer asked for an audit of everything up to this point and for its findings to be
+fixed before the sprint was tagged. `docs/eval/Sprint2-Audit-2026-09-20.md` has the
+method, findings and before/after live numbers. Nothing regressed; the sprint's claims
+held. What changed:
+- Docs that contradicted the findings were fixed (the README no longer recommends
+  `llama3.1:8b`; the eval README, `Phases.md` Phase 8 and `report.md` were stale).
+- **#30 fixed:** every LLM call is bounded (`LLM_MAX_TOKENS`, `LLM_TIMEOUT_SECONDS`), and
+  a timeout becomes a reply instead of a crash or a hang.
+- **#11 fixed:** the mock lookup ignores email case and matches phone numbers, so the
+  greeting's promise is true. `ident-007` and `ident-010` are now scored entries.
+- A "no need to call me" phrasing that started a callback is now vetoed; the compound
+  case (declines and requests in one sentence) is tracked as #33.
+- A silently swallowed exception in the retrieval log now logs a warning.
+- Milestones: #5, #17, #23 and #33 moved to a new Sprint 3 milestone; Sprint 2 closed
+  and tagged `v0.1.0-sprint2`.
+- Left open by the maintainer's decision: #14 (license, and whether the Shopify-derived
+  KB stays public), which is a legal choice.
+
 **Carried into Sprint 3 and after:**
-- #5, #17, #23: open, as known limits (above).
-- #30: no generation cap or timeout on LLM calls; `ident-011` hangs intermittently on
-  the 3B. Small, self-contained; a good first task.
-- Pre-existing and untouched: #10 (with-whisper path never exercised), #11 (mock DB
-  lookup is case-sensitive and email-only), #12 (CLI `EOFError`), #13 (chromadb
-  telemetry warnings), #14 (license and whether the Shopify-derived KB stays public).
+- #5, #17, #23: open, as known limits (above). #33 (callback veto and compound
+  phrasings) is the same family as #23.
+- Pre-existing and untouched: #10 (with-whisper path never exercised), #12 (CLI
+  `EOFError`), #13 (chromadb telemetry warnings), #14 (license and whether the
+  Shopify-derived KB stays public).
 - Unexplained: a fresh 3B full run differed slightly from the earlier full eval on the
-  same code (callback recall 100% vs 97%). Not investigated.
-- `docs/report.md` refreshed for the end of Sprint 2.
+  same code (callback recall 100% vs 97%); the audit's two runs are consistent with that
+  variance. Not investigated.
+- `docs/report.md` refreshed for the end of Sprint 2 and again after the audit.
 
 **Deliverables:** updated KB content, `scripts/reindex_kb.py` (or similar),
 a before/after retrieval-metrics comparison.

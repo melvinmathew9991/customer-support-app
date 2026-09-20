@@ -1,3 +1,5 @@
+import re
+
 from langchain_core.tools import tool
 
 user_sub = [
@@ -37,10 +39,24 @@ user_info = [
 ]
 
 
+# Fewer digits than this is not a phone number worth matching on.
+_MIN_PHONE_DIGITS = 6
+
+
+def _digits(text: str) -> str:
+    return re.sub(r"\D", "", text)
+
+
 @tool("user_info_db", return_direct=True)
 def search_user_info_on_db(email: str):
-    """Searches users by email"""
-    return list(filter(lambda user: user["email"] == email, user_info))
+    """Searches users by email address (any letter case) or phone number (any spacing)"""
+    query = email.strip()
+    if "@" in query:
+        return [user for user in user_info if user["email"].lower() == query.lower()]
+    digits = _digits(query)
+    if len(digits) >= _MIN_PHONE_DIGITS:
+        return [user for user in user_info if _digits(user["phone"]) == digits]
+    return []
 
 
 @tool("user_subscription_db", return_direct=True)

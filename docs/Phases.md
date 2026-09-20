@@ -49,6 +49,15 @@ phases are the actual next steps.
   `ident-*` entry that completes still passes and `ident-005/013` still fail safe
   (`ident-011` hangs on the 3B on unmodified `main` too: the model generates to
   the context limit with no stop token, tracked in #30; unrelated to this change).
+- **Lookup (2026-09-20, #11, found in the Sprint 2 audit - see
+  `docs/eval/Sprint2-Audit-2026-09-20.md`):** the greeting asks for an email or phone
+  number, but `search_user_info_on_db` compared the email string exactly, so a phone
+  number could never identify anyone and a differently-cased email failed too. It now
+  matches an email ignoring case and surrounding space, or a phone number by its digits
+  (6 or more, spacing and punctuation ignored); anything else matches nobody. The guard
+  that requires the looked-up value to appear in the user's own message compares digits
+  for phone numbers. Behavior change: phone and mixed-case email identification now
+  succeed instead of failing safe; `ident-007` and `ident-010` are scored entries.
 
 ## Phase 3 — Tiered RAG support answers ✅ Done
 - `AuthenticatedUserNode` (`RetrievalNode`) answers from Chroma, retriever
@@ -119,12 +128,24 @@ phases are the actual next steps.
     Revisit after #23 improves intent precision, with golden-set entries for the
     no-number phrasings, a full eval re-run, recall >=90% and precision >=95%.
 
+- **Negation (2026-09-20, Sprint 2 audit):** `_DO_NOT_CALL_RE` also vetoes "no need to
+  call/phone/ring" and "no need for (you to|a) call", which the plain-request pattern
+  used to accept ("No need to call me back, my number is ..."). A message that declines
+  and requests in one sentence ("Never call me before 9am, but do call me on ...") is
+  still vetoed whole; tracked as #33.
+
 ## Phase 5 — Interfaces ✅ Done
 - Streamlit `app.py` (Chat + Graph tabs, live DAG rendering via
   `ui/graph_renderer.py`).
 - CLI (`cli.py`, `customer-support-chat` console script).
 - Provider abstraction (`config.py`): Ollama by default, OpenAI opt-in, for
   both chat model and embeddings.
+- **Bounded LLM calls (2026-09-20, #30):** `LLM_MAX_TOKENS` (default 1024) and
+  `LLM_TIMEOUT_SECONDS` (default 120) apply to both providers. A timeout inside a turn
+  becomes "Sorry, that took too long to answer. Please try again." (turn log field
+  `timed_out`), and the conversation stays on the same node. Before this, a 3B model that
+  never emitted a stop token hung the turn indefinitely (`ident-011`). The OpenAI path is
+  configured the same way but has not been exercised.
 
 ## Phase 6 — Session persistence (next)
 - Persist `MessageHistory` + current node across process restarts (not just
@@ -136,12 +157,20 @@ phases are the actual next steps.
 ## Phase 7 — Real user store
 - Replace the mock `tools/user_info_db.py` with a real lookup (API or DB),
   behind the same function signatures so `agents/support.py` doesn't change.
+- Identification today is a lookup, not authentication: anyone who knows a
+  customer's email or phone number is served that customer's tier. That is a
+  stated non-goal in `PRD.md` and the KB is low-sensitivity, but a real user
+  store is the point to decide whether it needs a second factor.
 
-## Phase 8 — Evaluation harness for LLM-dependent behavior
-- Today, tool-calling/RAG/structured-extraction correctness is verified
-  manually against Ollama (per the README). Build a lightweight, repeatable
-  eval (fixed transcripts + assertions) to catch regressions when prompts,
-  models, or the graph change, without making CI depend on a live model.
+## Phase 8 — Evaluation harness for LLM-dependent behavior (partly done)
+- **Built (Sprints 1-2):** a 122-conversation golden set
+  (`tests/eval/golden_set.json`), an automated scoring harness
+  (`tests/eval/run_eval.py`), metric definitions and targets
+  (`docs/eval/Metrics.md`), and the structured per-turn log it scores from.
+  It runs manually against a live Ollama model; the deterministic scoring
+  logic is unit-tested and runs in CI.
+- **Still open (Sprint 5):** a CI-enforced regression gate. CI does not run the
+  live eval, and there are no per-metric regression thresholds yet.
 
 ## Phase 9 — UI/design polish
 - Apply `Design.md` (theme, typography, chat styling) to `app.py` — today
@@ -149,8 +178,9 @@ phases are the actual next steps.
 
 ## Phase 10 — Deployment & observability
 - Containerize / document a deployment path for the Streamlit app.
-- Structured logging/metrics beyond `logging_config.py`'s current console
-  logging, if this moves beyond local use.
+- Metrics beyond what exists (a structured per-turn JSON-line log,
+  `logs/turns.jsonl`, was added in Sprint 1 for the eval harness), such as
+  aggregation, alerting and token/cost tracking, if this moves beyond local use.
 
 ## Working agreement
 - Don't start a later phase's scope inside an earlier one's PR/change —

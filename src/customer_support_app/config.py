@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     agent_verbose: bool = False
     log_level: str = "INFO"
 
+    # Bounds on a single LLM call. The 3B model can fail to emit a stop token and generate
+    # to the context limit (#30, ident-011), which used to hang the turn indefinitely.
+    llm_max_tokens: int = Field(default=1024, gt=0)
+    llm_timeout_seconds: float = Field(default=120.0, gt=0)
+
 
 @lru_cache
 def get_settings() -> Settings:
@@ -68,6 +73,8 @@ def get_chat_model(temperature: float = 0):
             model=settings.ollama_model,
             base_url=settings.ollama_base_url,
             temperature=temperature,
+            num_predict=settings.llm_max_tokens,
+            client_kwargs={"timeout": settings.llm_timeout_seconds},
         )
 
     if settings.llm_provider == "openai":
@@ -82,6 +89,8 @@ def get_chat_model(temperature: float = 0):
             temperature=temperature,
             model=settings.openai_model,
             api_key=settings.openai_api_key,
+            max_tokens=settings.llm_max_tokens,
+            request_timeout=settings.llm_timeout_seconds,
         )
 
     raise ValueError(f"Unsupported llm_provider '{settings.llm_provider}'.")
