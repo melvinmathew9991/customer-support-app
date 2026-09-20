@@ -317,6 +317,50 @@ phrasings), #9 (ruff findings + lint gate).
   greeting. Also found: a runaway 3B generation that hangs `ident-011` on unmodified
   `main` (#30, not fixed).
 
+### Sprint 2 close-out (2026-09-20)
+
+**Definition of done: met.** Retrieval recall@k is 100% and tier leakage 0%, on 39
+retrieval entries now against 12 in the Sprint 1 baseline, so neither regressed
+(`docs/eval/Precision-FullEval-2026-09-19.md`). Deliverables: KB content corrected
+(#6, #16), `scripts/reindex_kb.py`, and a before/after comparison per fix in
+`docs/eval/`. Lint is a hard CI gate (#9). Golden set 38 -> 122 entries, 209 unit
+tests (Sprint 1: 30).
+
+**The accuracy targets set in the issues were not met.** Each was attacked with the
+levers below, measured on held-out entries written before the run, and none reached
+target:
+
+| Issue | Metric | Baseline | Now | Target | Tried |
+|---|---|---|---|---|---|
+| #5 / #17 | Hallucination (hand-graded) | 20% (3/15) | 13.3% fabrication (2/15) on an untuned 15-entry cohort, down from 26.7%; 9.5% (2/21) on the first held-out set | <=5% | stricter answer prompt, KB rewrite, invented-steps guard, larger local model (no gain) |
+| #23 | Callback precision (22-entry held-out cohort) | 67% | 83% (2 false triggers in 12), recall 10/10 | >=95% | four alternative wordings (each lost recall), deterministic accept/veto patterns, larger local model (no gain) |
+
+Read these with the caveats in their reports: n is small (one answer is 2-7 points),
+the hallucination grade is one reader's judgment, and the latest blind grade of 51
+answers (`Model-Experiment-Results-2026-09-20.md`) gives anywhere from 2% to 14%
+depending on whether borderline answers count, so the absolute rate is uncertain even
+though it is not clearly at target.
+
+**Decision (accepted by the maintainer, Melvin Mathew, 2026-09-20):** stop tuning
+these in Sprint 2 and carry them as known limits. The cheap levers are spent: prompt
+and KB changes showed diminishing returns, and the larger local model regressed
+identification and did not reduce hallucination. What is left is expensive or risky:
+more deterministic patterns for #23 would likely overfit a 22-entry cohort, and a
+second-pass grounding check for #5/#17 adds a model call per answer for uncertain
+gain. If the maintainer wants either pursued, it should be scoped as its own sprint
+with a bigger, pre-committed held-out set.
+
+**Carried into Sprint 3 and after:**
+- #5, #17, #23: open, as known limits (above).
+- #30: no generation cap or timeout on LLM calls; `ident-011` hangs intermittently on
+  the 3B. Small, self-contained; a good first task.
+- Pre-existing and untouched: #10 (with-whisper path never exercised), #11 (mock DB
+  lookup is case-sensitive and email-only), #12 (CLI `EOFError`), #13 (chromadb
+  telemetry warnings), #14 (license and whether the Shopify-derived KB stays public).
+- Unexplained: a fresh 3B full run differed slightly from the earlier full eval on the
+  same code (callback recall 100% vs 97%). Not investigated.
+- `docs/report.md` refreshed for the end of Sprint 2.
+
 **Deliverables:** updated KB content, `scripts/reindex_kb.py` (or similar),
 a before/after retrieval-metrics comparison.
 **Definition of done:** retrieval recall@k and tier-leakage rate both
