@@ -101,9 +101,17 @@
     "turns": ["MichaelJackson@Gmail.com"],
     "turn_budget": 1,
     "expected": {
-      "expected_behavior": "Genuinely uncertain by design - tools/user_info_db.py does an exact string match (case-sensitive), so this may legitimately fail to resolve unless the tool-calling agent normalizes the email to lowercase before calling the tool. Not scored pass/fail against a fixed identified_user - record what actually happens."
+      "identified_user": {
+        "name": "Michael Jackson",
+        "email": "michaeljackson@gmail.com",
+        "subscription": "premium",
+        "user_id": 1,
+        "phone": "0452 333 666",
+        "language": "English"
+      },
+      "final_node": "AuthenticatedUserNode"
     },
-    "notes": "Real-world emails are effectively case-insensitive; the mock DB isn't. Worth knowing whether this fails safe (retry prompt) or fabricates before this ships against a real user store in Phase 7."
+    "notes": "Real-world emails are effectively case-insensitive. Scored since #11 (the mock lookup now ignores case); before that the lookup was exact-match and this failed safe with the retry prompt."
   },
   {
     "id": "ident-009",
@@ -131,9 +139,17 @@
     "turns": ["0452 333 667"],
     "turn_budget": 1,
     "expected": {
-      "expected_behavior": "Genuinely uncertain by design - tools/user_info_db.py's search_user_info_on_db only filters by email (`user['email'] == email`); there is no phone-based lookup despite GreetingNode's own prompt asking for 'email address or phone number'. Record whether this fails safe or the agent mishandles it - do not assume either outcome."
+      "identified_user": {
+        "name": "John Doe",
+        "email": "john@doe.com",
+        "subscription": "free",
+        "user_id": 2,
+        "phone": "0452 333 667",
+        "language": "Spanish"
+      },
+      "final_node": "AuthenticatedUserNode"
     },
-    "notes": "0452 333 667 is John Doe's real phone number in the mock DB, but the lookup tool can't search by phone at all. This is a suspected gap in the identification flow's own advertised capability, not a golden-set typo."
+    "notes": "0452 333 667 is John Doe's real phone number in the mock DB. Scored since #11 (the lookup now accepts a phone number, and the identity guard compares digits); before that the lookup could only search by email, contrary to the greeting, and this failed safe with the retry prompt."
   },
   {
     "id": "ident-004",
