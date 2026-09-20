@@ -49,6 +49,15 @@ phases are the actual next steps.
   `ident-*` entry that completes still passes and `ident-005/013` still fail safe
   (`ident-011` hangs on the 3B on unmodified `main` too: the model generates to
   the context limit with no stop token, tracked in #30; unrelated to this change).
+- **Lookup (2026-09-20, #11, found in the Sprint 2 audit - see
+  `docs/eval/Sprint2-Audit-2026-09-20.md`):** the greeting asks for an email or phone
+  number, but `search_user_info_on_db` compared the email string exactly, so a phone
+  number could never identify anyone and a differently-cased email failed too. It now
+  matches an email ignoring case and surrounding space, or a phone number by its digits
+  (6 or more, spacing and punctuation ignored); anything else matches nobody. The guard
+  that requires the looked-up value to appear in the user's own message compares digits
+  for phone numbers. Behavior change: phone and mixed-case email identification now
+  succeed instead of failing safe; `ident-007` and `ident-010` are scored entries.
 
 ## Phase 3 — Tiered RAG support answers ✅ Done
 - `AuthenticatedUserNode` (`RetrievalNode`) answers from Chroma, retriever
@@ -119,12 +128,24 @@ phases are the actual next steps.
     Revisit after #23 improves intent precision, with golden-set entries for the
     no-number phrasings, a full eval re-run, recall >=90% and precision >=95%.
 
+- **Negation (2026-09-20, Sprint 2 audit):** `_DO_NOT_CALL_RE` also vetoes "no need to
+  call/phone/ring" and "no need for (you to|a) call", which the plain-request pattern
+  used to accept ("No need to call me back, my number is ..."). A message that declines
+  and requests in one sentence ("Never call me before 9am, but do call me on ...") is
+  still vetoed whole; tracked as #33.
+
 ## Phase 5 — Interfaces ✅ Done
 - Streamlit `app.py` (Chat + Graph tabs, live DAG rendering via
   `ui/graph_renderer.py`).
 - CLI (`cli.py`, `customer-support-chat` console script).
 - Provider abstraction (`config.py`): Ollama by default, OpenAI opt-in, for
   both chat model and embeddings.
+- **Bounded LLM calls (2026-09-20, #30):** `LLM_MAX_TOKENS` (default 1024) and
+  `LLM_TIMEOUT_SECONDS` (default 120) apply to both providers. A timeout inside a turn
+  becomes "Sorry, that took too long to answer. Please try again." (turn log field
+  `timed_out`), and the conversation stays on the same node. Before this, a 3B model that
+  never emitted a stop token hung the turn indefinitely (`ident-011`). The OpenAI path is
+  configured the same way but has not been exercised.
 
 ## Phase 6 — Session persistence (next)
 - Persist `MessageHistory` + current node across process restarts (not just
