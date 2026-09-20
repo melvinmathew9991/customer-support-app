@@ -391,7 +391,7 @@ silently.
 
 ---
 
-## Sprint 3 (2 weeks) — Session persistence (Phases.md Phase 6) ✅ Done (PR #38)
+## Sprint 3 (2 weeks) — Session persistence (Phases.md Phase 6) ✅ Done (merged 2026-09-20, PR #38)
 **SDLC stage:** Design → Build
 **Goal:** Conversations survive process/session restarts.
 
@@ -430,6 +430,8 @@ conversation does, retention) answered by the maintainer before any code.
   to resume such a session.
 - Not exercised: a real browser session (the app was driven headlessly with Streamlit's
   `AppTest`), and more than one process writing the same database at once (out of scope).
+- A process evaluation followed the merge (`docs/Process-Evaluation.md`). Its proposals are
+  not adopted; nothing in this file's planning rules changes until the maintainer decides.
 
 **Backlog:**
 - Design a minimal persistence schema for `MessageHistory` + current node
