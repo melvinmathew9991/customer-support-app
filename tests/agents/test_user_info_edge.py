@@ -104,3 +104,49 @@ def test_subscription_record_of_a_different_user_is_rejected():
 
     with pytest.raises(OutputParserException, match="doesn't belong"):
         _edge(steps)._parse(_history())
+
+
+def _history_saying(message: str) -> MessageHistory:
+    history = MessageHistory(messages=[])
+    history.add_assistant_message("please give your email or phone number")
+    history.add_user_message(message)
+    return history
+
+
+def test_lookup_by_phone_is_trusted_when_the_user_typed_that_number():
+    steps = [
+        (_Action("user_info_db_search", "0452333666"), [MICHAEL]),
+        _subscription_step(),
+    ]
+
+    profile = _edge(steps)._parse(_history_saying("my phone is 0452 333 666"))
+
+    assert profile.subscription == "premium"
+
+
+def test_lookup_by_email_is_trusted_whatever_case_the_user_typed():
+    steps = [
+        (_Action("user_info_db_search", "michaeljackson@gmail.com"), [MICHAEL]),
+        _subscription_step(),
+    ]
+
+    profile = _edge(steps)._parse(_history_saying("MichaelJackson@Gmail.com"))
+
+    assert profile.subscription == "premium"
+
+
+def test_a_phone_number_the_user_never_typed_is_still_refused():
+    steps = [
+        (_Action("user_info_db_search", "0452333666"), [MICHAEL]),
+        _subscription_step(),
+    ]
+
+    with pytest.raises(OutputParserException, match="doesn't appear"):
+        _edge(steps)._parse(_history_saying("what's up, my order number is 0452 111 222"))
+
+
+def test_a_short_digit_run_in_the_message_does_not_vouch_for_a_lookup_value():
+    steps = [(_Action("user_info_db_search", "12345"), [MICHAEL]), _subscription_step()]
+
+    with pytest.raises(OutputParserException, match="doesn't appear"):
+        _edge(steps)._parse(_history_saying("what's up, 1 2 3 4 5"))
