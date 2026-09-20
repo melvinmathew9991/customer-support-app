@@ -364,12 +364,15 @@ held. What changed:
 - A "no need to call me" phrasing that started a callback is now vetoed; the compound
   case (declines and requests in one sentence) is tracked as #33.
 - A silently swallowed exception in the retrieval log now logs a warning.
-- Milestones: #5, #17, #23 and #33 moved to a new Sprint 3 milestone; Sprint 2 closed
-  and tagged `v0.1.0-sprint2`.
+- Milestones: #5, #17, #23 and #33 moved to an unscheduled `Known limits` milestone
+  (they are Sprint 2's unmet targets and a related audit finding, not Sprint 3 work; the
+  `Sprint 3` milestone is for session persistence only); Sprint 2 closed and tagged
+  `v0.1.0-sprint2`.
 - Left open by the maintainer's decision: #14 (license, and whether the Shopify-derived
   KB stays public), which is a legal choice.
 
-**Carried into Sprint 3 and after:**
+**Carried forward (not scheduled in any sprint; the `Known limits` milestone holds #5, #17,
+#23 and #33):**
 - #5, #17, #23: open, as known limits (above). #33 (callback veto and compound
   phrasings) is the same family as #23.
 - Pre-existing and untouched: #10 (with-whisper path never exercised), #12 (CLI
