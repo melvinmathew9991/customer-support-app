@@ -3,7 +3,7 @@
 **Repository:** melvinmathew9991/customer-support-app (`main`, with every sprint and fix branch merged and kept)
 **Stack:** Python 3.10.10 · Streamlit 1.39.0 · LangChain 0.3.7 (+ langchain-community/-ollama/-openai/-chroma/-text-splitters) · ChromaDB 0.5.20 · pydantic-settings 2.6.1 · pytest 8.3.3 · ruff 0.7.4 · Ollama (local: `llama3.2:3b` chat, `nomic-embed-text` embeddings). Dependencies are unchanged since the initial commit (`pyproject.toml` was never modified); Python and ruff versions were re-checked at the end of Sprint 2, the rest are as pinned.
 **Status:** End of Sprint 3 (session persistence), following Sprint 2 (knowledge base and retrieval hardening) and the end-to-end audit whose findings were fixed before that sprint was tagged (`docs/eval/Sprint2-Audit-2026-09-20.md`). Core product (Phases 1-5) was built before this engagement; Sprint 1 built the evaluation foundation and Sprint 2 used it to fix what it exposed. Sprint 2's definition of done is met (retrieval recall and tier leakage held at target on a 3x larger set), but **two accuracy targets are not met**: hallucination (about 13% on untuned questions vs ≤5%) and callback precision (83% on a held-out cohort vs ≥95%). The larger local model was tried and did not help. The maintainer accepted carrying both as known limits on 2026-09-20 rather than continuing to tune them in Sprint 2 (`docs/Sprints.md`).
-**Timeline:** 2026-09-18 → 2026-09-20, single contributor (Melvin Mathew). 58 commits and 16 merged pull requests on `main` at the Sprint 2 close-out (#32), plus three small PRs after it: the audit's final fixes (#34), the milestone docs fix (#35) and the CLI and telemetry fixes (#36), then Sprint 3's session persistence (#38). Pre-Sprint-1 (MVP baseline + out-of-band fixes) → Sprint 1 (evaluation foundation, PRs #1-#3) → git workflow tooling (PR #4) → Sprint 2 (PRs #15, #18-#21, #24-#28, #31, #32, #34-#36) → Sprint 3 (session persistence, PR #38).
+**Timeline:** 2026-09-18 → 2026-09-20, single contributor (Melvin Mathew). 82 commits and 20 merged pull requests on `main` as of the Sprint 3 merge (`237e95c`); after the Sprint 2 close-out (#32) came three small PRs, the audit's final fixes (#34), the milestone docs fix (#35) and the CLI and telemetry fixes (#36), then Sprint 3's session persistence (#38), and a process evaluation (§17). Pre-Sprint-1 (MVP baseline + out-of-band fixes) → Sprint 1 (evaluation foundation, PRs #1-#3) → git workflow tooling (PR #4) → Sprint 2 (PRs #15, #18-#21, #24-#28, #31, #32, #34-#36) → Sprint 3 (session persistence, PR #38).
 
 **Update cadence:** this file is refreshed at the end of each sprint (see `docs/Sprints.md`'s cross-cutting rules) so it always reflects the project's current, verified state rather than a point-in-time snapshot.
 
@@ -61,7 +61,7 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 | Tests | `tests/**/test_*.py` | 2,185 | 304 tests across 18 files — deterministic graph/domain/config/agent/reindex/lookup/timeout/CLI/persistence logic and the Streamlit app driven headlessly (no live model) |
 | Eval | `tests/eval/` | — | `golden_set.json` (122 hand-labeled conversations, 11 categories), `run_eval.py` (automated scoring harness), `README.md` (schema) |
 | CI / tooling | `.github/workflows/ci.yml`, `.githooks/pre-commit`, `.github/pull_request_template.md` | — | pytest + `ruff check` blocking on every PR; local pre-commit test hook |
-| Docs | `docs/*.md` + `docs/eval/*.md` | — | PRD, Architecture, Rules, Phases, Design, Persistence-Design, Sprints, Git-Workflow, Metrics, and 34 dated eval/experiment reports |
+| Docs | `docs/*.md` + `docs/eval/*.md` | — | PRD, Architecture, Rules, Phases, Design, Persistence-Design, Process-Evaluation, Sprints, Git-Workflow, Metrics, and 34 dated eval/experiment reports |
 
 **2,337** total lines across `src/customer_support_app/`.
 
@@ -75,7 +75,7 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 ├── .github/               # workflows/ci.yml, pull_request_template.md
 ├── .githooks/pre-commit   # runs pytest when src/, tests/ or pyproject.toml change
 ├── docs/
-│   ├── PRD.md, Architecture.md, Rules.md, Design.md, Git-Workflow.md, Persistence-Design.md
+│   ├── PRD.md, Architecture.md, Rules.md, Design.md, Git-Workflow.md, Persistence-Design.md, Process-Evaluation.md
 │   ├── Phases.md            # what's built, phase by phase, with dated bugfix notes
 │   ├── Sprints.md           # the SDLC plan + live status of each sprint
 │   ├── report.md            # this file
@@ -122,7 +122,7 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 | Testing | pytest 8.3.3 | 304/304 pass |
 | Lint | ruff 0.7.4 | 0 findings (27 fixed in Sprint 2, #9), including `ruff check .` since the legacy notebook was excluded; a blocking CI gate. `ruff format` is not enforced (19 files would change) |
 | CI | GitHub Actions (`ci.yml`) | pytest + `ruff check src tests scripts`, both blocking on PRs and pushes to `main`; green on the last merged PR |
-| Version control | git + GitHub (`melvinmathew9991/customer-support-app`) | 58 commits, 16 merged PRs at the close-out merge (#32), plus #34-#36 and the Sprint 3 PR (#38); merge commits, branches kept as history, tags `v0.1.0-sprint1` and `v0.1.0-sprint2` (`docs/Git-Workflow.md`) |
+| Version control | git + GitHub (`melvinmathew9991/customer-support-app`) | 82 commits, 20 merged PRs as of the Sprint 3 merge (#38); merge commits, branches kept as history, tags `v0.1.0-sprint1` and `v0.1.0-sprint2` (`docs/Git-Workflow.md`) |
 
 ## 8. Implementation Details
 
@@ -157,7 +157,7 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 
 ## 9. Methodology — Build History
 
-58 commits and 16 merged pull requests at the close-out merge, plus three small PRs after it. By pull request:
+82 commits and 20 merged pull requests as of the Sprint 3 merge. By pull request:
 
 | PR | What it did |
 |---|---|
@@ -247,7 +247,7 @@ The 8B answers "no" to every message in the model-only intent check, so its 100%
 | Callback recall / precision (full set) | 97% / 94.7%; held-out cohort precision 83% |
 | Hallucination | 13.3% fabrication on an untuned cohort; 2%-14% on the blind 51-answer grade; target ≤5% |
 | Issues | 7 open (#5, #10, #14, #17, #23, #33, #37), 11 closed |
-| Commits / PRs | 58 commits, 16 merged PRs at the close-out merge, plus #34-#36 and #38; single contributor |
+| Commits / PRs | 82 commits, 20 merged PRs as of the Sprint 3 merge; single contributor |
 
 ## 12. Result Analysis
 
@@ -319,13 +319,54 @@ The larger-model experiment had its own traps. The 8B's failures were first read
 
 **Medium:** exercise the with-whisper transcription-to-ticket path once (#10); if hallucination or callback precision must reach target, scope it as its own sprint with a larger pre-committed held-out set (a second-pass grounding check for #5/#17; a labeled callback-intent set large enough to tune without overfitting for #23); investigate the small 3B run-to-run difference.
 
+**Process (proposed, not adopted):** an evidence bundle first (data splits, interval reporting, run manifests), then a smoke-eval gate and independent review; see §17 and `docs/Process-Evaluation.md`.
+
 **Larger:** Sprint 4, Phase 7 (a real user store behind the same function signatures), per `docs/Sprints.md`; then the evaluation regression gate (Sprint 5), UI polish (Sprint 6) and deployment and observability (Sprint 7).
+
+## 17. Process Evaluation and Improvement Plan
+
+Full text: `docs/Process-Evaluation.md`. An evaluation of how the project has been built, from an
+experienced data scientist's point of view, made at the end of Sprint 3 from the repository's own
+record (82 commits, 20 merged PRs, 20 issues, 36 CI runs, 35 files in `docs/eval`). It is
+one reviewer's judgment; the proposals are **not adopted** until the maintainer decides.
+
+**Bottom line.** The process is unusually disciplined for an LLM project: measurement-first, held-out
+tests pre-registered, misses reported honestly. The weak spots are statistical power, independence of
+review, reproducibility of eval runs, and documentation that duplicates itself.
+
+| Dimension | Rating |
+|---|---|
+| Sequencing and strategy | 4.5 / 5 |
+| Experiment discipline | 4 / 5 |
+| Statistical rigor | 2 / 5 |
+| Reproducibility and tracking | 2 / 5 |
+| Testing | 4 / 5 |
+| Engineering hygiene | 4 / 5 |
+| Independent review | 1 / 5 |
+| Documentation | 3 / 5 |
+| Planning and project management | 2.5 / 5 |
+| Risk (privacy, legal, security) | 2.5 / 5 |
+| Product validation | 1.5 / 5 |
+
+**Main findings.**
+- **Power.** 95% intervals for the reported rates: callback precision on held-out negatives 10/12 is 55% to 95%; hallucination 2/15 is 4% to 38%, 2/21 is 3% to 29%, and the blind grade 1/51 to 7/51 is 0.3% to 10% and 7% to 26%. Showing an error rate of 5% or less needs about 60 cases with zero failures, so several targets could not have been confirmed at the sample sizes used.
+- **The golden set is used up.** The same 122 entries fed about 15 runs, the 22-entry callback cohort stopped being held out after repeated use, and hallucination has one grader with no written rubric.
+- **Some metrics cannot fail.** Retrieval recall@4 on a 14 to 15 chunk index retrieves 27% to 29% of the corpus; Sprint 1's callback precision was 100% because its negatives had no digits.
+- **Runs are not reproducible from the artifacts.** No git SHA, model digest or settings header; about 19,700 lines of raw run output instead of structured results; temperature 0 still varied between runs.
+- **No independent review.** 0 reviews on 20 PRs; median PR about 890 added lines and 5 of 20 over 3,000.
+- **Documentation is 9.2 times the source size** and the same facts live in several files, which is how the audit found stale counts.
+- **Planning.** "Two-week" sprints ran in about three days.
+- **Risk.** Plaintext PII in the session file and in the turn log, no license (#14), no dependency lockfile, no prompt-injection tests, no real users.
+
+**Proposed plan, in order** (details and how-to in the full document): (1) split data into dev, validation and a frozen test set, size sets from the target, report intervals and compare runs item by item; (2) a run manifest and a results index for every eval; (3) a smoke-eval gate before merge; (4) independent review of eval labels and metric-affecting PRs; (5) one source per fact and a generated status block; (6) re-baseline planning on real throughput; (7) a threat model, lockfile and license decision; (8) a small real-user trial; (9) baselines (hosted model, a small classifier) before more rules; (10) guardrails for AI-assisted work. **Stop:** committing raw run dumps, hand-typing counts, calling three-day blocks two-week sprints, treating a tuned cohort as held-out. **Suggested first step:** one PR with items 1 and 2.
+
+## 18. Summary
 
 ### Three-bullet summary
 
 - The product (Phases 1-5) already worked before this engagement; it is now *provably* measured — a 122-conversation golden set, 304 unit tests, a blocking CI gate, conversations that survive a restart, and held-out entries committed before each run — up from zero offline metrics at the start.
 - Three identity bypass or fabrication bugs, a wrong-number callback bug and two KB contradictions were found and fixed, most only because the evaluation was built adversarially; retrieval recall (100%) and tier leakage (0%) held at target throughout.
-- Two accuracy targets are still missed with the 3B (an end-to-end audit afterwards reproduced the metrics and fixed its own findings): hallucination (about 13% on untuned questions vs ≤5%) and callback precision on unseen messages (83% vs ≥95%). A larger local model was tried under criteria fixed in advance and did not help, so the maintainer accepted carrying both as known limits.
+- Two accuracy targets are still missed with the 3B (an end-to-end audit afterwards reproduced the metrics and fixed its own findings): hallucination (about 13% on untuned questions vs ≤5%) and callback precision on unseen messages (83% vs ≥95%). A larger local model was tried under criteria fixed in advance and did not help, so the maintainer accepted carrying both as known limits. A process evaluation at the end of Sprint 3 rated the method strong and the statistics weak, and proposed a plan that is not yet adopted (§17).
 
 ### One-line description
 

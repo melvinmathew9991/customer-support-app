@@ -28,7 +28,7 @@ customer_support_app/
 ├── pyproject.toml            # single source of truth for deps/metadata
 ├── .env.example
 ├── assets/                   # knowledge base docs + sample call audio (runtime data)
-├── docs/                     # design docs (PRD, Architecture, Rules, Phases, Design, Sprints)
+├── docs/                     # design docs (PRD, Architecture, Rules, Phases, Design, Persistence-Design, Sprints, Process-Evaluation)
 ├── notebooks/                # legacy exploratory prototype (customer_support.ipynb)
 ├── src/customer_support_app/ # the installable package
 │   ├── config.py             # pydantic-settings: LLM/embeddings provider, paths
