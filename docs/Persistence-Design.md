@@ -1,8 +1,10 @@
 # Session persistence — design (Sprint 3, Phases.md Phase 6)
 
-**Status:** draft for review. Nothing is built yet. The decisions that need the
-maintainer's answer are in [Decisions](#decisions-needed); each has a recommended default
-so the rest of the design can be read as if it were accepted.
+**Status:** accepted 2026-09-20. The maintainer chose the recommended option on all four
+[decisions](#decisions), recorded at the end. One refinement made while building: a
+database written by a *newer* schema than the code knows fails loudly when the store is
+opened (`Rules.md`: fail early on misconfiguration), while a single bad *row* only starts a
+new session.
 
 **Goal (Sprints.md):** killing and restarting the process mid-conversation resumes at the
 same node with the full history, behind the interface `app.py` and `cli.py` already use,
@@ -66,9 +68,10 @@ looks the saved node up by name among the objects it built, sets `_node_input` a
 edge counters, restores the history and conversation id, and skips the greeting. No LLM
 call happens on load.
 
-**Failure to load is not fatal.** An unknown node name, a `node_input` that no longer
-validates, or a newer schema version logs a warning and starts a new session. A corrupt row
-must never stop the app from opening.
+**A bad saved row is not fatal.** An unknown node name, a `node_input` of the wrong type for
+its node, or unparseable JSON logs a warning and starts a new session; a corrupt row must
+never stop the app from opening. A database from a newer schema is different: it is a
+misconfiguration, so opening the store raises `SessionStoreError` instead of guessing.
 
 **Settings, per `Rules.md`.** `session_db_path` in `config.py`'s `Settings`, default
 `<project root>/data/sessions.sqlite`, documented in `.env.example`, and `data/` added to
@@ -82,13 +85,17 @@ The store needs a `session_id`. Getting it to the right person differs per inter
   visit with no id creates one and writes it to the URL; a browser refresh or a server
   restart with that URL resumes. (`st.session_state` alone cannot do this: it is lost on
   refresh.)
-- **CLI:** see decision 2.
+- **CLI:** `--session <id>` resumes that session (or starts it under that id, saying so, if it
+  does not exist), `--resume` resumes the most recent unfinished one, and a bare run starts a
+  new session and prints its id. Nothing resumes implicitly.
 
 The Graph tab keeps working unchanged: it reads `pipeline._current_node`, which load sets.
 
 ## Edge cases
 
-- **Finished conversation** (`CallCustomerNode`, `is_over`): see decision 3.
+- **Finished conversation** (`CallCustomerNode`, `is_over`): resuming one shows the saved
+  transcript and says the conversation ended; the user starts a new one (Streamlit offers a
+  button, the CLI says to run it again without `--session`).
 - **Failed identification.** After the identity edge exhausts its retries the graph moves
   to `AuthenticatedUserNode` with a `MessageOutput` error as its input, prints "we still
   couldn't verify your account", and then keeps answering from the free KB (confirmed
@@ -96,8 +103,8 @@ The Graph tab keeps working unchanged: it reads `pipeline._current_node`, which 
   customers?" was answered, with `AuthenticatedUserNode` holding a `MessageOutput` as its
   input). That is existing behavior, not new, and is not fixed here. Persisting it faithfully would
   make an unverified session resumable, so the proposal is: **a session whose node input is
-  not a `UserProfile` is not resumed** (a new one starts). The behavior itself should be
-  tracked as its own issue.
+  not a `UserProfile` is not resumed** (a new one starts). The behavior itself is tracked
+  as #37; if it changes, revisit this line.
 - **Profile changes between restarts.** The saved `UserProfile` (tier included) is trusted
   on resume; identification is not re-run. If the mock DB changes a user's tier mid-session,
   the session keeps the old one until it ends.
@@ -123,13 +130,15 @@ already in memory.
 - **Pipeline:** with a lightweight stand-in for the graph, a saved conversation resumes at
   the same node with the same history, edge counters and conversation id; a failed load
   starts fresh; no store means no file is touched.
-- **Existing suite unchanged:** passes without edits.
+- **Existing suite:** passes. The one edit to an existing test file is that the CLI tests
+  (added in #36) now pass an empty argv to `main()`, since it now parses arguments; their
+  expectations are unchanged.
 - **Live check (the definition of done):** run the CLI, identify, ask a question, kill the
   process, restart with the resume option, and confirm it continues at
   `AuthenticatedUserNode` with the history intact; repeat once for Streamlit with the URL.
   Then one golden-set run with persistence off to confirm no LLM behavior moved.
 
-## Decisions needed
+## Decisions
 
 1. **Storage.** *Recommended:* SQLite through the standard library, one JSON row per
    session, as above. *Alternative:* one JSON file per session (simpler, no schema, but no

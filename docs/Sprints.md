@@ -391,9 +391,45 @@ silently.
 
 ---
 
-## Sprint 3 (2 weeks) — Session persistence (Phases.md Phase 6)
+## Sprint 3 (2 weeks) — Session persistence (Phases.md Phase 6) ✅ Done (PR #38)
 **SDLC stage:** Design → Build
 **Goal:** Conversations survive process/session restarts.
+
+**Status (2026-09-20):** built and verified. Design first (`docs/Persistence-Design.md`),
+with the four decisions it needed (storage backend, CLI resume behavior, what a finished
+conversation does, retention) answered by the maintainer before any code.
+- ✅ `SessionStore` (`session_store.py`): SQLite through the standard library, one JSON row
+  per conversation, rewritten whole in a transaction; versioned schema with an append-only
+  migration list; an unreadable row is a warning and a miss, a newer schema fails loudly.
+- ✅ `CustomerSupportPipeline(store=None, session_id=None)` saves after every completed turn
+  and resumes by rebuilding the graph and restoring the state (history, current node and its
+  typed input, retry counters, conversation id). No store, no change: the eval harness and
+  the existing tests are untouched.
+- ✅ CLI `--session ID` / `--resume` (nothing resumes implicitly); Streamlit keeps the id in
+  the URL (`?session=<id>`). An ended conversation shows its transcript and offers a fresh
+  start. `SESSION_DB_PATH` setting; `data/` is gitignored.
+- ✅ 60 new tests (244 -> 304, 15 -> 18 files), none needing an LLM. The store and pipeline
+  tests were checked by mutation: breaking the counter, id, history or input restore, the
+  save, or the resumable-input check each fails a test.
+- ✅ **Definition of done, live against `llama3.2:3b`:** the CLI was started, the user
+  identified and a question asked, then the process was killed; `--resume` printed the same
+  session, replayed the transcript, did not ask to identify again, answered a follow-up from
+  the premium KB, and exited 0. The Streamlit app, opened in a fresh process on the same
+  URL, redrew the 5 saved messages with no second greeting, highlighted
+  `AuthenticatedUserNode` in the Graph tab and answered a follow-up.
+- ✅ **Regression check:** a full 122-entry golden-set run on the branch
+  (`docs/eval/Sprint3-Persistence-FullEval-2026-09-20.md`, persistence off as in the
+  harness) matches the previous full run on every metric (identification 100% n=8,
+  fails-safe 100%, recall 100% and leakage 0% on n=39, callback recall 100%, precision 95%,
+  held-out cohort 83% with the same two false triggers). Only `ident-007` and `ident-010`
+  differ, and only because they are scored PASS now instead of manual review.
+- The one edit to an existing test file: the CLI tests (added in #36) pass an empty argv to
+  `main()` now that it parses arguments; their expectations are unchanged.
+- Found along the way and **not** fixed: after identification fails the bot says it could not
+  verify the user but keeps answering from the free KB (#37). The persistence design refuses
+  to resume such a session.
+- Not exercised: a real browser session (the app was driven headlessly with Streamlit's
+  `AppTest`), and more than one process writing the same database at once (out of scope).
 
 **Backlog:**
 - Design a minimal persistence schema for `MessageHistory` + current node

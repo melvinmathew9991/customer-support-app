@@ -133,6 +133,26 @@ customer-support-chat
 Type `quit` or `exit` to leave, or press Ctrl+D (Ctrl+Z then Enter on Windows). Piped
 input that runs out ends the session the same way, with exit code 0.
 
+### Saved conversations
+
+A conversation is saved after every turn, so it survives closing the app or restarting the
+server. It goes into a local SQLite file (`data/sessions.sqlite` by default, set
+`SESSION_DB_PATH` to move it), which holds names, emails and phone numbers in the clear and
+is gitignored.
+
+- **Terminal:** a bare run starts a new conversation and prints its id.
+  `customer-support-chat --session <id>` picks that one up again, and
+  `customer-support-chat --resume` picks up the most recent one that has not ended. Nothing
+  resumes on its own, so a bare run is always a clean start.
+- **Streamlit:** the id is kept in the page URL (`?session=<id>`). Reloading the page, or
+  reopening that URL after a server restart, resumes the conversation. Anyone holding the
+  URL can read it, which is fine for a local app and needs revisiting before any real
+  deployment.
+- A conversation that already ended shows its transcript and says so; start a new one from
+  the button (Streamlit) or by running the command again (terminal).
+
+Design and limits: `docs/Persistence-Design.md`.
+
 ## Tests
 
 ```bash

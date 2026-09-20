@@ -155,12 +155,31 @@ phases are the actual next steps.
   never emitted a stop token hung the turn indefinitely (`ident-011`). The OpenAI path is
   configured the same way but has not been exercised.
 
-## Phase 6 — Session persistence (next)
-- Persist `MessageHistory` + current node across process restarts (not just
-  `st.session_state`), so a user can resume a conversation.
-- Decide on a storage backend (file-based for local dev vs. a real DB) —
-  this is the "add a real datastore" decision flagged in `Rules.md`, so
-  scope it explicitly before starting.
+## Phase 6 — Session persistence ✅ Done
+Design: `docs/Persistence-Design.md`. The storage decision `Rules.md` asks to be scoped
+first was made explicitly (SQLite through the standard library, one JSON row per session;
+no new dependency, no ORM).
+- `session_store.py`: `SessionStore` saves one row per conversation (message history,
+  current node name, the node's typed input, the two edges' retry counters, conversation id,
+  whether it ended), rewritten whole in a transaction. The schema is versioned with
+  `PRAGMA user_version` and built by an append-only list of migrations. An unreadable row
+  logs a warning and is treated as missing; a database from a newer schema raises
+  `SessionStoreError` when opened.
+- `CustomerSupportPipeline(store=None, session_id=None)`: with a store it saves after every
+  completed turn (including a timed-out one), and given a session id the store holds it
+  rebuilds the graph and restores the state; nothing is replayed and no model is called.
+  With no store it behaves exactly as before, which is why the eval harness and the existing
+  tests are unaffected. A session that cannot be resumed (unknown node, wrong input type,
+  bad counters, or a failed identification) starts a new conversation with a warning. A
+  failed save costs resumability, not the turn; a crash mid-turn saves nothing from it.
+- CLI: `--session ID`, `--resume`; nothing resumes implicitly. Streamlit: the id is kept in
+  the URL (`?session=<id>`); an ended conversation shows its transcript, disables input and
+  offers a button to start again.
+- `SESSION_DB_PATH` setting (default `data/sessions.sqlite`, gitignored).
+- Known and unchanged: after three unidentifiable messages the bot says it could not verify
+  the account but keeps answering from the free KB (confirmed live; not fixed here,
+  tracked as #37). Saved sessions hold PII in the clear, and the Streamlit session id in
+  the URL is a bearer token; both are for Phase 10 to revisit.
 
 ## Phase 7 — Real user store
 - Replace the mock `tools/user_info_db.py` with a real lookup (API or DB),
