@@ -136,12 +136,20 @@ phases are the actual next steps.
 ## Phase 7 — Real user store
 - Replace the mock `tools/user_info_db.py` with a real lookup (API or DB),
   behind the same function signatures so `agents/support.py` doesn't change.
+- Identification today is a lookup, not authentication: anyone who knows a
+  customer's email or phone number is served that customer's tier. That is a
+  stated non-goal in `PRD.md` and the KB is low-sensitivity, but a real user
+  store is the point to decide whether it needs a second factor.
 
-## Phase 8 — Evaluation harness for LLM-dependent behavior
-- Today, tool-calling/RAG/structured-extraction correctness is verified
-  manually against Ollama (per the README). Build a lightweight, repeatable
-  eval (fixed transcripts + assertions) to catch regressions when prompts,
-  models, or the graph change, without making CI depend on a live model.
+## Phase 8 — Evaluation harness for LLM-dependent behavior (partly done)
+- **Built (Sprints 1-2):** a 122-conversation golden set
+  (`tests/eval/golden_set.json`), an automated scoring harness
+  (`tests/eval/run_eval.py`), metric definitions and targets
+  (`docs/eval/Metrics.md`), and the structured per-turn log it scores from.
+  It runs manually against a live Ollama model; the deterministic scoring
+  logic is unit-tested and runs in CI.
+- **Still open (Sprint 5):** a CI-enforced regression gate. CI does not run the
+  live eval, and there are no per-metric regression thresholds yet.
 
 ## Phase 9 — UI/design polish
 - Apply `Design.md` (theme, typography, chat styling) to `app.py` — today
@@ -149,8 +157,9 @@ phases are the actual next steps.
 
 ## Phase 10 — Deployment & observability
 - Containerize / document a deployment path for the Streamlit app.
-- Structured logging/metrics beyond `logging_config.py`'s current console
-  logging, if this moves beyond local use.
+- Metrics beyond what exists (a structured per-turn JSON-line log,
+  `logs/turns.jsonl`, was added in Sprint 1 for the eval harness), such as
+  aggregation, alerting and token/cost tracking, if this moves beyond local use.
 
 ## Working agreement
 - Don't start a later phase's scope inside an earlier one's PR/change —
