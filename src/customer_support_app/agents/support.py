@@ -284,7 +284,8 @@ class CallCustomerEdge(PydanticTextBasedEdge):
         re.IGNORECASE,
     )
     _DO_NOT_CALL_RE = re.compile(
-        r"\b(?:don'?t|do\s+not|not|never|no)\s+(?:to\s+)?(?:call|phone|ring)\b|\bno\s+calls?\b",
+        r"\b(?:don'?t|do\s+not|not|never|no)\s+(?:to\s+)?(?:call|phone|ring)\b|\bno\s+calls?\b"
+        r"|\bno\s+need\s+(?:to\s+|for\s+(?:you\s+to\s+|a\s+)?)?(?:call|phone|ring)\b",
         re.IGNORECASE,
     )
 

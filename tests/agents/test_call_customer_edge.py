@@ -101,6 +101,8 @@ def test_plain_request_is_accepted_without_asking_the_model(message):
         "I'd rather have no calls. 0452 111 222 is my mobile",
         "never call me on 0452 111 222",
         "please don't call me, ring 0452 111 222 only in an emergency",
+        "No need to call me back, my number is 0452 333 666 if you want to email",
+        "There is no need for you to phone me. 0452 111 222 is my mobile",
     ],
 )
 def test_asking_not_to_be_called_is_rejected_without_asking_the_model(message):
