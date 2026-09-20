@@ -99,3 +99,12 @@ def test_chroma_telemetry_send_failures_are_dropped_but_other_errors_are_not(cap
         logger.error("something else went wrong in telemetry")
 
     assert [r.getMessage() for r in caplog.records] == ["something else went wrong in telemetry"]
+
+
+def test_session_db_defaults_to_a_gitignored_data_folder():
+    from customer_support_app.config import PROJECT_ROOT
+
+    settings = Settings()
+
+    assert settings.session_db_path == PROJECT_ROOT / "data" / "sessions.sqlite"
+    assert "data/" in (PROJECT_ROOT / ".gitignore").read_text().splitlines()

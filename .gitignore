@@ -6,6 +6,7 @@ myenv/
 .env
 chroma_db/
 logs/
+data/
 .streamlit/
 __MACOSX/
 *.egg-info/
