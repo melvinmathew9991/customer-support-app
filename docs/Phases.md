@@ -140,6 +140,14 @@ phases are the actual next steps.
 - CLI (`cli.py`, `customer-support-chat` console script).
 - Provider abstraction (`config.py`): Ollama by default, OpenAI opt-in, for
   both chat model and embeddings.
+- **CLI exit (2026-09-20, #12):** `customer-support-chat` ends cleanly with "Goodbye." and
+  exit code 0 when stdin ends (piped input, Ctrl+D or Ctrl+Z) or the user types `quit` or
+  `exit`; before, it died with an `EOFError` traceback.
+- **Telemetry noise (2026-09-20, #13):** the `ANONYMIZED_TELEMETRY=False` setting worked,
+  but chromadb 0.5.x calls `posthog.capture` positionally while `posthog` 6+ takes only
+  `capture(event, **kwargs)`, so every client start logged "Failed to send telemetry event"
+  at ERROR anyway. `config.py` now drops that one message from that one logger (nothing is
+  being sent) and its comment says why; other errors from the logger still show.
 - **Bounded LLM calls (2026-09-20, #30):** `LLM_MAX_TOKENS` (default 1024) and
   `LLM_TIMEOUT_SECONDS` (default 120) apply to both providers. A timeout inside a turn
   becomes "Sorry, that took too long to answer. Please try again." (turn log field

@@ -375,9 +375,9 @@ held. What changed:
 #23 and #33):**
 - #5, #17, #23: open, as known limits (above). #33 (callback veto and compound
   phrasings) is the same family as #23.
-- Pre-existing and untouched: #10 (with-whisper path never exercised), #12 (CLI
-  `EOFError`), #13 (chromadb telemetry warnings), #14 (license and whether the
-  Shopify-derived KB stays public).
+- Pre-existing and untouched: #10 (with-whisper path never exercised), #14 (license
+  and whether the Shopify-derived KB stays public). #12 (CLI `EOFError`) and #13
+  (chromadb telemetry warnings) were fixed afterwards in a small PR (#36).
 - Unexplained: a fresh 3B full run differed slightly from the earlier full eval on the
   same code (callback recall 100% vs 97%); the audit's two runs are consistent with that
   variance. Not investigated.
