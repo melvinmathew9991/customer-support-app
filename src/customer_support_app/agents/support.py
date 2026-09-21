@@ -218,6 +218,12 @@ class AuthenticatedUserNode(RetrievalNode):
         self._hc_agent = HelpCenterAgent()
         super().__init__(llm_model, pydantic_object, edges)
 
+    def is_node_final(self) -> bool:
+        # Without a UserProfile identification failed, and the fail-safe message in
+        # greeting_message() is the last thing the user is told: the conversation ends there
+        # instead of carrying on with the free KB for someone who was never identified (#37).
+        return not isinstance(self._node_input, UserProfile)
+
     def greeting_message(self) -> Optional[MessageOutput]:
         user_profile = self._node_input
         if not isinstance(user_profile, UserProfile):

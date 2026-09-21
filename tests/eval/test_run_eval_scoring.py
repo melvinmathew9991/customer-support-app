@@ -106,3 +106,80 @@ def test_new_metrics_and_unchanged_recall_precision():
     assert metrics["phone_extraction_accuracy"] == (0.5, 2)
     assert metrics["callback_false_trigger_rate"] == (1 / 3, 3)  # 2 false-trigger + 1 oos
     assert "Phone extraction accuracy" in run_eval.build_report(results, metrics)
+
+
+SESSION_ENDS = {"expected": {"session_ends": True}}
+FAIL_SAFE = "Sorry, we still couldn't verify your account. Please refresh and start again."
+
+
+def test_a_conversation_that_ends_at_the_fail_safe_message_passes():
+    transcript = [["Hi"], ["retry"], ["retry"], [FAIL_SAFE], []]
+
+    passed, _ = run_eval.score_fails_safe(SESSION_ENDS, transcript, "AuthenticatedUserNode", [])
+
+    assert passed is True
+
+
+def test_an_answer_after_the_fail_safe_message_fails():
+    transcript = [["Hi"], ["retry"], ["retry"], [FAIL_SAFE], ["You can accept payments..."]]
+
+    passed, detail = run_eval.score_fails_safe(
+        SESSION_ENDS, transcript, "AuthenticatedUserNode", []
+    )
+
+    assert passed is False
+    assert detail["said_after_fail_safe"] == ["You can accept payments..."]
+
+
+def test_a_retrieval_after_the_fail_safe_message_fails_even_if_nothing_is_said():
+    transcript = [["Hi"], [FAIL_SAFE], []]
+
+    passed, detail = run_eval.score_fails_safe(
+        SESSION_ENDS, transcript, "AuthenticatedUserNode", [{"event": "retrieval"}]
+    )
+
+    assert passed is False
+    assert detail["retrieval_ran"] is True
+
+
+def test_a_conversation_that_never_reaches_the_fail_safe_message_fails():
+    passed, _ = run_eval.score_fails_safe(SESSION_ENDS, [["Hi"], ["retry"]], "GreetingNode", [])
+
+    assert passed is False
+
+
+def test_the_plain_fails_safe_check_still_only_looks_at_the_final_node():
+    entry = {"expected": {}}
+
+    assert run_eval.score_fails_safe(entry, [], "GreetingNode", [])[0] is True
+    assert run_eval.score_fails_safe(entry, [], "AuthenticatedUserNode", [])[0] is False
+
+
+class _ScriptedPipeline:
+    """Replies "reply N" to each turn and reports the conversation over after `over_after` turns."""
+
+    over_after = 2
+
+    def __init__(self):
+        self.turns = 0
+        self._current_node = None
+
+    def run(self, text):
+        self.turns += 1
+        return [], self.turns >= self.over_after
+
+
+def test_the_harness_stops_sending_turns_once_the_conversation_is_over(monkeypatch):
+    created = []
+
+    def make():
+        created.append(_ScriptedPipeline())
+        return created[0]
+
+    monkeypatch.setattr(run_eval, "CustomerSupportPipeline", make)
+
+    transcript, _, error = run_eval.run_conversation({"turns": ["a", "b", "c", "d"]})
+
+    assert error is None
+    assert created[0].turns == 2  # the greeting run counts as the first turn
+    assert len(transcript) == 2
