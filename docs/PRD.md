@@ -23,7 +23,9 @@ that genuinely do (a customer asking to be called back). A plain RAG chatbot
 either answers everything with the same knowledge base regardless of who's
 asking, or hands off to a human too eagerly. This app:
 - Identifies the customer first (email/phone → DB lookup) before answering
-  anything support-related.
+  anything support-related. If identification still fails after the retries,
+  the bot says it could not verify the account and the conversation ends; the
+  user starts a new one. An unidentified user is never answered from any KB.
 - Answers from a knowledge base scoped to that customer's own subscription
   tier (free vs. paid), so premium content never leaks to free users and
   free users aren't given irrelevant premium answers.
