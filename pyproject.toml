@@ -27,7 +27,7 @@ dependencies = [
 # Needed for tools/audio_transcribe.py (the phone-call transcription tool).
 # Pulls in torch, which can fail to install on Windows if the project path
 # is very long/deeply nested (MAX_PATH) - see README.
-audio = ["openai-whisper==20231106", "librosa==0.10.2", "numexpr==2.8.7"]
+audio = ["openai-whisper==20250625", "librosa==0.10.2", "numexpr==2.8.7"]
 # Alternative local embeddings backend (EMBEDDINGS_PROVIDER=sentence-transformers).
 # Also pulls in torch - the default EMBEDDINGS_PROVIDER=ollama avoids this.
 sentence-transformers = ["sentence-transformers==3.2.1"]

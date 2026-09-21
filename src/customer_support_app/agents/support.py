@@ -1,3 +1,4 @@
+import logging
 import random
 import re
 from typing import List, Optional, Type, Union
@@ -19,6 +20,8 @@ from customer_support_app.tools.user_info_db import (
     search_user_info_on_db,
     search_user_subscription_on_db,
 )
+
+logger = logging.getLogger(__name__)
 
 PREMIUM_SUBSCRIPTIONS = {"premium", "pro"}
 
@@ -363,7 +366,13 @@ class CallCustomerNode(MultifunctionNode):
 
         completion = self._predict(message_history)
         if self._output_parser is not None:
-            ticket_request: PhoneCallTicket = self._output_parser.parse(completion)
+            try:
+                ticket_request: PhoneCallTicket = self._output_parser.parse(completion)
+            except OutputParserException:
+                # A ticket the model got wrong must not end the conversation: the callback
+                # is still logged, only the summary is missing (#43).
+                logger.warning("Could not read a ticket from the call tool", exc_info=True)
+                return self._callback_logged_message()
             return MessageOutput(
                 message="We are connecting you to our customer care representative Ruby.  "
                 "We will be happy to resolve your queries via call."

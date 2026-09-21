@@ -57,10 +57,10 @@ pip install -e ".[dev]"
 Optional extras:
 - `pip install -e ".[audio]"` - enables the phone-call transcription tool
   (`tools/audio_transcribe.py`); pulls in `torch`/Whisper (see Windows note
-  below). **Not recommended yet:** with this extra installed a callback request
-  crashes the conversation, because the local model returns the ticket's schema
-  instead of a ticket (#43). Without the extra, a callback is logged and the
-  conversation ends normally.
+  below). With it, a callback request transcribes a sample call and opens a
+  ticket with its summary. Without the extra, a callback is logged and the
+  conversation ends normally. If the model returns a ticket that cannot be
+  read, the callback is logged the same way instead of failing (#43).
 - `pip install -e ".[sentence-transformers]"` - alternative local embeddings
   backend; also pulls in `torch`.
 
@@ -121,15 +121,10 @@ short path, e.g. `py -3.10 -m venv C:\venvs\customer-support`. The default
 configuration (`EMBEDDINGS_PROVIDER=ollama`, no `audio` extra) avoids this
 entirely.
 
-Installing the `audio` extra into a fresh venv can also fail before `torch` is involved,
-with `ModuleNotFoundError: No module named 'pkg_resources'` from a source build (#44).
-This sequence worked (Python 3.10, Windows, a venv on a short path):
-
-```bash
-pip install --upgrade pip wheel "setuptools<70"
-pip install --no-build-isolation "openai-whisper==20231106" "librosa==0.10.2" "numexpr==2.8.7"
-pip install -e ".[audio]"
-```
+`pip install -e ".[audio]"` works in a fresh venv as it is. The extra pins
+`openai-whisper==20250625` because every release up to `20240930` builds from source
+with a `setup.py` that imports `pkg_resources`, which current `setuptools` no longer
+ships, so installing one of those fails with `No module named 'pkg_resources'` (#44).
 
 ## Running the app
 

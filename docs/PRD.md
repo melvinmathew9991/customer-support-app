@@ -54,9 +54,8 @@ asking, or hands off to a human too eagerly. This app:
 3. **Call-me detection & ticketing** — detects a callback request in natural
    language, extracts the phone number, and routes to `CallCustomerNode`,
    which can transcribe a call via Whisper (optional extra) and produces a
-   ticket summary for the user. (With the extra installed and the local 3B
-   model this step currently fails and crashes the callback turn, #43; without
-   the extra the callback is logged and the conversation ends.)
+   ticket summary for the user. (Without the extra, or if the ticket cannot be
+   read, the callback is logged and the conversation ends.)
 4. **Graph visualization** — a "Graph" tab in the Streamlit UI renders the
    current conversation's Node/Edge DAG via Graphviz, so the state machine
    is inspectable while chatting.

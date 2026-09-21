@@ -102,7 +102,7 @@ phases are the actual next steps.
   "I don't have information about that in our help center." when uncovered,
   no invented contact channels); see `docs/eval/Prompt-Experiment-2026-09-19.md`.
 
-## Phase 4 — Call-me / ticketing flow ✅ Done (the with-audio ticket step is broken, #43)
+## Phase 4 — Call-me / ticketing flow ✅ Done
 - `CallCustomerEdge` detects a callback request and extracts the phone
   number into a `PhoneCallRequest`.
 - `CallCustomerNode` produces a `PhoneCallTicket` and a closing message;
@@ -124,16 +124,23 @@ phases are the actual next steps.
     phone number (6+ digits) in the user's latest message before the LLM
     intent check runs. **Behavior change:** a bare "call me" with no number no
     longer triggers a callback.
-- **With-audio path exercised (2026-09-21, #10; `llama3.2:3b`, `openai-whisper==20231106`,
-  torch in a short-path venv).** It does **not** work yet. Whisper is fine: the 55.5 s sample
+- **With-audio path exercised (2026-09-21, #10; `llama3.2:3b`, torch in a short-path venv),
+  found broken and then fixed (#43, #44).** Whisper was fine from the start: the 55.5 s sample
   transcribed in 19 s on CPU (`base` model) and the transcript is accurate. The ticket step
-  then fails: the model returns the `PhoneCallTicket` JSON *schema* instead of a ticket
-  (identical on two runs at temperature 0), the parser rejects it, and the exception is not
-  caught, so the callback turn crashes the conversation (#43). No ticket was produced, so
-  ticket quality is still unknown. A fresh-venv install of the extra also failed on
-  `pkg_resources` until `setuptools<70` and `--no-build-isolation` were used (#44). The tool
-  always transcribes the same fixed recording, so a ticket would describe that call whoever
-  asked. Without the extra the callback path works as described above.
+  failed: asked for as free text with the schema in the prompt, the model returned the
+  `PhoneCallTicket` JSON *schema* instead of a ticket (identical on two runs at temperature
+  0), and the uncaught parse error crashed the callback turn (#43). The fix asks for the
+  ticket with structured output, as the identification chain does, and
+  `CallCustomerNode.greeting_message()` falls back to the "callback logged" reply if a ticket
+  still cannot be read, so a bad ticket never ends the conversation. The first structured
+  version cut `call_summary` down to its first clause (identical on two runs); telling the
+  prompt to keep the whole summary fixed that. A fresh-venv install of the extra had failed
+  on `pkg_resources` in the `openai-whisper==20231106` build (#44); the extra now pins
+  `20250625`, which builds, and `pip install -e ".[audio]"` needs no workaround. Live
+  after the fix: the callback turn returns a ticket for agent Ruby and customer Michael
+  whose summary matches the call (report §10.6). The tool always transcribes the same fixed
+  recording, so every ticket describes that call whoever asked. Without the extra the
+  callback path works as described above.
 - **Decision (2026-09-19, #7): keep it.** A callback request with no phone
   number still gets a normal answer, not a callback. Rejected for now:
   - *Use the number on the user's profile.* It calls a number the user did not
