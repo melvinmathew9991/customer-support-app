@@ -207,6 +207,18 @@
     "notes": "Confirms the fails-safe behavior isn't an artifact of the exact bare-email phrasing ident-005 uses."
   },
   {
+    "id": "ident-014",
+    "category": "unknown_user_identification",
+    "description": "Three messages with no email or phone exhaust the identification retries; a support question follows.",
+    "turns": ["hey there", "what's up", "nothing to say", "How do I accept payments from customers?"],
+    "turn_budget": 4,
+    "expected": {
+      "session_ends": true,
+      "expected_behavior": "After the 'couldn't verify your account' message the conversation is over: the support question gets no answer and no retrieval runs (#37)."
+    },
+    "notes": "Before the #37 fix the fourth turn was answered from the free KB by an unidentified user. This entry is scored by score_fails_safe's session_ends branch: it passes when nothing follows the fail-safe message."
+  },
+  {
     "id": "rag-free-001",
     "category": "free_tier_question",
     "description": "Free-tier user asks an in-scope question answerable from assets/free/pos.txt.",

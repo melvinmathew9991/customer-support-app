@@ -34,7 +34,10 @@ tier-leakage risk, not a cosmetic miss.
 **Fails-safe rate (unknown/partial identification):** % of
 `ident-004`/`ident-005`-style conversations where the system does *not*
 fabricate a `UserProfile` or crash, and instead asks the user to retry or
-gives a clear "we can't find you" message.
+gives a clear "we can't find you" message. Since #37 this also covers what
+happens after the retries run out: `ident-014` passes only if the conversation
+ends at the "couldn't verify your account" message, with no answer and no
+retrieval after it.
 **Target: 100%** - this is a correctness gate, not a quality metric. Flagging
 now: `ident-004` and `ident-005` in the draft golden set target a suspected
 gap in `UserInfoChainBasedEdge`/`GreetingNode` - an unknown email or a user

@@ -75,11 +75,14 @@ def run_conversation(entry: dict):
     transcript.append([m.message for m in res])
     for turn in entry["turns"]:
         try:
-            res, _over = pipeline.run(turn)
+            res, over = pipeline.run(turn)
         except Exception as e:
             error = f"{type(e).__name__}: {e}"
             break
         transcript.append([m.message for m in res])
+        if over:
+            # The CLI and the app stop here too: nothing more is sent to a finished conversation.
+            break
     final_node = type(pipeline._current_node).__name__ if pipeline._current_node else None
     return transcript, final_node, error
 
@@ -124,7 +127,30 @@ def score_identification(entry, transcript, final_node, _log_records):
     }
 
 
-def score_fails_safe(_entry, _transcript, final_node, _log_records):
+FAIL_SAFE_TEXT = "couldn't verify your account"
+
+
+def score_session_ends(transcript, final_node, log_records):
+    # Once the user has been told identification failed, the conversation is over: nothing
+    # may be said after that message and no knowledge-base retrieval may run (#37). Here the
+    # final node is AuthenticatedUserNode by design, so the node check does not apply.
+    told = [
+        i for i, messages in enumerate(transcript) if any(FAIL_SAFE_TEXT in m for m in messages)
+    ]
+    if not told:
+        return False, {"final_node": final_node, "error": "the fail-safe message never appeared"}
+    after = [m for messages in transcript[told[0] + 1 :] for m in messages]
+    retrieved = any(r.get("event") == "retrieval" for r in log_records)
+    return not after and not retrieved, {
+        "final_node": final_node,
+        "said_after_fail_safe": after,
+        "retrieval_ran": retrieved,
+    }
+
+
+def score_fails_safe(entry, transcript, final_node, log_records):
+    if entry["expected"].get("session_ends"):
+        return score_session_ends(transcript, final_node, log_records)
     # Must NOT reach AuthenticatedUserNode with a fabricated identity -
     # this is the check that would have caught Bug 1 (see
     # docs/eval/Baseline-2026-09-18.md) before it shipped.

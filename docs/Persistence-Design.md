@@ -97,14 +97,13 @@ The Graph tab keeps working unchanged: it reads `pipeline._current_node`, which 
   transcript and says the conversation ended; the user starts a new one (Streamlit offers a
   button, the CLI says to run it again without `--session`).
 - **Failed identification.** After the identity edge exhausts its retries the graph moves
-  to `AuthenticatedUserNode` with a `MessageOutput` error as its input, prints "we still
-  couldn't verify your account", and then keeps answering from the free KB (confirmed
-  live on 2026-09-20: after three unidentifiable messages, "How do I accept payments from
-  customers?" was answered, with `AuthenticatedUserNode` holding a `MessageOutput` as its
-  input). That is existing behavior, not new, and is not fixed here. Persisting it faithfully would
-  make an unverified session resumable, so the proposal is: **a session whose node input is
-  not a `UserProfile` is not resumed** (a new one starts). The behavior itself is tracked
-  as #37; if it changes, revisit this line.
+  to `AuthenticatedUserNode` with a `MessageOutput` error as its input and prints "we still
+  couldn't verify your account". Until #37 the conversation then carried on and answered
+  from the free KB (confirmed live on 2026-09-20); now that node is final whenever it holds
+  no `UserProfile`, so the conversation ends there and is saved as over. A session whose
+  node input is not a `UserProfile` is still **not resumed** (a new one starts), which is
+  now the consistent rule: a finished conversation with no identified user has nothing to
+  resume.
 - **Profile changes between restarts.** The saved `UserProfile` (tier included) is trusted
   on resume; identification is not re-run. If the mock DB changes a user's tier mid-session,
   the session keeps the old one until it ends.
