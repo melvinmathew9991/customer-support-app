@@ -117,6 +117,16 @@ phases are the actual next steps.
     phone number (6+ digits) in the user's latest message before the LLM
     intent check runs. **Behavior change:** a bare "call me" with no number no
     longer triggers a callback.
+- **With-audio path exercised (2026-09-21, #10; `llama3.2:3b`, `openai-whisper==20231106`,
+  torch in a short-path venv).** It does **not** work yet. Whisper is fine: the 55.5 s sample
+  transcribed in 19 s on CPU (`base` model) and the transcript is accurate. The ticket step
+  then fails: the model returns the `PhoneCallTicket` JSON *schema* instead of a ticket
+  (identical on two runs at temperature 0), the parser rejects it, and the exception is not
+  caught, so the callback turn crashes the conversation (#43). No ticket was produced, so
+  ticket quality is still unknown. A fresh-venv install of the extra also failed on
+  `pkg_resources` until `setuptools<70` and `--no-build-isolation` were used (#44). The tool
+  always transcribes the same fixed recording, so a ticket would describe that call whoever
+  asked. Without the extra the callback path works as described above.
 - **Decision (2026-09-19, #7): keep it.** A callback request with no phone
   number still gets a normal answer, not a callback. Rejected for now:
   - *Use the number on the user's profile.* It calls a number the user did not
