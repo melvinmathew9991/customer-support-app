@@ -371,12 +371,13 @@ held. What changed:
 - Left open by the maintainer's decision: #14 (license, and whether the Shopify-derived
   KB stays public), which is a legal choice.
 
-**Carried forward (not scheduled in any sprint; the `Known limits` milestone holds #5, #17,
-#23 and #33):**
+**Carried forward (not scheduled in any sprint; the `Known limits` milestone holds #5, #17
+and #23, and held #33 until it was fixed on 2026-09-21):**
 - #5, #17, #23: open, as known limits (above). #33 (callback veto and compound
   phrasings) was the same family as #23 and was fixed afterwards, with one trade-off
   (`docs/eval/Callback-Compound-Results-2026-09-21.md`).
-- Pre-existing and untouched: #10 (with-whisper path never exercised), #14 (license
+- Pre-existing: #10 (with-whisper path; exercised on 2026-09-21, and it does not work, see
+  #43 and #44 below), #14 (license
   and whether the Shopify-derived KB stays public). #12 (CLI `EOFError`) and #13
   (chromadb telemetry warnings) were fixed afterwards in a small PR (#36).
 - Unexplained: a fresh 3B full run differed slightly from the earlier full eval on the
@@ -426,9 +427,10 @@ conversation does, retention) answered by the maintainer before any code.
   differ, and only because they are scored PASS now instead of manual review.
 - The one edit to an existing test file: the CLI tests (added in #36) pass an empty argv to
   `main()` now that it parses arguments; their expectations are unchanged.
-- Found along the way and **not** fixed: after identification fails the bot says it could not
-  verify the user but keeps answering from the free KB (#37). The persistence design refuses
-  to resume such a session.
+- Found along the way: after identification fails the bot said it could not verify the user
+  but kept answering from the free KB (#37). Not fixed in this sprint; fixed afterwards in
+  PR #42 (see the out-of-band fixes below). The persistence design refuses to resume such
+  a session.
 - Not exercised: a real browser session (the app was driven headlessly with Streamlit's
   `AppTest`), and more than one process writing the same database at once (out of scope).
 - A process evaluation followed the merge (`docs/Process-Evaluation.md`). Its proposals are
@@ -449,6 +451,40 @@ passes untouched.
 **Risk:** scope creep into a full session-management system — keep it to
 "survive a restart," not multi-user concurrency (out of scope until
 there's a real deployment target).
+
+---
+
+## Out-of-band fixes after Sprint 3 (2026-09-21)
+Not part of any planned sprint - logged here so the history stays accurate. Each was
+picked from the open issues, worked on its own `fix/` or `docs/` branch and merged by PR.
+- **#37, failed identification (PR #42).** After the identity edge ran out of retries the
+  bot said it could not verify the user and then kept answering from the free KB,
+  contradicting the PRD. The maintainer chose to end the conversation at that message.
+  `AuthenticatedUserNode.is_node_final()` is true whenever the node holds no `UserProfile`,
+  so the pipeline reports the conversation over and the CLI and app stop. New golden-set
+  entry `ident-014` sends a question after the failure; it failed on the old code and
+  passes now. A guard in the pipeline that ignores input after the end was tried and
+  dropped as beyond the issue; the eval harness stops sending turns once a conversation is
+  over instead, as the real clients do. Behavior change: an unidentified user is no longer
+  answered after the fail-safe message.
+- **#33, compound callback phrasings (PR #45).** A message that declines one call and
+  requests another ("Never call me before 9am, but do call me on ...") was rejected whole
+  by the do-not-call veto. Each decline is now taken out of the message before a request
+  is looked for. A 12-entry held-out cohort (`call-059`..`070`) was committed first:
+  recall on it went 2/7 -> 7/7 and recall over all 44 requests is 44/44. **One trade-off:**
+  `call-070` (a decline plus "call me back only if the email bounces", labelled a
+  non-request) now false-triggers, so precision on the set fell from 95.1% to 93.6%
+  (`docs/eval/Callback-Compound-Results-2026-09-21.md`).
+- **#10, the with-audio path exercised (PR #46).** With the `audio` extra installed
+  (in a separate short-path venv), Whisper transcribes the sample recording in about 19 s
+  and accurately, but the ticket step crashes the callback turn: the 3B returns the ticket
+  schema instead of a ticket (**#43**). Installing the extra in a fresh venv also failed on
+  `pkg_resources` until `setuptools<70` and `--no-build-isolation` were used (**#44**). Both
+  are open and unscheduled; #10 is closed because its criteria (run it, record it, file
+  bugs) were met, not because the path works.
+- Still open and unscheduled: #5, #17 and #23 (accepted known limits; no attempt was made
+  to reach their targets, since the samples are too small to confirm a fix, see
+  `docs/Process-Evaluation.md`), #14 (license, a maintainer decision), #43 and #44.
 
 ---
 

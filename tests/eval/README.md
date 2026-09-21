@@ -29,6 +29,7 @@ written as held-out cohorts were committed before the run that scored them
       "expected_key_facts": ["short factual claim the answer should be consistent with"]
     },
     "callback_expected": false,
+    "session_ends": true,   // ident-014 only: nothing may follow the fail-safe message and no retrieval may run (#37)
     "extracted_phone": "...",
     "final_node": "GreetingNode|AuthenticatedUserNode|CallCustomerNode",
     "expected_behavior": "free-text fallback for cases too irregular for the structured fields above (e.g. graceful-failure requirements)"

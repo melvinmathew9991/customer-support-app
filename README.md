@@ -57,7 +57,10 @@ pip install -e ".[dev]"
 Optional extras:
 - `pip install -e ".[audio]"` - enables the phone-call transcription tool
   (`tools/audio_transcribe.py`); pulls in `torch`/Whisper (see Windows note
-  below).
+  below). **Not recommended yet:** with this extra installed a callback request
+  crashes the conversation, because the local model returns the ticket's schema
+  instead of a ticket (#43). Without the extra, a callback is logged and the
+  conversation ends normally.
 - `pip install -e ".[sentence-transformers]"` - alternative local embeddings
   backend; also pulls in `torch`.
 
@@ -118,6 +121,16 @@ short path, e.g. `py -3.10 -m venv C:\venvs\customer-support`. The default
 configuration (`EMBEDDINGS_PROVIDER=ollama`, no `audio` extra) avoids this
 entirely.
 
+Installing the `audio` extra into a fresh venv can also fail before `torch` is involved,
+with `ModuleNotFoundError: No module named 'pkg_resources'` from a source build (#44).
+This sequence worked (Python 3.10, Windows, a venv on a short path):
+
+```bash
+pip install --upgrade pip wheel "setuptools<70"
+pip install --no-build-isolation "openai-whisper==20231106" "librosa==0.10.2" "numexpr==2.8.7"
+pip install -e ".[audio]"
+```
+
 ## Running the app
 
 ```bash
@@ -149,7 +162,9 @@ is gitignored.
   URL can read it, which is fine for a local app and needs revisiting before any real
   deployment.
 - A conversation that already ended shows its transcript and says so; start a new one from
-  the button (Streamlit) or by running the command again (terminal).
+  the button (Streamlit) or by running the command again (terminal). A conversation also
+  ends if the bot still cannot identify you after three tries; it says so and you start a
+  new one (a conversation that ended this way is not resumable).
 
 Design and limits: `docs/Persistence-Design.md`.
 

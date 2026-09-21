@@ -25,6 +25,8 @@ GreetingNode
    ▼
 UserInfoChainBasedEdge  ── tool-calling agent: user_info_db_search → user_subscription_db_search
    │  produces UserProfile (name, subscription)
+   │  (after its retries run out it hands over an error instead: the node says it could not
+   │   verify the account and the conversation ends, #37)
    ▼
 AuthenticatedUserNode (RetrievalNode)
    │  RAG over Chroma: free or paid collection, chosen from UserProfile.subscription

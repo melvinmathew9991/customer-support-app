@@ -58,6 +58,13 @@ phases are the actual next steps.
   that requires the looked-up value to appear in the user's own message compares digits
   for phone numbers. Behavior change: phone and mixed-case email identification now
   succeed instead of failing safe; `ident-007` and `ident-010` are scored entries.
+- **Failed identification (2026-09-21, #37, found while designing Sprint 3):** after the
+  identity edge ran out of retries the bot said it "couldn't verify your account" and then
+  kept answering from the free KB, contradicting the PRD. The maintainer chose to end the
+  conversation at that message: `AuthenticatedUserNode.is_node_final()` is true whenever the
+  node holds no `UserProfile`, so the pipeline reports the conversation over and the CLI and
+  app stop. Behavior change: an unidentified user is no longer answered. Golden-set entry
+  `ident-014` sends a question after the failure and fails on the old code.
 
 ## Phase 3 — Tiered RAG support answers ✅ Done
 - `AuthenticatedUserNode` (`RetrievalNode`) answers from Chroma, retriever
@@ -95,7 +102,7 @@ phases are the actual next steps.
   "I don't have information about that in our help center." when uncovered,
   no invented contact channels); see `docs/eval/Prompt-Experiment-2026-09-19.md`.
 
-## Phase 4 — Call-me / ticketing flow ✅ Done
+## Phase 4 — Call-me / ticketing flow ✅ Done (the with-audio ticket step is broken, #43)
 - `CallCustomerEdge` detects a callback request and extracts the phone
   number into a `PhoneCallRequest`.
 - `CallCustomerNode` produces a `PhoneCallTicket` and a closing message;
@@ -189,10 +196,10 @@ no new dependency, no ORM).
   the URL (`?session=<id>`); an ended conversation shows its transcript, disables input and
   offers a button to start again.
 - `SESSION_DB_PATH` setting (default `data/sessions.sqlite`, gitignored).
-- Known and unchanged: after three unidentifiable messages the bot says it could not verify
-  the account but keeps answering from the free KB (confirmed live; not fixed here,
-  tracked as #37). Saved sessions hold PII in the clear, and the Streamlit session id in
-  the URL is a bearer token; both are for Phase 10 to revisit.
+- Known: saved sessions hold PII in the clear, and the Streamlit session id in the URL is a
+  bearer token; both are for Phase 10 to revisit. (After three unidentifiable messages the
+  bot used to keep answering from the free KB; that ended with the fix for #37, described
+  under Phase 2.)
 
 ## Phase 7 — Real user store
 - Replace the mock `tools/user_info_db.py` with a real lookup (API or DB),
@@ -203,7 +210,8 @@ no new dependency, no ORM).
   store is the point to decide whether it needs a second factor.
 
 ## Phase 8 — Evaluation harness for LLM-dependent behavior (partly done)
-- **Built (Sprints 1-2):** a 122-conversation golden set
+- **Built (Sprints 1-2, grown since):** a 135-conversation golden set (122 at the end of
+  Sprint 3; `ident-014` was added for #37 and `call-059`..`070` for #33)
   (`tests/eval/golden_set.json`), an automated scoring harness
   (`tests/eval/run_eval.py`), metric definitions and targets
   (`docs/eval/Metrics.md`), and the structured per-turn log it scores from.

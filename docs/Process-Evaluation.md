@@ -99,7 +99,8 @@ real change.
 
 **5. Modeling strategy had some whack-a-mole.** The callback work moved from prompt wording to
 regexes to more regexes, each flattering the entries it was written for, and the audit found two
-phrasings they got wrong (one since fixed, one still open as #33). The alternative was not tried: a labeled intent set of 150 to 200
+phrasings they got wrong (both since fixed; the second, #33, cost one new false trigger,
+`docs/eval/Callback-Compound-Results-2026-09-21.md`). The alternative was not tried: a labeled intent set of 150 to 200
 examples evaluated against a small classifier. "A larger model did not help" is really "one
 4-bit 8B model, with prompts tuned for the 3B, did not help"; no hosted-model baseline was run
 although the OpenAI path is wired.
@@ -201,7 +202,7 @@ not more ceremony.
 ### 7. Manage risk on purpose
 - A one-page threat model: plaintext PII at rest, the URL id as a password, raw `user_input` in
   the turn log (add a redaction option), prompt injection (a 20 to 30 entry test set), tier
-  bypass, and the failed-identification behavior (#37).
+  bypass, and the failed-identification behavior (#37, since fixed).
 - A dependency lockfile plus Dependabot, a secrets scan in CI, and a decision on the license
   (#14).
 
