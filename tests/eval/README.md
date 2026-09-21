@@ -67,3 +67,19 @@ again), etc. Leave irrelevant fields out rather than null-filling them.
 - `tools/user_info_db.py`'s `user_sub` list only has entries for
   `user_id` 1-3; `user_id "4"` (XYZ) exists in `user_info` but has no
   subscription row - this is what `subscription_lookup_missing` targets.
+
+## Comparing runs
+
+To see how much the eval moves between runs of the same code, write each run to its own file
+and compare them:
+
+```bash
+for i in 1 2 3; do python tests/eval/run_eval.py --out docs/eval/variance/run-$i.md; done
+python scripts/summarize_eval_runs.py docs/eval/variance/run-*.md
+```
+
+It prints each metric per run with its spread, the entries whose result changes between runs,
+and the entries whose answer text changes. Measured on five runs of the 3B model, the metrics
+did not move and no entry changed result (`docs/eval/Variance-Results-2026-09-22.md`), but one
+model-decided entry (`call-031`) has failed once in eleven full runs on record, so treat a
+one-entry change as something to re-run, not to conclude from.

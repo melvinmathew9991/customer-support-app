@@ -382,9 +382,12 @@ and #23, and held #33 until it was fixed on 2026-09-21):**
   afterwards, see #43 and #44 below), #14 (license
   and whether the Shopify-derived KB stays public). #12 (CLI `EOFError`) and #13
   (chromadb telemetry warnings) were fixed afterwards in a small PR (#36).
-- Unexplained: a fresh 3B full run differed slightly from the earlier full eval on the
-  same code (callback recall 100% vs 97%); the audit's two runs are consistent with that
-  variance. Not investigated.
+- The run-to-run difference (callback recall 100% vs 97% between two full 3B runs on the
+  same code) was measured afterwards on `chore/eval-variance`: five full runs gave 0 pp
+  spread on every metric and no entry changing result. The earlier difference was one
+  model-decided entry (`call-031`), not reproduced and not explained
+  (`docs/eval/Variance-Results-2026-09-22.md`). For Sprint 5's gate, that report suggests
+  flagging changed entries and re-running only those, instead of a metric threshold.
 - `docs/report.md` refreshed for the end of Sprint 2 and again after the audit.
 
 **Deliverables:** updated KB content, `scripts/reindex_kb.py` (or similar),
