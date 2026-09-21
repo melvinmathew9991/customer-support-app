@@ -277,6 +277,19 @@ First run: a separate venv on a short path (`C:envs\cs-audio`, Python 3.10.10, 
 
 Limits: single observations on one machine, one recording, one local model. Not tried: `llama3.1:8b`, or Linux/macOS (the pin builds on Windows only as far as tested). The golden set does not exercise this path, so it was not re-run. The tool always transcribes the same fixed recording, so every ticket describes that call whoever asked. Without the extra the callback path still works as in §10.2.
 
+### 10.7 Run-to-run variance (measured 2026-09-21 to 22)
+
+Five full 135-entry runs of unchanged `main` (`8d450ae`), `llama3.2:3b`, criteria fixed beforehand in `docs/eval/Variance-Plan-2026-09-21.md`, results in `docs/eval/Variance-Results-2026-09-22.md`, raw reports in `docs/eval/variance/`.
+
+| Question | Result |
+|---|---|
+| Do aggregate metrics move? | No: identical in all five runs (spread 0.0 pp on all eight); 120 PASS, 3 FAIL, 12 MANUAL REVIEW every time |
+| Does any entry change result? | No: 0 of 135 |
+| Does any output change? | One: `rag-free-008` answered at 186 characters in run 1 and 327 in runs 2-5. Retrieval was identical and the RAG prompt carries no history, so the difference is generation on the model server, not this project's code. The 12 hand-graded entries' answers were byte-identical in all five runs |
+| The earlier 100% vs 97% recall difference? | One entry, `call-031`, which is decided by the model's intent check and failed once in eleven full 3B runs on record. Not reproduced in five runs, not ruled out (a 10% per-run flip rate would still give five clean runs about 59% of the time), and its cause is unknown |
+
+Limits: five runs, one machine, one night. "0 flippers" is a lower bound on the true range. Wall time was steady at 783-796 s per run. Not tested: attributing a flip (the plan's Phase 2 was skipped because none occurred), warm versus cold model state beyond run 1, or another day. Compare runs with `scripts/summarize_eval_runs.py`.
+
 ## 11. Evaluation Metrics
 
 | Metric | Value |
@@ -294,6 +307,7 @@ Limits: single observations on one machine, one recording, one local model. Not 
 | Retrieval recall / tier leakage | 100% / 0% (n=39) |
 | Callback recall / precision (full set) | 100% / 93.6% (44/47); held-out cohort (`call-037`..`058`) precision 83% (95% interval 55% to 95%) |
 | Hallucination | 13.3% fabrication on an untuned cohort; 2%-14% on the blind 51-answer grade; target ≤5% |
+| Run-to-run variance (5 full runs, unchanged code) | 0 pp on every aggregate metric, 0 of 135 entries change result, 1 answer varies in wording (`rag-free-008`); §10.7 |
 | Issues | 4 open (#5, #14, #17, #23), 16 closed once #43 and #44 are closed by their fix |
 | Commits / PRs | 98 commits, 26 merged PRs as of #45; single contributor |
 | Since Sprint 3 | 4 issues fixed: #37 and #33 (one trade-off), and #43 and #44, the two bugs found by exercising the with-audio path |
@@ -343,6 +357,7 @@ The work after Sprint 3 repeated the same lessons in miniature. #37 sat unmeasur
 | 29 | With the `audio` extra installed, a callback request crashes the conversation: the 3B returns the ticket's JSON schema instead of a ticket (identical on two runs at temperature 0) and the exception is uncaught. Found by exercising the path for the first time (§10.6) | High for that configuration (an optional extra) | Fixed (#43): structured ticket, plus a fallback to the "callback logged" reply if a ticket cannot be read |
 | 30 | Installing the `audio` extra into a fresh venv fails on `pkg_resources` in a source build; it worked with `setuptools<70` and `--no-build-isolation` | Low | Fixed (#44): the extra pins `openai-whisper==20250625`, which builds in a fresh venv |
 | 31 | The do-not-call veto refused a message that declines one call and requests another ("Never call me before 9am, but do call me on X") | Medium | Fixed (#33, PR #45) at the cost of one new false trigger, a decline followed by a conditional offer (`call-070`). Not covered: "You can't call me on X" is not a decline pattern and counts as a request |
+| 32 | Run-to-run variance of the eval was unmeasured (a full 3B run once differed by one entry on unchanged code) | Low | Measured (§10.7): 5 full runs, 0 pp spread on every aggregate metric, 0 flippers, one answer whose wording varied. The one-entry flip on record is `call-031`, a model-decided entry; not reproduced, not explained |
 
 ## 14. Challenges Faced
 
@@ -366,7 +381,7 @@ Exercising the with-audio path took three attempts. The first install failed in 
 - A callback request must include a phone number (maintainer decision, #7); a bare "call me" gets a normal RAG reply.
 - All eval numbers are single runs on a 3B model with small n. One answer is 2-7 points on the hallucination sets, and the 22-entry callback cohort has only 12 negatives.
 - Hallucination is graded by one reader, and the latest blind grade was done by the same assistant that ran the experiment, not a human. Blinding hides the model, not the reader's judgment; the two most recent grades disagree with the earlier ones (2% vs about 10%), so the absolute rate is uncertain.
-- Temperature 0 does not give identical output: a fresh full 3B run differed slightly from the earlier one on the same code, and `ident-011` completed or hung depending on Ollama's state before the #30 bounds. Not investigated.
+- Temperature 0 does not give identical output, but the scored results were stable over five full runs on unchanged code (0 pp on every aggregate metric, no entry changed result; §10.7). The earlier one-entry difference (`call-031`, callback recall 36/37 vs 37/37) was not reproduced and not explained: it is a model-decided entry that has failed once in eleven full 3B runs on record. One answer's wording varied (`rag-free-008`), from the model server and not from retrieval. `ident-011` completed or hung depending on Ollama's state before the #30 bounds.
 - Prompts, guards and patterns were developed around 3B behavior, which favors it in any comparison with another model.
 
 **New, since Sprint 3:**
@@ -386,7 +401,7 @@ Exercising the with-audio path took three attempts. The first install failed in 
 
 **Quick:** #14 (license, and whether the Shopify-derived KB stays public: a maintainer decision). #5, #17 and #23 stay open as accepted known limits (`docs/Sprints.md`).
 
-**Medium:** if hallucination or callback precision must reach target, scope it as its own sprint with a larger pre-committed held-out set (a second-pass grounding check for #5/#17; a labeled callback-intent set large enough to tune without overfitting for #23); investigate the small 3B run-to-run difference.
+**Medium:** if hallucination or callback precision must reach target, scope it as its own sprint with a larger pre-committed held-out set (a second-pass grounding check for #5/#17; a labeled callback-intent set large enough to tune without overfitting for #23). The run-to-run difference was measured (§10.7); for a CI gate, flag entries whose result changed and re-run only those, instead of a metric threshold.
 
 **Process (proposed, not adopted; full plan in `docs/Process-Evaluation.md`):** an evidence bundle first (dev, validation and frozen test splits; intervals on every rate; a run manifest and results index per eval), then a smoke-eval gate before merge, independent review of eval labels and metric-affecting PRs, one source per fact with a generated status block, a threat model with a lockfile, and a small real-user trial.
 
