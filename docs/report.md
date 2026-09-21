@@ -294,7 +294,7 @@ Limits: single observations on one machine, one recording, one local model. Not 
 | Retrieval recall / tier leakage | 100% / 0% (n=39) |
 | Callback recall / precision (full set) | 100% / 93.6% (44/47); held-out cohort (`call-037`..`058`) precision 83% (95% interval 55% to 95%) |
 | Hallucination | 13.3% fabrication on an untuned cohort; 2%-14% on the blind 51-answer grade; target ≤5% |
-| Issues | 4 open (#5, #14, #17, #23), 16 closed once #43 and #44 are closed by their fix |
+| Issues | 4 open (#5, #14, #17, #23), 16 closed; #14 is partly done (the code is licensed, the assets' origin is not confirmed) |
 | Commits / PRs | 98 commits, 26 merged PRs as of #45; single contributor |
 | Since Sprint 3 | 4 issues fixed: #37 and #33 (one trade-off), and #43 and #44, the two bugs found by exercising the with-audio path |
 
@@ -337,7 +337,7 @@ The work after Sprint 3 repeated the same lessons in miniature. #37 sat unmeasur
 | 23 | README recommended `llama3.1:8b` for flaky flows, contradicting the experiment that rejected it | Low | Fixed |
 | 24 | `RetrievalNode` swallowed any exception in the retrieval-log lookup that recall and tier-leakage scoring read | Low | Fixed: logs a warning |
 | 25 | "No need to call me back, my number is ..." started a callback (the do-not-call veto did not know "no need") | Medium | Fixed. The compound case (declines and requests in one sentence) was fixed later (finding 31, #33) |
-| 26 | Public repository with no LICENSE; the KB is Shopify-derived | Medium | Open (#14), left to the maintainer: a legal decision |
+| 26 | Public repository with no LICENSE; the KB is Shopify-derived | Medium | Partly fixed (#14): the code and docs are MIT-licensed (`LICENSE`), and `assets/NOTICE.md` records the KB text and the call audio as third-party sample data that the license does not cover. Still open: the source and terms of those files are unconfirmed, and the maintainer does not remember where they came from. Removing them from the tree would not remove them from git history |
 | 27 | After three unidentifiable messages the bot says it could not verify the user, then keeps answering from the free KB (confirmed live on 2026-09-20). Contradicts the PRD; impact limited to the free KB, tier leakage stays 0% | Low | Fixed (#37, PR #42): the fail-safe message now ends the conversation. Not caused by persistence. New golden-set entry `ident-014` fails on the old code and passes now; §10.2 conversation C |
 | 28 | Process (`docs/Process-Evaluation.md`): targets cannot be confirmed at the sample sizes used, the golden set has been reused across about 15 runs, eval runs carry no manifest (git SHA, model digest, settings), the 20 PRs measured had 0 reviews, and docs plus eval reports are about 9 times the source | Medium | Open. A ten-point plan is proposed, not adopted; suggested first step is one PR for data splits, interval reporting and run manifests |
 | 29 | With the `audio` extra installed, a callback request crashes the conversation: the 3B returns the ticket's JSON schema instead of a ticket (identical on two runs at temperature 0) and the exception is uncaught. Found by exercising the path for the first time (§10.6) | High for that configuration (an optional extra) | Fixed (#43): structured ticket, plus a fallback to the "callback logged" reply if a ticket cannot be read |
@@ -358,7 +358,7 @@ Exercising the with-audio path took three attempts. The first install failed in 
 
 ## 15. Limitations
 
-**Still true:** hallucination (about 13% on untuned questions) and held-out callback precision (83%) are below target; the with-whisper path (real call transcription and ticket summary) works but was exercised only live, twice, on one recording: a single fixed sample is always what is transcribed, so every ticket describes that call, and ticket quality on other calls is unknown; the mock DB is a mock (identification is a lookup, not authentication: anyone who knows an email or phone number is served that customer's tier); there is no real user store (Phase 7); OpenAI models were never tested (the token and timeout bounds are configured for them but unexercised); the repository has no LICENSE (#14).
+**Still true:** hallucination (about 13% on untuned questions) and held-out callback precision (83%) are below target; the with-whisper path (real call transcription and ticket summary) works but was exercised only live, twice, on one recording: a single fixed sample is always what is transcribed, so every ticket describes that call, and ticket quality on other calls is unknown; the mock DB is a mock (identification is a lookup, not authentication: anyone who knows an email or phone number is served that customer's tier); there is no real user store (Phase 7); OpenAI models were never tested (the token and timeout bounds are configured for them but unexercised); the code is MIT-licensed but the KB text and call audio are third-party sample data of unconfirmed origin and terms, so their redistribution is unresolved (#14).
 
 **No longer true:** no CI; ruff configured but unenforced (27 findings); the free-tier KB contradicting itself (twice); identification bypassable with fabricated input; no way to reindex the KB deterministically; no held-out data; callback extraction returning the wrong number; a model that skips a tool call getting a made-up tier; phone numbers and mixed-case emails not identifying anyone; no cap or timeout on LLM calls (#30); the README steering users to the rejected 8B model; a conversation being lost on every restart or page reload; a failed identification being followed by free-tier answers (#37); a callback request beside a decline being refused whole (#33).
 
@@ -384,7 +384,7 @@ Exercising the with-audio path took three attempts. The first install failed in 
 
 ## 16. Future Improvements
 
-**Quick:** #14 (license, and whether the Shopify-derived KB stays public: a maintainer decision). #5, #17 and #23 stay open as accepted known limits (`docs/Sprints.md`).
+**Quick:** #14, the part still open: confirm the source and terms of the KB text and the call audio (`assets/NOTICE.md`), then record them or replace the files (replacing the KB means a full golden-set re-run). #5, #17 and #23 stay open as accepted known limits (`docs/Sprints.md`).
 
 **Medium:** if hallucination or callback precision must reach target, scope it as its own sprint with a larger pre-committed held-out set (a second-pass grounding check for #5/#17; a labeled callback-intent set large enough to tune without overfitting for #23); investigate the small 3B run-to-run difference.
 
