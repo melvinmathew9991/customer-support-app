@@ -4,8 +4,8 @@
 every later sprint's regression gate) is measured against. See
 `docs/eval/Metrics.md` for how each field below feeds a specific metric.
 
-The set is 123 conversations across the 11 categories below (`ident-*` 14,
-`rag-*` 51, `call-*` 58). Growth since Sprint 1 added phrasing and topic
+The set is 135 conversations across the 11 categories below (`ident-*` 14,
+`rag-*` 51, `call-*` 70). Growth since Sprint 1 added phrasing and topic
 variations within the existing categories rather than new ones, so the
 category list stays the taxonomy every metric is defined against. Entries
 written as held-out cohorts were committed before the run that scored them
