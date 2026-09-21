@@ -116,6 +116,41 @@ def test_asking_not_to_be_called_is_rejected_without_asking_the_model(message):
 @pytest.mark.parametrize(
     "message",
     [
+        "Never call me before 9am, but do call me on 0452 333 666 after.",
+        "Please don't call me at work, but call me on 0452 111 222 after 5pm.",
+        "Call me on 0452 222 333 please, but don't call the landline.",
+        "No need to call the office, just call me on 0452 121 343.",
+        "Do not phone me before noon, but give me a call on 0452 909 808 after that.",
+    ],
+)
+def test_a_request_is_accepted_even_when_the_same_message_declines_something_else(message):
+    llm = _CountingLLM(answer=False)
+    edge = CallCustomerEdge(llm_model=llm)
+
+    assert edge.check(_history(message)) is True
+    assert llm.calls == 0
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Never call me on 0452 333 666, email me instead.",
+        "Don't call me, but do email me; my number is 0452 555 000 in case you need it.",
+        "No calls please. If you must, the number is 0452 616 262 but don't call before 9.",
+        "Please don't call me back on 0452 111 222",
+    ],
+)
+def test_a_decline_with_nothing_else_asked_is_still_rejected_without_asking_the_model(message):
+    llm = _CountingLLM(answer=True)
+    edge = CallCustomerEdge(llm_model=llm)
+
+    assert edge.check(_history(message)) is False
+    assert llm.calls == 0
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
         "Your site says call us on 1300 655 021, is that right?",
         "I called 0452 314 559 yesterday and nobody answered",
     ],

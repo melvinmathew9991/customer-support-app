@@ -303,10 +303,14 @@ class CallCustomerEdge(PydanticTextBasedEdge):
         last_input = user_input.role_based_history(Role.USER)[-1]["content"]
         if not self._PHONE_NUMBER_RE.search(last_input):
             return False
-        if self._DO_NOT_CALL_RE.search(last_input):
-            return False
-        if self._CALL_ME_RE.search(last_input):
+        # A decline only cancels the request it is part of, so it is taken out before looking
+        # for one: "never call me on X" has nothing left, while "never call me before 9am, but
+        # do call me on X" still has its second request (#33).
+        without_declines, declines = self._DO_NOT_CALL_RE.subn(" ", last_input)
+        if self._CALL_ME_RE.search(without_declines):
             return True
+        if declines:
+            return False
         return super().check(user_input)
 
     # A whole number as typed (optional leading + or bracket), for reading it back.

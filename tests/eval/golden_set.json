@@ -1798,5 +1798,113 @@
     "turn_budget": 2,
     "expected": { "callback_expected": true, "extracted_phone": "0452 926 043", "final_node": "CallCustomerNode" },
     "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-059",
+    "category": "callback_request_explicit",
+    "description": "The message from #33: declines calls before 9am, then asks to be called after.",
+    "turns": ["michaeljackson@gmail.com", "Never call me before 9am, but do call me on 0452 333 666 after."],
+    "turn_budget": 2,
+    "expected": { "callback_expected": true, "extracted_phone": "0452 333 666", "final_node": "CallCustomerNode" },
+    "notes": "Issue #33 compound/negated cohort: written before any change to the callback veto, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-060",
+    "category": "callback_request_explicit",
+    "description": "Declines calls at work, then asks for a call on a number.",
+    "turns": ["john@doe.com", "Please don't call me at work, but call me on 0452 111 222 after 5pm."],
+    "turn_budget": 2,
+    "expected": { "callback_expected": true, "extracted_phone": "0452 111 222", "final_node": "CallCustomerNode" },
+    "notes": "Issue #33 compound/negated cohort: written before any change to the callback veto, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-061",
+    "category": "callback_request_explicit",
+    "description": "Requests a call first, then declines one number.",
+    "turns": ["carl@sagan.com", "Call me on 0452 222 333 please, but don't call the landline."],
+    "turn_budget": 2,
+    "expected": { "callback_expected": true, "extracted_phone": "0452 222 333", "final_node": "CallCustomerNode" },
+    "notes": "Issue #33 compound/negated cohort: written before any change to the callback veto, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-062",
+    "category": "callback_request_explicit",
+    "description": "'No need to call' about one place, then a request for another number.",
+    "turns": ["michaeljackson@gmail.com", "No need to call the office, just call me on 0452 121 343."],
+    "turn_budget": 2,
+    "expected": { "callback_expected": true, "extracted_phone": "0452 121 343", "final_node": "CallCustomerNode" },
+    "notes": "Issue #33 compound/negated cohort: written before any change to the callback veto, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-063",
+    "category": "callback_request_explicit",
+    "description": "Declines morning calls with 'do not phone', then asks for one.",
+    "turns": ["john@doe.com", "Do not phone me before noon, but give me a call on 0452 909 808 after that."],
+    "turn_budget": 2,
+    "expected": { "callback_expected": true, "extracted_phone": "0452 909 808", "final_node": "CallCustomerNode" },
+    "notes": "Issue #33 compound/negated cohort: written before any change to the callback veto, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-064",
+    "category": "callback_request_explicit",
+    "description": "Control: the decline is about email, so no call word is negated.",
+    "turns": ["carl@sagan.com", "Don't email me, call me on 0452 777 888."],
+    "turn_budget": 2,
+    "expected": { "callback_expected": true, "extracted_phone": "0452 777 888", "final_node": "CallCustomerNode" },
+    "notes": "Issue #33 compound/negated cohort: written before any change to the callback veto, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-065",
+    "category": "callback_request_explicit",
+    "description": "Control: 'can't take calls' is not one of the decline patterns.",
+    "turns": ["john@doe.com", "I can't take calls in the morning; call me on 0452 555 123 in the afternoon instead."],
+    "turn_budget": 2,
+    "expected": { "callback_expected": true, "extracted_phone": "0452 555 123", "final_node": "CallCustomerNode" },
+    "notes": "Issue #33 compound/negated cohort: written before any change to the callback veto, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-066",
+    "category": "callback_false_trigger",
+    "description": "Plain decline that names the number.",
+    "turns": ["carl@sagan.com", "Never call me on 0452 333 666, email me instead."],
+    "turn_budget": 2,
+    "expected": { "callback_expected": false },
+    "notes": "Issue #33 compound/negated cohort: written before any change to the callback veto, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-067",
+    "category": "callback_false_trigger",
+    "description": "Declines calls and gives a number for another purpose.",
+    "turns": ["michaeljackson@gmail.com", "Please don't call me at work, my mobile 0452 111 222 is for texts only."],
+    "turn_budget": 2,
+    "expected": { "callback_expected": false },
+    "notes": "Issue #33 compound/negated cohort: written before any change to the callback veto, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-068",
+    "category": "callback_false_trigger",
+    "description": "Declines calls, asks for email, offers a number.",
+    "turns": ["john@doe.com", "Don't call me, but do email me; my number is 0452 555 000 in case you need it."],
+    "turn_budget": 2,
+    "expected": { "callback_expected": false },
+    "notes": "Issue #33 compound/negated cohort: written before any change to the callback veto, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-069",
+    "category": "callback_false_trigger",
+    "description": "Two declines and a grudging number.",
+    "turns": ["carl@sagan.com", "No calls please. If you must, the number is 0452 616 262 but don't call before 9."],
+    "turn_budget": 2,
+    "expected": { "callback_expected": false },
+    "notes": "Issue #33 compound/negated cohort: written before any change to the callback veto, held out until the final verification; do not tune against it."
+  },
+  {
+    "id": "call-070",
+    "category": "callback_false_trigger",
+    "description": "Hard case: a decline plus a conditional offer to be called. Labelled a non-request because the user prefers email and nothing has bounced.",
+    "turns": ["michaeljackson@gmail.com", "Please don't call me at work. My number is 0452 818 181 and you can call me back only if the email bounces."],
+    "turn_budget": 2,
+    "expected": { "callback_expected": false },
+    "notes": "Issue #33 compound/negated cohort: written before any change to the callback veto, held out until the final verification; do not tune against it."
   }
 ]

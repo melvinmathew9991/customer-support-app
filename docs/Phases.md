@@ -141,8 +141,11 @@ phases are the actual next steps.
 - **Negation (2026-09-20, Sprint 2 audit):** `_DO_NOT_CALL_RE` also vetoes "no need to
   call/phone/ring" and "no need for (you to|a) call", which the plain-request pattern
   used to accept ("No need to call me back, my number is ..."). A message that declines
-  and requests in one sentence ("Never call me before 9am, but do call me on ...") is
-  still vetoed whole; tracked as #33.
+  and requests in one sentence ("Never call me before 9am, but do call me on ...") was
+  vetoed whole; fixed in #33 (2026-09-21): each decline is now taken out of the message
+  before a request is looked for, so a separate request beside it still counts. Trade-off:
+  a decline followed by a conditional offer ("call me back only if the email bounces")
+  now counts too (`call-070`); see `docs/eval/Callback-Compound-Results-2026-09-21.md`.
 
 ## Phase 5 — Interfaces ✅ Done
 - Streamlit `app.py` (Chat + Graph tabs, live DAG rendering via
