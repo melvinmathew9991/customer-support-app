@@ -376,8 +376,8 @@ and #23, and held #33 until it was fixed on 2026-09-21):**
 - #5, #17, #23: open, as known limits (above). #33 (callback veto and compound
   phrasings) was the same family as #23 and was fixed afterwards, with one trade-off
   (`docs/eval/Callback-Compound-Results-2026-09-21.md`).
-- Pre-existing: #10 (with-whisper path; exercised on 2026-09-21, and it does not work, see
-  #43 and #44 below), #14 (license
+- Pre-existing: #10 (with-whisper path; exercised on 2026-09-21, found broken, and fixed
+  afterwards, see #43 and #44 below), #14 (license
   and whether the Shopify-derived KB stays public). #12 (CLI `EOFError`) and #13
   (chromadb telemetry warnings) were fixed afterwards in a small PR (#36).
 - Unexplained: a fresh 3B full run differed slightly from the earlier full eval on the
@@ -479,12 +479,14 @@ picked from the open issues, worked on its own `fix/` or `docs/` branch and merg
   (in a separate short-path venv), Whisper transcribes the sample recording in about 19 s
   and accurately, but the ticket step crashes the callback turn: the 3B returns the ticket
   schema instead of a ticket (**#43**). Installing the extra in a fresh venv also failed on
-  `pkg_resources` until `setuptools<70` and `--no-build-isolation` were used (**#44**). Both
-  are open and unscheduled; #10 is closed because its criteria (run it, record it, file
-  bugs) were met, not because the path works.
+  `pkg_resources` (**#44**). #10 was closed because its criteria (run it, record it, file
+  bugs) were met, not because the path worked. Both bugs were then fixed on
+  `fix/43-44-audio-path`: the ticket is asked for with structured output and a parse
+  failure falls back to the "callback logged" reply (#43), and the extra pins
+  `openai-whisper==20250625`, which builds in a fresh venv (#44).
 - Still open and unscheduled: #5, #17 and #23 (accepted known limits; no attempt was made
   to reach their targets, since the samples are too small to confirm a fix, see
-  `docs/Process-Evaluation.md`), #14 (license, a maintainer decision), #43 and #44.
+  `docs/Process-Evaluation.md`) and #14 (license, a maintainer decision).
 
 ---
 
