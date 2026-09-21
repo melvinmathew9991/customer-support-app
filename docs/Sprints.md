@@ -369,7 +369,9 @@ held. What changed:
   `Sprint 3` milestone is for session persistence only); Sprint 2 closed and tagged
   `v0.1.0-sprint2`.
 - Left open by the maintainer's decision: #14 (license, and whether the Shopify-derived
-  KB stays public), which is a legal choice.
+  KB stays public), which is a legal choice. Later, on `chore/14-license`: the code was
+  licensed MIT and `assets/NOTICE.md` records the assets as third-party sample data of
+  unconfirmed origin; confirming their source and terms is still open.
 
 **Carried forward (not scheduled in any sprint; the `Known limits` milestone holds #5, #17
 and #23, and held #33 until it was fixed on 2026-09-21):**
@@ -489,7 +491,7 @@ picked from the open issues, worked on its own `fix/` or `docs/` branch and merg
   `openai-whisper==20250625`, which builds in a fresh venv (#44).
 - Still open and unscheduled: #5, #17 and #23 (accepted known limits; no attempt was made
   to reach their targets, since the samples are too small to confirm a fix, see
-  `docs/Process-Evaluation.md`) and #14 (license, a maintainer decision).
+  `docs/Process-Evaluation.md`) and the open part of #14 (confirm the source and terms of the assets, a maintainer decision).
 
 ---
 
