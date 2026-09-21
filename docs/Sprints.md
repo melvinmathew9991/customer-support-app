@@ -374,7 +374,8 @@ held. What changed:
 **Carried forward (not scheduled in any sprint; the `Known limits` milestone holds #5, #17,
 #23 and #33):**
 - #5, #17, #23: open, as known limits (above). #33 (callback veto and compound
-  phrasings) is the same family as #23.
+  phrasings) was the same family as #23 and was fixed afterwards, with one trade-off
+  (`docs/eval/Callback-Compound-Results-2026-09-21.md`).
 - Pre-existing and untouched: #10 (with-whisper path never exercised), #14 (license
   and whether the Shopify-derived KB stays public). #12 (CLI `EOFError`) and #13
   (chromadb telemetry warnings) were fixed afterwards in a small PR (#36).
