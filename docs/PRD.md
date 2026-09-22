@@ -45,7 +45,7 @@ asking, or hands off to a human too eagerly. This app:
 
 ## 4. Core features
 1. **Identification** — greets the user, asks for email or phone number,
-   looks them up via a tool-calling agent (`tools/user_info_db.py`), and
+   looks them up via a tool-calling agent (`tools/user_store.py`), and
    extracts a structured `UserProfile` (name, subscription tier).
 2. **Tiered RAG support answers** — `AuthenticatedUserNode` answers free-text
    questions using a Chroma vector store built from `assets/free` or
@@ -67,7 +67,8 @@ asking, or hands off to a human too eagerly. This app:
 - No persistent chat history across process restarts (state lives in the
   Streamlit session / in-memory pipeline only).
 - No real user authentication (email/phone lookup is identification against
-  a mock DB, not a login system with passwords/sessions).
+  a real, persistent user store since Sprint 4, but still a lookup, not a
+  login system with passwords/sessions - `docs/User-Store-Design.md`).
 - No multi-turn negotiation of subscription tier or account changes — the
   bot reads the tier, it doesn't manage it.
 - No production telemetry/analytics dashboard.

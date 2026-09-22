@@ -93,7 +93,7 @@ customer_support_app/
 │   │   ├── text_based_edge.py        # PydanticTextBasedEdge (structured-extraction-gated edge)
 │   │   └── static_text_node.py
 │   ├── tools/
-│   │   ├── user_info_db.py           # mock user/subscription DB lookups
+│   │   ├── user_store.py             # UserStore: MockUserStore + SqliteUserStore (real, auto-seeded)
 │   │   ├── rag_responder.py          # HelpCenterAgent: builds/queries free & paid Chroma retrievers; reindex + staleness check
 │   │   └── audio_transcribe.py       # Whisper-based call transcription (optional `audio` extra)
 │   └── ui/graph_renderer.py         # renders the DAG in the Streamlit "Graph" tab
@@ -108,15 +108,15 @@ All settings are environment-driven via `Settings` (`config.py`,
 `LLM_PROVIDER`, `OLLAMA_MODEL`/`OLLAMA_BASE_URL`, `OPENAI_MODEL`/
 `OPENAI_API_KEY`, `EMBEDDINGS_PROVIDER`, `OLLAMA_EMBED_MODEL`,
 `SENTENCE_TRANSFORMER_MODEL`, `ASSETS_DIR`, `CHROMA_DIR`, `AGENT_VERBOSE`,
-`LOG_LEVEL`. `PROJECT_ROOT` is derived from `config.py`'s own location, not
-the process CWD, so behavior is the same whether run via Streamlit, the CLI,
-or an IDE.
+`LOG_LEVEL`, `SESSION_DB_PATH`, `USER_STORE_PROVIDER`/`USER_STORE_DB_PATH`.
+`PROJECT_ROOT` is derived from `config.py`'s own location, not the process
+CWD, so behavior is the same whether run via Streamlit, the CLI, or an IDE.
 
 ## 6. Known architectural limitations (current state)
-- No persistent storage: chat history and the current graph node live only
-  in memory for the life of the Streamlit session / CLI process.
-- The user "database" (`tools/user_info_db.py`) is a mock/in-memory lookup,
-  not a real datastore.
+- The user store (`tools/user_store.py`, `SqliteUserStore` by default since Sprint 4) is a
+  real, persistent lookup, but it's still a lookup, not authentication: anyone who knows a
+  customer's email or phone number is served that customer's tier
+  (`docs/User-Store-Design.md` decision 2, a stated non-goal in `PRD.md`).
 - LLM-dependent behavior (tool-calling, RAG answers, structured extraction)
   is not covered by the automated test suite — it's exercised manually
   against a live Ollama server, since it's slow and non-deterministic.

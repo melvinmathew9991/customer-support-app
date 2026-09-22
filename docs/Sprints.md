@@ -495,23 +495,95 @@ picked from the open issues, worked on its own `fix/` or `docs/` branch and merg
 
 ---
 
-## Sprint 4 (2 weeks) — Real user store (Phases.md Phase 7)
+## Sprint 4 (2 weeks) — Real user store (Phases.md Phase 7) ✅ Done (branch `sprint-4`)
 **SDLC stage:** Build + integration testing
 **Goal:** Replace the mock DB without touching conversation logic.
 
-**Backlog:**
-- Define the user-store interface as a contract (methods
-  `search_user_info`/`search_user_subscription` already imply one) so
-  `agents/support.py` never changes when the backing store does.
-- Implement the real lookup (API or DB, per whatever the actual storefront
-  system is) behind that interface; keep the mock as a `tests/` fixture.
-- Contract tests: same test suite runs against both mock and real
-  implementations.
-- Re-run the Sprint 1 golden set — identification metrics must hold.
+**Status (2026-09-22):** design first (`docs/User-Store-Design.md`), with the two
+decisions it needed (storage backend, whether to add a second identification factor)
+answered by the maintainer before any code — this project has no real storefront system
+behind it, so "real lookup" meant deciding what "real" should mean here, not integrating
+an actual external API.
+
+- ✅ **`tools/user_store.py`**: a `UserStore` `Protocol` (`search_user_info`,
+  `search_user_subscription` — the interface the two existing tool functions already
+  implied), `MockUserStore` (today's in-memory fixture data, unchanged), and
+  `SqliteUserStore` (stdlib `sqlite3`, auto-seeds the same fixture into a real database the
+  first time it opens an empty one — no separate seed script to run or forget, matching
+  `SessionStore`'s self-healing-on-open posture). Both stores read one canonical copy of
+  the fixture data and share the same matching helper, so mock and real cannot silently
+  drift apart. Matching stays in Python rather than SQL: the table is a handful of rows, so
+  there is one place to get the matching rule right, not two.
+- ✅ **Contract tests** (`tests/tools/test_user_store.py`, 34 tests): today's user-lookup
+  cases, parametrized over both stores — a behavior difference between them fails a test
+  instead of shipping.
+- ✅ **Wired in**: `Settings.user_store_provider` (`mock`/`sqlite`, default `sqlite`) and
+  `get_user_store()` mirror the existing `llm_provider`/`get_chat_model()` pattern.
+  `UserInfoChainBasedEdge(user_store=...)` defaults to `MockUserStore()`, so every existing
+  call site and all 335 prior tests were unaffected until `pipeline.py` was changed to pass
+  the configured store — the one commit that actually changed production wiring.
+  `tools/user_info_db.py` and its test file, now dead code, were removed; their assertions
+  already live in the new contract tests, plus one concurrency test added during the
+  end-to-end audit (below). 354/354 tests pass (370 minus the 16 retired
+  duplicate cases), ruff clean.
+- ✅ **Regression verified**: a fast 14-entry identification-only subset run
+  (`--ids ident-*`) against the new sqlite-backed default matched the baseline exactly
+  (identification success 100% n=8, fails-safe 100% n=6) before committing to the full
+  135-entry run. The full run: `docs/eval/Sprint4-UserStore-FullEval-2026-09-22.md`,
+  diffed against `docs/eval/variance/run-5.md` (the latest full run on unchanged `main`)
+  with `scripts/summarize_eval_runs.py` — see the result recorded there and in
+  `docs/report.md`.
+- Not built: a manual seed script (auto-seed made it unnecessary) and a second
+  identification factor (decided against for this sprint, `docs/User-Store-Design.md`
+  decision 2).
+
+**End-to-end audit (2026-09-22, before merge), mirroring Sprint 2's own audit-before-tag
+practice.** A manual pass plus a backgrounded automated code review over the full
+`main..sprint-4` diff found and fixed five things - three from the manual pass, two more
+(hermeticity, connection closing) from the automated review - none of which changed any
+LLM-facing behavior (the golden-set regression in §10.8 was run before these fixes; they
+were re-verified with the full unit suite and a live CLI check instead of a second full
+run, since none of them touch anything LLM-facing):
+- **A real race in the auto-seed.** `SqliteUserStore` seeded with a `SELECT COUNT(*) == 0`
+  check followed by `INSERT`. Two stores opening the same brand-new file at once (e.g. two
+  Streamlit sessions on a fresh install) could both see zero rows and both try to insert,
+  crashing the second on the `user_id` primary key. Confirmed real, not hypothetical: a
+  forced-interleaving reproduction raised `IntegrityError` on the old code. Fixed with
+  `INSERT OR IGNORE`, which is correct regardless of timing since there's no check-then-act
+  step left to race; a concurrency test (8 threads racing to open the same file) guards it
+  going forward.
+- **A shared-mutable-fixture footgun.** `MockUserStore` held direct references to the
+  module-level `USERS`/`SUBSCRIPTIONS` lists rather than copies. Nothing writes through a
+  store today, so this wasn't yet exploitable, but a future write would have silently
+  corrupted the fixture for every other instance. Fixed with a defensive copy in
+  `__init__`.
+- **Style inconsistency.** The new module used lowercase generic type hints (`list[dict]`)
+  and `UserInfoChainBasedEdge.__init__` took `*args, **kwargs`; both diverge from this
+  codebase's established explicit-signature, `typing.List`/`Dict` style (`session_store.py`
+  is the closest precedent). Both were made explicit to match.
+- **Broken test hermeticity, caught by an automated review pass.** `get_user_store()` was
+  resolved eagerly in `CustomerSupportPipeline.__init__`, so every bare
+  `CustomerSupportPipeline()` - including in tests that monkeypatch `_get_pipeline` away
+  entirely (`fake_graph` in `tests/test_pipeline_persistence.py`, used by 22+ tests) - wrote
+  a real `data/users.sqlite` on every test run. One test's own assertion
+  (`test_without_a_store_nothing_is_saved_and_there_is_no_session`) claims no disk I/O
+  happens with no store configured, and still passed, because it only checks `tmp_path`,
+  not where the user store actually writes - the test's name was no longer true. Fixed by
+  moving the resolution into `_get_pipeline()` itself, where the design doc said it
+  belonged from the start; tests that fake that method out now never touch the real store,
+  the same way they never touch a real LLM.
+- **Connections never explicitly closed.** `SqliteUserStore` used `with self._connect() as
+  conn:` throughout, but a bare `with conn:` on a `sqlite3.Connection` only manages the
+  transaction (commit/rollback) - it does not close the connection, unlike
+  `session_store.py`'s `SessionStore`, which wraps every connection in `contextlib.closing`.
+  Fixed to match that convention (`closing(self._connect())`, paired with `conn` itself for
+  the one write path); also added the same explicit `timeout=5` `SessionStore` already
+  passes (matches Python's own default, but makes it visible rather than implicit).
 
 **Deliverables:** real user-store adapter, contract tests.
-**Definition of done:** swapping implementations is a one-line config
-change, not a code change in `agents/`.
+**Definition of done:** met — swapping `USER_STORE_PROVIDER=mock` to `sqlite` (now the
+default) is a config change, not a code change in `agents/`; identification metrics did
+not regress.
 
 ---
 

@@ -13,7 +13,7 @@ from customer_support_app.agents.support import (
     GreetingNode,
     UserInfoChainBasedEdge,
 )
-from customer_support_app.config import get_chat_model
+from customer_support_app.config import get_chat_model, get_user_store
 from customer_support_app.domain.chat import MessageHistory, Role
 from customer_support_app.domain.graph import EdgeOutput, MessageOutput
 from customer_support_app.domain.validation import PhoneCallRequest, PhoneCallTicket, UserProfile
@@ -80,6 +80,11 @@ class CustomerSupportPipeline:
             self._resume(store.load(session_id))
 
     def _get_pipeline(self) -> BaseNode:
+        # Resolved here, not in __init__: tests that monkeypatch this whole method (the
+        # fake_graph fixture) never touch the real, on-disk store, the same way a bare
+        # CustomerSupportPipeline() never touches the real LLM provider unless it actually
+        # runs a turn.
+        self._user_store = get_user_store()
         self._call_customer_node = CallCustomerNode(
             llm_model=self._llm_model,
             pydantic_object=PhoneCallTicket,
@@ -97,7 +102,10 @@ class CustomerSupportPipeline:
         )
 
         self._user_info_chain = UserInfoChainBasedEdge(
-            model=self._llm_model, pydantic_object=UserProfile, out_node=self._help_node
+            model=self._llm_model,
+            pydantic_object=UserProfile,
+            out_node=self._help_node,
+            user_store=self._user_store,
         )
 
         self._start_node = GreetingNode(edges=[self._user_info_chain])

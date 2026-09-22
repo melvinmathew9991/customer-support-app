@@ -10,8 +10,8 @@ GreetingNode → (identify user via tools) → AuthenticatedUserNode → (call-m
 ```
 
 - **GreetingNode** asks for an email/phone number.
-- A tool-calling agent looks the user up (`tools/user_info_db.py`) and
-  extracts a structured `UserProfile`.
+- A tool-calling agent looks the user up (`tools/user_store.py`, a real
+  SQLite-backed store by default) and extracts a structured `UserProfile`.
 - **AuthenticatedUserNode** answers support questions via RAG (Chroma +
   local embeddings) over `assets/free` or `assets/paid`, chosen
   deterministically by the user's own subscription tier.

@@ -50,7 +50,7 @@ again), etc. Leave irrelevant fields out rather than null-filling them.
 | `happy_path_identification` | clean email/phone resolves correctly in one turn | Identification success rate |
 | `ambiguous_identification` | malformed input, then a retry that resolves | Identification success rate (ambiguous bucket) |
 | `unknown_user_identification` | email/phone with no matching record | Fails-safe rate |
-| `subscription_lookup_missing` | user found, but `user_subscription_db.py`'s mock data has no subscription row for them (this is real - see `user_id: "4"` in `tools/user_info_db.py`) | Fails-safe rate + tier-leakage risk (does the model silently guess a tier?) |
+| `subscription_lookup_missing` | user found, but the store's subscription data has no row for them (this is real - see `user_id: "4"` in `tools/user_store.py`) | Fails-safe rate + tier-leakage risk (does the model silently guess a tier?) |
 | `free_tier_question` | in-scope question, answerable from `assets/free/` | Retrieval recall@k, hallucination rate |
 | `paid_tier_question` | in-scope question, answerable from `assets/paid/` | Retrieval recall@k, hallucination rate |
 | `adversarial_tier_crossing` | a free user asks about a paid-exclusive feature | Tier-leakage rate |
@@ -64,8 +64,8 @@ again), etc. Leave irrelevant fields out rather than null-filling them.
 - `assets/free/compliance.txt` and `assets/paid/compliance.txt` are
   byte-identical - don't use compliance questions for tier-leakage cases,
   there's no observable difference to leak.
-- `tools/user_info_db.py`'s `user_sub` list only has entries for
-  `user_id` 1-3; `user_id "4"` (XYZ) exists in `user_info` but has no
+- `tools/user_store.py`'s `SUBSCRIPTIONS` list only has entries for
+  `user_id` 1-3; `user_id "4"` (XYZ) exists in `USERS` but has no
   subscription row - this is what `subscription_lookup_missing` targets.
 
 ## Comparing runs

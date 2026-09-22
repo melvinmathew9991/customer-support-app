@@ -19,9 +19,12 @@ deliberately, not incidentally as a side effect of an unrelated change):
 - A second config system. All env/settings access goes through
   `config.py`'s `Settings`/`get_settings()` — never read `os.environ`
   directly in application code.
-- A real database/ORM without discussing it first — `tools/user_info_db.py`
-  is intentionally a mock; swapping it for something real is a scope
-  decision, not a drive-by change.
+- An ORM, or a new datastore outside `tools/user_store.py`/`session_store.py`,
+  without discussing it first. `tools/user_store.py` already holds a real,
+  persistent backend (`SqliteUserStore`, stdlib only, Sprint 4) alongside the
+  in-memory `MockUserStore` - that trade was made deliberately, with a design
+  doc (`docs/User-Store-Design.md`), not as a drive-by change, and any further
+  storage decision should be made the same way.
 
 ## 2. Error handling approach
 - Fail loudly and early on misconfiguration: e.g. `get_chat_model()` raises
