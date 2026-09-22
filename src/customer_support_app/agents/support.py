@@ -262,16 +262,9 @@ class AuthenticatedUserNode(RetrievalNode):
         return MessageOutput(prompt, role=Role.ASSISTANT)
 
     def _get_retriever(self):
-        # Deterministically pick the knowledge base for the user's own tier,
-        # instead of asking the LLM to guess which KB a question belongs to
-        # (which could leak premium content to free users or vice versa).
-        user_profile = self._node_input
-        if (
-            isinstance(user_profile, UserProfile)
-            and user_profile.subscription.lower() in PREMIUM_SUBSCRIPTIONS
-        ):
-            return self._hc_agent.paid_sub_retriever()
-        return self._hc_agent.free_sub_retriever()
+        # TEST - DO NOT MERGE. Deliberately broken to prove scripts/eval_gate.py
+        # catches a tier-leakage regression in CI (Sprint 5's own Definition of Done).
+        return self._hc_agent.paid_sub_retriever()
 
     def no_edges_found(self, user_input: MessageHistory) -> Optional[MessageOutput]:
         message = self._predict(user_input)
