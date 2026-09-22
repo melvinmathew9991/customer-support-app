@@ -495,23 +495,51 @@ picked from the open issues, worked on its own `fix/` or `docs/` branch and merg
 
 ---
 
-## Sprint 4 (2 weeks) — Real user store (Phases.md Phase 7)
+## Sprint 4 (2 weeks) — Real user store (Phases.md Phase 7) ✅ Done (branch `sprint-4`)
 **SDLC stage:** Build + integration testing
 **Goal:** Replace the mock DB without touching conversation logic.
 
-**Backlog:**
-- Define the user-store interface as a contract (methods
-  `search_user_info`/`search_user_subscription` already imply one) so
-  `agents/support.py` never changes when the backing store does.
-- Implement the real lookup (API or DB, per whatever the actual storefront
-  system is) behind that interface; keep the mock as a `tests/` fixture.
-- Contract tests: same test suite runs against both mock and real
-  implementations.
-- Re-run the Sprint 1 golden set — identification metrics must hold.
+**Status (2026-09-22):** design first (`docs/User-Store-Design.md`), with the two
+decisions it needed (storage backend, whether to add a second identification factor)
+answered by the maintainer before any code — this project has no real storefront system
+behind it, so "real lookup" meant deciding what "real" should mean here, not integrating
+an actual external API.
+
+- ✅ **`tools/user_store.py`**: a `UserStore` `Protocol` (`search_user_info`,
+  `search_user_subscription` — the interface the two existing tool functions already
+  implied), `MockUserStore` (today's in-memory fixture data, unchanged), and
+  `SqliteUserStore` (stdlib `sqlite3`, auto-seeds the same fixture into a real database the
+  first time it opens an empty one — no separate seed script to run or forget, matching
+  `SessionStore`'s self-healing-on-open posture). Both stores read one canonical copy of
+  the fixture data and share the same matching helper, so mock and real cannot silently
+  drift apart. Matching stays in Python rather than SQL: the table is a handful of rows, so
+  there is one place to get the matching rule right, not two.
+- ✅ **Contract tests** (`tests/tools/test_user_store.py`, 34 tests): today's user-lookup
+  cases, parametrized over both stores — a behavior difference between them fails a test
+  instead of shipping.
+- ✅ **Wired in**: `Settings.user_store_provider` (`mock`/`sqlite`, default `sqlite`) and
+  `get_user_store()` mirror the existing `llm_provider`/`get_chat_model()` pattern.
+  `UserInfoChainBasedEdge(user_store=...)` defaults to `MockUserStore()`, so every existing
+  call site and all 335 prior tests were unaffected until `pipeline.py` was changed to pass
+  the configured store — the one commit that actually changed production wiring.
+  `tools/user_info_db.py` and its test file, now dead code, were removed; their assertions
+  already live in the new contract tests. 353/353 tests pass (369 minus the 16 retired
+  duplicate cases), ruff clean.
+- ✅ **Regression verified**: a fast 14-entry identification-only subset run
+  (`--ids ident-*`) against the new sqlite-backed default matched the baseline exactly
+  (identification success 100% n=8, fails-safe 100% n=6) before committing to the full
+  135-entry run. The full run: `docs/eval/Sprint4-UserStore-FullEval-2026-09-22.md`,
+  diffed against `docs/eval/variance/run-5.md` (the latest full run on unchanged `main`)
+  with `scripts/summarize_eval_runs.py` — see the result recorded there and in
+  `docs/report.md`.
+- Not built: a manual seed script (auto-seed made it unnecessary) and a second
+  identification factor (decided against for this sprint, `docs/User-Store-Design.md`
+  decision 2).
 
 **Deliverables:** real user-store adapter, contract tests.
-**Definition of done:** swapping implementations is a one-line config
-change, not a code change in `agents/`.
+**Definition of done:** met — swapping `USER_STORE_PROVIDER=mock` to `sqlite` (now the
+default) is a config change, not a code change in `agents/`; identification metrics did
+not regress.
 
 ---
 

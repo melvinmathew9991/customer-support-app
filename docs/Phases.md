@@ -208,13 +208,18 @@ no new dependency, no ORM).
   bot used to keep answering from the free KB; that ended with the fix for #37, described
   under Phase 2.)
 
-## Phase 7 — Real user store
-- Replace the mock `tools/user_info_db.py` with a real lookup (API or DB),
-  behind the same function signatures so `agents/support.py` doesn't change.
-- Identification today is a lookup, not authentication: anyone who knows a
-  customer's email or phone number is served that customer's tier. That is a
-  stated non-goal in `PRD.md` and the KB is low-sensitivity, but a real user
-  store is the point to decide whether it needs a second factor.
+## Phase 7 — Real user store ✅ Done (Sprint 4, `docs/User-Store-Design.md`)
+- The mock `tools/user_info_db.py` is replaced by `tools/user_store.py`: a `UserStore`
+  Protocol, a `MockUserStore` (today's in-memory fixture, unchanged, default for tests),
+  and a `SqliteUserStore` (real, persistent, auto-seeded from the same fixture data on
+  first open - no separate seed step). `agents/support.py`'s `UserInfoChainBasedEdge`
+  takes a `user_store` and builds its two tools from it; nothing about the edge's
+  identification logic changed. `Settings.user_store_provider` (default `sqlite`) picks the
+  backend - a config change, not a code change in `agents/`, as the phase asked for.
+- Identification is still a lookup, not authentication: anyone who knows a customer's
+  email or phone number is served that customer's tier. Decided, not just deferred: a
+  second factor is out of scope for this sprint (`docs/User-Store-Design.md` decision 2) -
+  that stays a stated non-goal in `PRD.md`, unchanged from before.
 
 ## Phase 8 — Evaluation harness for LLM-dependent behavior (partly done)
 - **Built (Sprints 1-2, grown since):** a 135-conversation golden set (122 at the end of
