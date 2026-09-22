@@ -633,10 +633,12 @@ maintainer before any code.
   entry-level check on a fixed subset, see `Eval-Gate-Design.md`); the full 135-entry set
   in CI (stays a manual pre-merge step, per the existing PR template checklist).
 
-**Recorded as a live gap, not yet closed:** `eval-gate` and `test` should both be added as
-required status checks under GitHub's branch protection for `main` (Settings → Branches).
-This is a GitHub Settings change, not something a commit can make - see
-`docs/Git-Workflow.md`'s recommended settings.
+**Closed the same day (2026-09-22):** `eval-gate` and `test` are now both configured as
+required status checks under GitHub's branch protection for `main` (via the API, every
+other existing protection setting - `enforce_admins`, force-push/deletion blocks, the PR
+requirement - preserved exactly, not reset). A GitHub Settings change, not something a
+commit alone could do - see `docs/Git-Workflow.md`'s recommended settings, now current
+rather than aspirational.
 
 **Deliverables:** CI eval job, `docs/Eval-Gate-Design.md`, `Git-Workflow.md` updated.
 **Definition of done:** met - deliberately regressing the free/paid retriever selection
