@@ -221,16 +221,27 @@ no new dependency, no ORM).
   second factor is out of scope for this sprint (`docs/User-Store-Design.md` decision 2) -
   that stays a stated non-goal in `PRD.md`, unchanged from before.
 
-## Phase 8 — Evaluation harness for LLM-dependent behavior (partly done)
+## Phase 8 — Evaluation harness for LLM-dependent behavior ✅ Done (Sprint 5, `docs/Eval-Gate-Design.md`)
 - **Built (Sprints 1-2, grown since):** a 135-conversation golden set (122 at the end of
   Sprint 3; `ident-014` was added for #37 and `call-059`..`070` for #33)
   (`tests/eval/golden_set.json`), an automated scoring harness
   (`tests/eval/run_eval.py`), metric definitions and targets
   (`docs/eval/Metrics.md`), and the structured per-turn log it scores from.
-  It runs manually against a live Ollama model; the deterministic scoring
-  logic is unit-tested and runs in CI.
-- **Still open (Sprint 5):** a CI-enforced regression gate. CI does not run the
-  live eval, and there are no per-metric regression thresholds yet.
+  The full run still stays manual (135 entries against a live Ollama model, a
+  pre-merge PR-template checklist item); the deterministic scoring logic is
+  unit-tested and runs in CI.
+- **Built (Sprint 5):** a CI-enforced regression gate (`scripts/eval_gate.py`, a new
+  `eval-gate` job in `.github/workflows/ci.yml`) - a small, fixed 14-entry subset runs
+  against a real, GitHub-hosted Ollama on every PR, and fails if any entry that wasn't
+  failing starts failing against a committed baseline. Proven for real on live GitHub
+  Actions, not simulated: a deliberate tier-scoping break made the job fail as designed.
+  **Known gap, not yet closed:** the check isn't marked *required* in GitHub's branch
+  protection settings, so CI failing doesn't yet block a merge by itself - found the hard
+  way when a disposable "do not merge" proof PR was merged anyway and had to be hotfixed
+  (`docs/Sprints.md`'s Sprint 5 section has the full account). Still open: per-metric
+  regression thresholds beyond the entry-level check (deliberately not built - see
+  `Eval-Gate-Design.md` for why they'd be redundant on a fixed subset), and the required-check
+  setting itself.
 
 ## Phase 9 — UI/design polish
 - Apply `Design.md` (theme, typography, chat styling) to `app.py` — today
