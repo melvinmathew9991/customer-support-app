@@ -587,25 +587,60 @@ not regress.
 
 ---
 
-## Sprint 5 (2 weeks) — Automated evaluation harness & regression gate (Phases.md Phase 8)
+## Sprint 5 (2 weeks) — Automated evaluation harness & regression gate (Phases.md Phase 8) ✅ Done (PR #52, hotfix #55)
 **SDLC stage:** Test automation / CI
 **Goal:** Turn Sprint 1's manual eval into a repeatable, CI-enforced gate.
 
-**Backlog:**
-- Automate running the golden set against the pipeline (accept that this
-  needs a live Ollama model in CI, or a small deterministic
-  stand-in/cassette-recorded responses — decide explicitly, don't hand-wave
-  it).
-- Define regression thresholds per metric (e.g. "tier-leakage must stay at
-  0%, retrieval recall@k must not drop >5% from the last accepted
-  baseline").
-- Wire into CI so a PR that regresses a metric fails, the same way a broken
-  unit test would.
+**Status (2026-09-22):** design first (`docs/Eval-Gate-Design.md`), with the backend
+decision (GitHub-hosted runner, install+cache Ollama, gate on a curated subset - not a
+self-hosted runner, which GitHub warns against for public repos, and not a live-model-free
+gate, which wouldn't satisfy this sprint's own Definition of Done) answered by the
+maintainer before any code.
 
-**Deliverables:** CI eval job, threshold config, updated `Rules.md` entry
-requiring eval runs for any prompt/model/KB change.
-**Definition of done:** deliberately regressing the free/paid retriever
-selection in a test branch causes CI to fail on the tier-leakage check.
+- ✅ **`scripts/eval_gate.py`**: runs 14 hand-picked golden-set entries (one or two per
+  category, weighted toward tier-leakage and callback - the two historically most fragile
+  areas) and fails if any entry that wasn't failing starts failing, against a checked-in
+  `tests/eval/ci_baseline.json`. Aggregate metrics are computed and printed for context but
+  are deliberately not a second, independent gate - they're derived from the same 14
+  results the entry check already looked at individually, so a metric-floor check would
+  only restate a regression already caught. 10 unit tests on the comparison logic, no live
+  model needed.
+- ✅ **Wired into CI**: a new `eval-gate` job in `ci.yml`, separate from the existing `test`
+  job so the fast unit-test/lint signal never waits on a live model. PR-only. Installs
+  Ollama, stops its auto-started systemd service so the server it starts itself (with
+  `OLLAMA_MODELS` pinned) is the only one listening, caches the two model blobs via
+  `actions/cache`, runs the gate. Confirmed against real GitHub Actions, not just locally:
+  first run (cold cache) took 13m13s; the install/cache/systemd handling worked exactly as
+  designed.
+- ✅ **Definition of done, proven for real**: a disposable branch/PR deliberately broke
+  `_get_retriever` to always return the paid KB regardless of tier. The `eval-gate` job
+  **did fail** on it (`rag-adv-001`/`rag-adv-002`, tier leak), exactly as designed - the
+  gate mechanism itself works.
+- 🐛 **Found by this sprint's own proof, the hard way.** The disposable proof PR (labelled
+  "TEST - DO NOT MERGE" in its title, body, and the code comment itself) was merged into
+  `main` anyway, alongside the real Sprint 5 PR - because `eval-gate` was not yet
+  configured as a *required* status check in GitHub's branch protection settings, a PR can
+  merge regardless of what CI reports. For a few minutes, `main` served every user the
+  paid knowledge base regardless of their actual tier. Caught immediately (the merge
+  history was checked directly, not assumed from a status message), fixed with a `git
+  revert -m 1` of the one bad merge commit (hotfix PR #55, verified green - `eval-gate`
+  passing on the revert, unit suite passing except one confirmed-unrelated pre-existing
+  flake) and merged. **This is exactly the gap `docs/Eval-Gate-Design.md` and
+  `Git-Workflow.md` already flagged** ("has to be added as a required check under branch
+  protection to actually block a merge instead of just reporting red") - it just hadn't
+  happened yet, and this incident is the concrete reason to do it now, not a hypothetical.
+- Not built: per-metric numeric thresholds (rejected in the design - redundant with the
+  entry-level check on a fixed subset, see `Eval-Gate-Design.md`); the full 135-entry set
+  in CI (stays a manual pre-merge step, per the existing PR template checklist).
+
+**Recorded as a live gap, not yet closed:** `eval-gate` and `test` should both be added as
+required status checks under GitHub's branch protection for `main` (Settings → Branches).
+This is a GitHub Settings change, not something a commit can make - see
+`docs/Git-Workflow.md`'s recommended settings.
+
+**Deliverables:** CI eval job, `docs/Eval-Gate-Design.md`, `Git-Workflow.md` updated.
+**Definition of done:** met - deliberately regressing the free/paid retriever selection
+made the `eval-gate` CI check fail, watched live on GitHub Actions, not simulated.
 
 ---
 

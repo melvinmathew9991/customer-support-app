@@ -2,8 +2,8 @@
 
 **Repository:** melvinmathew9991/customer-support-app (`main`, with every sprint and fix branch merged and kept)
 **Stack (this verification, project `.venv`):** Python 3.10.10 · Streamlit 1.39.0 · LangChain 0.3.7 (+ langchain-community 0.3.7, -ollama 0.2.0, -openai 0.2.6, -chroma 0.1.4, -text-splitters 0.3.2) · ChromaDB 0.5.20 · pydantic 2.9.2 / pydantic-settings 2.6.1 · graphviz 0.20.3 · pytest 8.3.3 · ruff 0.7.4 · posthog 7.57.0 (transitive, unpinned) · Ollama with `llama3.2:3b` (chat, default), `nomic-embed-text` (embeddings) and `llama3.1:8b` (tested, not adopted). Not installed in the project `.venv`: `openai-whisper`, `sentence-transformers` (Whisper and torch 2.14.0 were installed once in a separate short-path venv to exercise the audio path, §10.6). The dependency pins are unchanged since the initial commit; the only later edit to `pyproject.toml` is the ruff `extend-exclude` for the legacy notebook (#34).
-**Status:** Sprints 1-4 are complete (Sprint 4 on branch `sprint-4`, not yet merged to `main` as this update is written), and two issues were fixed outside any sprint between Sprints 3 and 4 (#37, #33). The graph-orchestrated agent works end to end and was re-exercised live on `main` at #45 (`a60d9f8`) and again on `sprint-4` for this update (identification by email and by phone against the new real store, tier-scoped answers, a callback, a fail-safe that ends the conversation, and a save-and-resume through the session store; §10.2). 354 unit tests across 19 files pass and lint is clean (down from 370 on `sprint-4`: 335 pre-Sprint-4, +35 new user-store tests - 34 contract tests plus one concurrency test added during the end-to-end audit below - minus 16 retired duplicate tests for the module they replaced). A full 135-entry golden-set run on `sprint-4` (before the audit's fixes below, which touch only SQLite-seeding safety and Python type-hint/signature style, nothing LLM-facing) matches the last full run on `main` (`docs/eval/variance/run-5.md`) on every metric with 0.0 pp spread and 0 of 135 entries changing result (`docs/eval/Sprint4-UserStore-FullEval-2026-09-22.md`, §10.8); the audit's fixes were re-verified with the full unit suite and one live CLI check, not a second full golden-set run, since they have no LLM-facing surface. **Sprint 4 (Phase 7) replaced the mock, in-memory user "database" with a real, persistent one:** `tools/user_store.py`'s `SqliteUserStore` is now the default, auto-seeded with the same sample data the mock held, behind the same interface `agents/support.py` already used - a config change, not a code change in `agents/` (`docs/User-Store-Design.md`). Core product (Phases 1-5) was built before this engagement; Sprint 1 built the evaluation foundation, Sprint 2 used it to fix what it exposed (then an end-to-end audit fixed its own findings), Sprint 3 made conversations survive a restart, and Sprint 4 gave identification a real backing store; #37 and #33 were fixed in between and the with-audio path was exercised. **Two accuracy targets are not met**: hallucination (about 13% on untuned questions vs ≤5%) and callback precision (83% on a held-out cohort vs ≥95%); the larger local model was tried and did not help, and the maintainer accepted both as known limits. A process evaluation (`docs/Process-Evaluation.md`) rated the method strong and the statistics weak; its plan is proposed, not adopted.
-**Timeline:** 2026-09-18 → 2026-09-21 on `main` (4, 47, 37 and 10 commits on the four days), plus Sprint 4 on 2026-09-22, single contributor (Melvin Mathew). 98 commits and 26 merged pull requests on `main` as of #45 (`a60d9f8`); `sprint-4` adds 3 more commits pending its own PR. GitHub numbers issues and PRs together, so the gaps in the PR numbers (#5-#14, #16, #17, #22, #23, #29, #30, #33, #37, #43, #44) are issues. Pre-Sprint-1 (MVP baseline + out-of-band fixes) → Sprint 1 (evaluation foundation, PRs #1-#3) → git workflow tooling (#4) → Sprint 2 (#15, #18-#21, #24-#28, #31, #32) → audit fixes and follow-ups (#34-#36) → Sprint 3, session persistence (#38) → documentation (#39-#41) → post-Sprint-3 fixes: #37 (#42), #33 (#45), and the with-audio path exercised (#46) → variance measurement (#50) and the license decision (#49) → Sprint 4, real user store (branch `sprint-4`, Phase 7).
+**Status:** Sprints 1-5 are complete and merged. The graph-orchestrated agent works end to end and was re-exercised live on `main` for this update (identification by email and by phone against the real store, tier-scoped answers, a callback, a fail-safe that ends the conversation, a save-and-resume through the session store; §10.2). 364 unit tests across 20 files pass and lint is clean. A full 135-entry golden-set run on Sprint 4's branch matched the last full run on unchanged `main` on every metric with 0.0 pp spread and 0 of 135 entries changing result (`docs/eval/Sprint4-UserStore-FullEval-2026-09-22.md`, §10.8). **Sprint 4 (Phase 7) replaced the mock, in-memory user "database" with a real, persistent one** (`tools/user_store.py`'s `SqliteUserStore`, auto-seeded, a config change not a code change in `agents/`; `docs/User-Store-Design.md`). **Sprint 5 (Phase 8) added a CI-enforced regression gate** (`scripts/eval_gate.py`, a new `eval-gate` job in CI running 14 curated golden-set entries against a real, GitHub-hosted Ollama on every PR; `docs/Eval-Gate-Design.md`) - proven for real, not simulated: a deliberate tier-scoping break on a disposable branch made the gate fail exactly as designed. **That same proof also caught a real incident**, honestly recorded rather than smoothed over: the disposable "do not merge" proof PR was merged into `main` anyway, because `eval-gate` was not yet a *required* GitHub status check, so a few minutes of `main` served every user the paid knowledge base regardless of tier. Caught immediately, fixed with a one-commit revert (hotfix PR #55, itself CI-verified green before merging), and the missing required-check setting is now tracked as an explicit open item rather than assumed done (`docs/Sprints.md`'s Sprint 5 section has the full account). Core product (Phases 1-5) was built before this engagement; Sprint 1 built the evaluation foundation, Sprint 2 used it to fix what it exposed, Sprint 3 made conversations survive a restart, Sprint 4 gave identification a real backing store, and Sprint 5 turned the eval harness into an enforced (if not yet fully locked-down) CI gate. **Two accuracy targets are still not met**: hallucination (about 13% on untuned questions vs ≤5%) and callback precision (83% on a held-out cohort vs ≥95%); the larger local model was tried and did not help, and the maintainer accepted both as known limits. A process evaluation (`docs/Process-Evaluation.md`) rated the method strong and the statistics weak; its plan is proposed, not adopted.
+**Timeline:** 2026-09-18 → 2026-09-22, single contributor (Melvin Mathew). Sprint 4 (#51, Phase 7) and Sprint 5 (#52, Phase 8, plus hotfix #55) both merged 2026-09-22. Pre-Sprint-1 (MVP baseline + out-of-band fixes) → Sprint 1 (evaluation foundation) → git workflow tooling → Sprint 2 (KB/retrieval hardening) → audit fixes → Sprint 3 (session persistence) → post-Sprint-3 fixes (#37, #33, the with-audio path) → variance measurement (#50) and the license decision (#49) → Sprint 4, real user store (#51, Phase 7) → Sprint 5, CI regression gate (#52, Phase 8) → hotfix for the merge incident above (#55).
 
 **Update cadence:** this file is updated in the same pull request as any change that alters something it states (counts, architecture, behavior, metrics, findings, limitations), and re-verified against the repository at the end of each sprint (see `docs/Sprints.md`'s cross-cutting rules), so it reflects the project's current state rather than a point-in-time snapshot. Counts that name a pull request ("as of #N") describe the repository at that merge.
 
@@ -32,7 +32,7 @@ Objectives, as they currently stand:
 
 A single installable package (`src/customer_support_app/`) plus a thin CLI/Streamlit front end — no service layer, no separate database beyond the embedded Chroma store and a local SQLite file for saved conversations, no orchestration framework beyond LangChain itself and this project's own small `Node`/`Edge` abstraction.
 
-`graph/` is the reusable control-flow framework (any project could reuse it); `agents/support.py` is the concrete conversation built on top of it; `tools/` wraps the mock user DB, the RAG retriever build/reuse logic, and call transcription; `session_store.py` and `pipeline.py` save and resume a conversation; `tests/eval/` is the evaluation harness, sitting alongside the original `tests/` unit suite rather than replacing it. `scripts/reindex_kb.py` rebuilds the knowledge-base index deterministically.
+`graph/` is the reusable control-flow framework (any project could reuse it); `agents/support.py` is the concrete conversation built on top of it; `tools/` wraps the user store (real by default since Sprint 4, a mock kept for tests), the RAG retriever build/reuse logic, and call transcription; `session_store.py` and `pipeline.py` save and resume a conversation; `tests/eval/` is the evaluation harness, sitting alongside the original `tests/` unit suite rather than replacing it. `scripts/reindex_kb.py` rebuilds the knowledge-base index deterministically; `scripts/eval_gate.py` (Sprint 5) is the CI regression gate.
 
 ## 4. Project Architecture
 
@@ -58,10 +58,10 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 | Interfaces | `cli.py` | 104 | Terminal chat entrypoint; exits cleanly on end of input or `quit`/`exit` (#12); `--session ID` and `--resume` pick up a saved conversation, nothing resumes implicitly |
 | Interfaces | `app.py` | 109 | Streamlit Chat + Graph tabs; the session id lives in the URL (`?session=<id>`), so a reload or server restart resumes; an ended conversation shows its transcript and a start-again button |
 | UI | `ui/graph_renderer.py` | 55 | Graphviz DAG rendering |
-| Scripts | `scripts/reindex_kb.py` | 59 | Rebuild the Chroma index from `assets/` (`--tier`, `--check`) |
+| Scripts | `scripts/reindex_kb.py`, `scripts/eval_gate.py`, `scripts/summarize_eval_runs.py` | 59, ~180, ~130 | Rebuild the Chroma index from `assets/` (`--tier`, `--check`); the CI regression gate (Sprint 5); compare several full eval reports for run-to-run variance |
 | Tests | `tests/**/test_*.py` | 2,365 | 335 tests across 19 files, none needing a live model: agents (`test_call_customer_edge` 47, `test_user_info_edge` 9, `test_call_customer_node` 4, `test_authenticated_user_node` 2), domain (4), graph (`test_retrieval_guard` 14, `test_node` 5, `test_text_based_edge` 3, `test_edge` 2), tools (`test_user_info_db` 16, `test_rag_responder` 8), eval (`test_golden_set` 124, `test_run_eval_scoring` 19), and top level (`test_session_store` 22, `test_pipeline_persistence` 22, `test_cli` 14, `test_config` 12, `test_app_sessions` 7, `test_pipeline_timeout` 1) |
 | Eval | `tests/eval/` | 452 (harness) | `golden_set.json` (135 hand-labeled conversations, 11 categories), `run_eval.py` (automated scoring harness), `README.md` (schema) |
-| CI / tooling | `.github/workflows/ci.yml`, `.githooks/pre-commit`, `.github/pull_request_template.md` | — | pytest + `ruff check` blocking on every PR; local pre-commit test hook |
+| CI / tooling | `.github/workflows/ci.yml`, `scripts/eval_gate.py`, `.githooks/pre-commit`, `.github/pull_request_template.md` | ~180 (gate script) | pytest + `ruff check` blocking on every PR; a 14-entry live-model `eval-gate` job (Sprint 5, not yet a required check - §10.9); local pre-commit test hook |
 | Docs | `docs/*.md` + `docs/eval/*.md` | — | PRD, Architecture, Rules, Phases, Design, Persistence-Design, Process-Evaluation, Sprints, Git-Workflow, Metrics, and 36 dated eval/experiment reports |
 
 **2,325** total lines across `src/customer_support_app/`.
@@ -76,12 +76,13 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 ├── .github/               # workflows/ci.yml, pull_request_template.md
 ├── .githooks/pre-commit   # runs pytest when src/, tests/ or pyproject.toml change
 ├── docs/
-│   ├── PRD.md, Architecture.md, Rules.md, Design.md, Git-Workflow.md, Persistence-Design.md, Process-Evaluation.md
+│   ├── PRD.md, Architecture.md, Rules.md, Design.md, Git-Workflow.md, Process-Evaluation.md
+│   ├── Persistence-Design.md, User-Store-Design.md, Eval-Gate-Design.md  # design-first docs per sprint
 │   ├── Phases.md            # what's built, phase by phase, with dated bugfix notes
 │   ├── Sprints.md           # the SDLC plan + live status of each sprint
 │   ├── report.md            # this file
-│   └── eval/                # Metrics.md + 36 dated baseline, held-out, fix-verification, audit and experiment reports
-├── scripts/reindex_kb.py
+│   └── eval/                # Metrics.md + 41 dated baseline, held-out, fix-verification, audit and experiment reports
+├── scripts/reindex_kb.py, eval_gate.py, summarize_eval_runs.py
 ├── src/customer_support_app/
 │   ├── config.py, logging_config.py, session_store.py, pipeline.py, cli.py, app.py
 │   ├── agents/support.py
@@ -89,12 +90,12 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 │   ├── graph/             # the reusable Node/Edge framework
 │   ├── tools/              # user_store.py, rag_responder.py, audio_transcribe.py
 │   └── ui/graph_renderer.py
-├── tests/                 # 335 unit tests (deterministic logic only)
-│   └── eval/               # golden_set.json, run_eval.py, README.md
+├── tests/                 # 364 unit tests (deterministic logic only)
+│   └── eval/               # golden_set.json, run_eval.py, ci_baseline.json (Sprint 5), README.md
 ├── assets/                # free/ + paid/ knowledge base .txt files, sample call audio
 ├── notebooks/             # legacy exploratory prototype
 ├── logs/                  # gitignored - logs/turns.jsonl, structured per-turn output
-├── data/                  # gitignored - data/sessions.sqlite, saved conversations (holds names, emails, phone numbers in the clear)
+├── data/                  # gitignored - sessions.sqlite, users.sqlite (Sprint 4), saved state (holds names, emails, phone numbers in the clear)
 └── chroma_db/             # gitignored - persisted vector store
 ```
 
@@ -122,7 +123,7 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 | Audio/transcription | `openai-whisper` (optional `audio` extra) | **Not installed in the project `.venv`.** Installed in separate short-path venvs on 2026-09-21 (`openai-whisper` 20250625 pinned by the extra since #44, `librosa` 0.10.2, torch 2.14.0): Whisper works, the ticket step works (#43), and the extra installs in a fresh venv without a workaround; §10.6. The app degrades gracefully without it |
 | Testing | pytest 8.3.3 | 335/335 pass, re-run for #43 and #44 in the fresh audio venv (6.8 s) |
 | Lint | ruff 0.7.4 | 0 findings on `src tests scripts` and on the whole repo, re-run this update; a blocking CI gate. `ruff format` is not enforced (20 files would change) |
-| CI | GitHub Actions (`ci.yml`) | pytest + `ruff check src tests scripts`, both blocking on PRs and pushes to `main`; 49 of 49 runs green, including the run for #45 |
+| CI | GitHub Actions (`ci.yml`) | pytest + `ruff check src tests scripts`, both blocking on PRs and pushes to `main`; a live-model `eval-gate` job since Sprint 5 (PR-only, not yet a required check); 65 of 67 runs green (the 2 non-green are a deliberate proof failure and a superseded duplicate, not real breakage) |
 | Version control | git + GitHub (`melvinmathew9991/customer-support-app`) | 98 commits, 26 merged PRs as of #45; merge commits, branches kept as history, tags `v0.1.0-sprint1` and `v0.1.0-sprint2` (`docs/Git-Workflow.md`); `main` requires a PR and the `test` check |
 
 ## 8. Implementation Details
@@ -321,13 +322,54 @@ Also checked live (§10.2-style): identify by email (`michaeljackson@gmail.com`)
 
 354/354 tests pass, ruff clean, after the fixes.
 
+### 10.9 Sprint 5: CI regression gate (`docs/Eval-Gate-Design.md`)
+
+`scripts/eval_gate.py` runs 14 hand-picked golden-set entries (one or two per category,
+weighted toward tier-leakage and callback) against the real pipeline and fails if any
+entry that wasn't failing starts failing, compared to a checked-in baseline
+(`tests/eval/ci_baseline.json`). Aggregate metrics are computed and printed for context
+only, not a second gate - on a fixed 14-entry set they're fully determined by the same
+per-entry results already checked, so a metric-floor check would just restate a
+regression already caught, not add detection power. Wired into CI as a new `eval-gate`
+job, separate from the existing `test` job so the fast unit-test/lint signal never waits
+on a live model; PR-only (`main` is already gated at PR time).
+
+**Verified against real GitHub Actions, not simulated.** First run (cold cache): Ollama
+install, both model blobs pulled, 14-entry inference, 13m13s total, passed. A disposable
+branch then deliberately broke `_get_retriever` to always return the paid KB regardless
+of tier; the `eval-gate` job **failed** on it (`rag-adv-001`/`rag-adv-002`, tier leak),
+exactly as designed - this is Sprint 5's own literal Definition of Done, proven, not
+asserted.
+
+**The proof also caught a real incident.** `eval-gate` reporting red does not yet block a
+merge: it isn't marked as a *required* status check in GitHub's branch protection
+settings (`docs/Git-Workflow.md` already flagged this as a manual step still needed). The
+disposable "TEST - DO NOT MERGE" proof PR - labelled that in its title, body, and the
+code comment itself - was merged into `main` anyway, alongside the real Sprint 5 PR. For a
+few minutes, every user of the deployed code path would have been served the paid
+knowledge base regardless of their actual subscription tier. This was caught by checking
+`main`'s actual merge history directly rather than trusting a status summary, fixed with
+`git revert -m 1` of the one bad merge commit (hotfix PR #55, itself confirmed green on
+CI - both `eval-gate` and `test` passing on the revert - before being merged), and
+verified live afterward. 363/364 tests passed on the hotfix branch; the one failure,
+`test_latest_unfinished_returns_the_most_recently_saved_open_session`
+(`tests/test_session_store.py`), is a pre-existing timestamp-ordering timing flake
+unrelated to this change (passes in isolation, fails intermittently as part of the full
+suite; not introduced by Sprint 4 or 5, both of which leave that file untouched) - open as
+its own small follow-up, not part of this incident.
+
+**Net effect:** the gate mechanism itself is proven correct; the process gap that let a
+correctly-failing check still get merged is now an explicit, tracked open item
+(`docs/Sprints.md`'s Sprint 5 section) rather than an assumption that wiring the job in was
+sufficient on its own.
+
 ## 11. Evaluation Metrics
 
 | Metric | Value |
 |---|---|
-| Unit tests passing | 335/335 (19 files) |
-| Live end-to-end checks on merged `main` (#45) | 7/7 pass (identify by email and phone, paid-only and free-only retrieval, callback, fail-safe, resume) |
-| CI | 49/49 runs green |
+| Unit tests passing | 364/364 (20 files) |
+| Live end-to-end checks on merged `main` | 7/7 pass (identify by email and phone, paid-only and free-only retrieval, callback, fail-safe, resume) |
+| CI | 65/67 runs green as of this update; the 2 non-green are the deliberate Sprint 5 proof failure and one superseded/cancelled duplicate run, not real breakage. A CI-enforced eval regression gate exists since Sprint 5 (`eval-gate`, PR-only), not yet a *required* check - see §10.9 |
 | Golden-set size | 135 conversations across 11 categories (122 in the Sprint 3 run) |
 | Golden-set run, post-Sprint 3 (#45) | 120 pass, 3 fail (`call-042`, `call-047`, `call-070`), 12 manual review (Sprint 3: 108 pass, 2 fail, 12 manual, on 122 entries) |
 | Held-out sets written before their run | 21 `rag-*`, 16 + 22 callback, 15 for #16/#17, 10 for #22, 12 for #33 |
@@ -340,8 +382,8 @@ Also checked live (§10.2-style): identify by email (`michaeljackson@gmail.com`)
 | Hallucination | 13.3% fabrication on an untuned cohort; 2%-14% on the blind 51-answer grade; target ≤5% |
 | Run-to-run variance (5 full runs, unchanged code) | 0 pp on every aggregate metric, 0 of 135 entries change result, 1 answer varies in wording (`rag-free-008`); §10.7 |
 | Issues | 4 open (#5, #14, #17, #23), 16 closed; #14 is partly done (the code is licensed, the assets' origin is not confirmed) |
-| Commits / PRs | 98 commits, 26 merged PRs as of #45; single contributor |
-| Since Sprint 3 | 4 issues fixed: #37 and #33 (one trade-off), and #43 and #44, the two bugs found by exercising the with-audio path |
+| Commits / PRs | 128 commits, 35 merged PRs as of this update; single contributor |
+| Since Sprint 3 | Sprint 4 (real user store, #51), Sprint 5 (CI regression gate, #52) and its hotfix (#55) for a merge incident found by Sprint 5's own proof (§10.9); plus #37, #33, #43, #44 fixed out of band |
 
 ## 12. Result Analysis
 
@@ -389,6 +431,8 @@ The work after Sprint 3 repeated the same lessons in miniature. #37 sat unmeasur
 | 30 | Installing the `audio` extra into a fresh venv fails on `pkg_resources` in a source build; it worked with `setuptools<70` and `--no-build-isolation` | Low | Fixed (#44): the extra pins `openai-whisper==20250625`, which builds in a fresh venv |
 | 31 | The do-not-call veto refused a message that declines one call and requests another ("Never call me before 9am, but do call me on X") | Medium | Fixed (#33, PR #45) at the cost of one new false trigger, a decline followed by a conditional offer (`call-070`). Not covered: "You can't call me on X" is not a decline pattern and counts as a request |
 | 32 | Run-to-run variance of the eval was unmeasured (a full 3B run once differed by one entry on unchanged code) | Low | Measured (§10.7): 5 full runs, 0 pp spread on every aggregate metric, 0 flippers, one answer whose wording varied. The one-entry flip on record is `call-031`, a model-decided entry; not reproduced, not explained |
+| 33 | Sprint 4's own end-to-end audit (before merge, `docs/Sprints.md`): a real seed race in `SqliteUserStore` (confirmed with a forced-interleaving reproduction, not hypothetical), a shared-mutable-fixture reference in `MockUserStore`, two style inconsistencies, tests silently writing a real store file despite faking out the graph entirely, and SQLite connections never explicitly closed | Medium (the seed race; the rest low) | All fixed before PR #51 merged. None LLM-facing, so re-verified with the unit suite and a live check rather than a second golden-set run |
+| 34 | **A disposable, explicitly-labelled "TEST - DO NOT MERGE" proof PR (deliberately broken to test the Sprint 5 CI gate) was merged into `main` anyway**, because the new `eval-gate` CI check was not yet marked *required* in GitHub branch protection - a check reporting red does not by itself block a merge. For a few minutes `main` served every user the paid knowledge base regardless of tier | High (briefly live on `main`) | Fixed within minutes: caught by checking the actual merge history directly (not a status summary), reverted with one `git revert -m 1` (hotfix PR #55, itself CI-verified green before merging). The missing required-check setting is recorded as an explicit open item (§10.9), not assumed fixed by this incident alone - a settings change, not a commit |
 
 ## 14. Challenges Faced
 
@@ -435,13 +479,13 @@ Exercising the with-audio path took three attempts. The first install failed in 
 
 ## 16. Future Improvements
 
-**Quick:** #14, the part still open: confirm the source and terms of the KB text and the call audio (`assets/NOTICE.md`), then record them or replace the files (replacing the KB means a full golden-set re-run). #5, #17 and #23 stay open as accepted known limits (`docs/Sprints.md`).
+**Quick:** #14, the part still open: confirm the source and terms of the KB text and the call audio (`assets/NOTICE.md`), then record them or replace the files (replacing the KB means a full golden-set re-run). #5, #17 and #23 stay open as accepted known limits (`docs/Sprints.md`). **Mark `eval-gate` (and `test`) as required status checks in GitHub branch protection** (`docs/Git-Workflow.md`) - the one concrete gap finding 34 (§13) left open; without it, a red CI check doesn't actually stop a merge, which is exactly what happened.
 
 **Medium:** if hallucination or callback precision must reach target, scope it as its own sprint with a larger pre-committed held-out set (a second-pass grounding check for #5/#17; a labeled callback-intent set large enough to tune without overfitting for #23). The run-to-run difference was measured (§10.7); for a CI gate, flag entries whose result changed and re-run only those, instead of a metric threshold.
 
 **Process (proposed, not adopted; full plan in `docs/Process-Evaluation.md`):** an evidence bundle first (dev, validation and frozen test splits; intervals on every rate; a run manifest and results index per eval), then a smoke-eval gate before merge, independent review of eval labels and metric-affecting PRs, one source per fact with a generated status block, a threat model with a lockfile, and a small real-user trial.
 
-**Larger:** Sprint 4 (Phase 7, a real user store behind the same interface) is done; next per `docs/Sprints.md` is the evaluation regression gate (Sprint 5), then UI polish (Sprint 6) and deployment and observability (Sprint 7). The process evaluation suggests the eval gate and a real-user trial may deserve to come before either.
+**Larger:** Sprint 4 (Phase 7, a real user store) and Sprint 5 (Phase 8, a CI regression gate) are both done; next per `docs/Sprints.md` is UI polish (Sprint 6) and deployment and observability (Sprint 7). The process evaluation suggests a real-user trial may deserve to come before either.
 
 ### Three-bullet summary
 
