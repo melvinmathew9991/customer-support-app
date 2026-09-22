@@ -77,11 +77,11 @@ git checkout v0.1.0-sprint1             # look around; `git checkout -` to retur
 
 - Require a pull request before merging.
 - Require the `CI / test` status check to pass.
-- Require the `CI / eval-gate` status check to pass (Sprint 5,
-  `docs/Eval-Gate-Design.md`) - PR-only, so it won't show as a required check on a direct
-  push to `main`. Not enabled by default just by this workflow file existing; it has to be
-  added as a required check under branch protection to actually block a merge instead of
-  just reporting red.
+- Require the `CI / eval-gate` status check to pass (Sprint 5, `docs/Eval-Gate-Design.md`)
+  - PR-only, so it won't show as a required check on a direct push to `main`. **Both are
+  configured as required checks as of 2026-09-22**, closing the gap that let a
+  deliberately-broken, explicitly-labelled "do not merge" proof PR get merged anyway
+  before this was set (`docs/report.md` §10.9, `docs/Sprints.md`'s Sprint 5 section).
 - Block force-pushes to `main`.
 
 ## Recovery and investigation cheat sheet
