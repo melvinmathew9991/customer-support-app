@@ -646,19 +646,67 @@ made the `eval-gate` CI check fail, watched live on GitHub Actions, not simulate
 
 ---
 
-## Sprint 6 (2 weeks) — UX/design polish (Phases.md Phase 9)
+## Sprint 6 (2 weeks) — UX/design polish (Phases.md Phase 9) ✅ Done
 **SDLC stage:** Build (UI) + usability validation
 **Goal:** Apply `Design.md`'s theme/typography spec to `app.py`.
 
-**Backlog:**
-- `.streamlit/config.toml` theme (palette from `Design.md`).
-- Subscription-tier badge/caption once identified.
-- Retry-prompt and ticket-confirmation styling per `Design.md`.
-- Manual usability pass in both light and dark mode (per `Design.md` §5).
+**Status (2026-09-22):** design-first, same as every other sprint - the plan resolved one
+open technical question before writing any code: the installed Streamlit version (1.39.0,
+checked directly against `.venv/Lib/site-packages/streamlit/config.py`) supports exactly
+one static custom `[theme]` palette in `config.toml`, with no runtime way (`st.context` in
+this version exposes only `cookies`/`headers`) to detect a viewer's light/dark selection
+and serve a second custom palette. Rather than chase pixel-parity with fragile,
+version-dependent CSS against Streamlit's internal DOM, the light-column palette was set
+as the one custom theme; a viewer's manual dark-mode toggle gets Streamlit's own built-in
+dark defaults, not `Design.md`'s dark column. Documented as a known, deliberate limitation
+rather than silently claimed as full compliance.
 
-**Deliverables:** themed app, before/after screenshots.
-**Definition of done:** every visual element in `Design.md` §4 is present
-and checked in both themes; no functional regression (re-run golden set).
+- ✅ **`.streamlit/config.toml`** (new): the five `Design.md` §2 light-palette colors plus
+  `font = "sans serif"`, `base = "light"`.
+- ✅ **`app.py`**: `st.title("Hi, I'm your Shopify Agent")` → `st.title("Support")` (§3 -
+  that phrase is chat copy, already present in `AuthenticatedUserNode.STATIC_PROMPT`, not
+  page-title copy); chat input placeholder calmed from `"What is Up?"` to
+  `"Ask a question..."` (§1 brand tone). Subscription-tier badge: `st.caption` shows
+  `"{name} · {subscription} plan"` once `AuthenticatedUserNode` holds a real
+  `UserProfile`, via a new `CustomerSupportPipeline.current_user_profile` property (four
+  lines, read-only, additive - the one deliberate exception to an app.py-only change, so
+  app.py doesn't need to duplicate the `isinstance(..., UserProfile)` check
+  `AuthenticatedUserNode.greeting_message()` already makes). Retry prompts render via
+  `st.warning`, ticket-confirmation messages via `st.success`, classified at the point a
+  message is appended using signals already on hand - an exact match against
+  `GreetingNode.RETRY_PROMPT` (the graph layer's own canonical copy, not a new heuristic,
+  per `docs/Rules.md`) and node identity (`type(pipeline._current_node).__name__ ==
+  "CallCustomerNode"`, the same private read the Graph tab already relies on). The Graph
+  tab itself is untouched, as `Design.md` specifies.
+- **Known gap, called out rather than hidden**: a resumed session's replayed history
+  recovers retry styling (a stable string match survives a reload) but not
+  ticket-confirmation styling, since which node produced a past message isn't persisted -
+  only live, same-process ticket messages are styled. Fixing this would need a
+  persistence/schema change, out of this sprint's scope.
+- ✅ **Tests**: `tests/test_app_sessions.py`'s `_FakePipeline` gained a matching
+  `current_user_profile` attribute; 5 new AppTest-driven tests (badge present/absent,
+  live ticket message renders as `st.success`, a retry message renders as `st.warning`
+  both live and on resume). `tests/test_pipeline_persistence.py` gained 2 new tests for
+  the property itself. 371/371 tests pass (up from 364), `ruff` clean.
+- ✅ **Golden-set regression** (this sprint's explicit Definition of Done):
+  `docs/eval/Sprint6-UX-FullEval-2026-09-22.md`, diffed against the same-day baseline
+  `docs/eval/Compare-Ollama-FullRun-2026-09-22.md` - **all 8 metrics identical, 0 of 135
+  entries changed result** (identification 100% n=8, fails-safe 100% n=6, retrieval
+  recall 100% n=39, tier leakage 0% n=39, callback recall 100% n=44, callback precision
+  94% n=47, phone extraction 100% n=44, false-trigger 8% n=38) - expected, since this
+  sprint touches no LLM-facing code, and confirmed rather than assumed.
+- Not done: a real-browser visual pass in both themes (no Chrome browser-automation tool
+  was connected in the session that built this; the dev server was run and the AppTest
+  suite covers every new element's *presence*, but not actual rendered color/contrast in
+  a live browser). Flagged honestly rather than claimed - a manual check in both themes
+  is still open before calling `Design.md` §5's usability pass fully satisfied.
+
+**Deliverables:** themed app (`.streamlit/config.toml`, `app.py`), 7 new/updated tests,
+golden-set regression report.
+**Definition of done:** met on the parts that could be verified in this session - every
+`Design.md` §4 element is implemented and structurally tested; no functional regression
+(golden set re-run, identical on all 8 metrics). Not yet independently confirmed: a live
+browser check of actual color rendering in both light and dark mode.
 
 ---
 

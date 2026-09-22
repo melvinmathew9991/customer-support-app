@@ -243,9 +243,21 @@ no new dependency, no ORM).
   `Eval-Gate-Design.md` for why they'd be redundant on a fixed subset), and the required-check
   setting itself.
 
-## Phase 9 — UI/design polish
-- Apply `Design.md` (theme, typography, chat styling) to `app.py` — today
-  it's an unstyled default Streamlit app (bare `st.title` + chat tabs).
+## Phase 9 — UI/design polish ✅ Done (Sprint 6, `docs/Design.md`)
+- `.streamlit/config.toml` applies the Design.md §2 palette (one static custom theme -
+  Streamlit 1.39's `[theme]` section has no way to express a separate dark-mode
+  palette; a viewer's manual dark-mode toggle gets Streamlit's own dark defaults, not
+  Design.md's dark column).
+- `app.py`: `st.title` moved from brand copy to a plain "Support" heading (§3); a
+  subscription-tier badge (`st.caption`) once `AuthenticatedUserNode` holds a
+  `UserProfile` (via the new `CustomerSupportPipeline.current_user_profile`
+  property); retry prompts render as `st.warning`, ticket-confirmation messages as
+  `st.success` (§4), using the existing graph-layer retry vocabulary
+  (`GreetingNode.RETRY_PROMPT`) and node identity rather than new UI-side heuristics.
+  The Graph tab is untouched, as specified.
+- Known gap: a resumed session's replayed history recovers retry styling (an exact
+  copy match) but not ticket-confirmation styling (which node produced a past message
+  isn't persisted) - only live, same-process ticket messages are styled.
 
 ## Phase 10 — Deployment & observability
 - Containerize / document a deployment path for the Streamlit app.

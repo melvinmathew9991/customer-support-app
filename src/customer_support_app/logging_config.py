@@ -18,6 +18,8 @@ import logging
 import time
 from contextlib import contextmanager
 
+from langchain_core.callbacks import BaseCallbackHandler
+
 from customer_support_app.config import get_settings
 
 TURN_LOGGER_NAME = "customer_support_app.turns"
@@ -76,3 +78,35 @@ def log_latency(event: str, **fields):
     finally:
         fields["latency_ms"] = round((time.perf_counter() - start) * 1000, 1)
         log_turn_event(event, **fields)
+
+
+class TokenUsageCallbackHandler(BaseCallbackHandler):
+    """Logs input/output token counts for every LLM call as a turn-log event.
+
+    Attached at the chat-model instance level in config.get_chat_model(), so it fires
+    for every call that instance makes - including calls nested inside an
+    AgentExecutor or a retrieval chain - the same way log_latency already captures
+    retrieval and tool-calling-agent latency, without having to instrument every
+    call site individually. Relies on langchain_core's standardized
+    AIMessage.usage_metadata, which both langchain_ollama and langchain_openai
+    populate (prompt_eval_count/eval_count and OpenAI's usage field, respectively).
+    """
+
+    def __init__(self, provider: str, model: str):
+        self._provider = provider
+        self._model = model
+
+    def on_llm_end(self, response, **kwargs) -> None:
+        for generation_list in response.generations:
+            for generation in generation_list:
+                usage = getattr(getattr(generation, "message", None), "usage_metadata", None)
+                if not usage:
+                    continue
+                log_turn_event(
+                    "llm_usage",
+                    provider=self._provider,
+                    model=self._model,
+                    input_tokens=usage.get("input_tokens"),
+                    output_tokens=usage.get("output_tokens"),
+                    total_tokens=usage.get("total_tokens"),
+                )

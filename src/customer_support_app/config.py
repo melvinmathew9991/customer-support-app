@@ -94,6 +94,8 @@ def get_chat_model(temperature: float = 0):
     """Returns a chat model instance for the configured llm_provider."""
     settings = get_settings()
 
+    from customer_support_app.logging_config import TokenUsageCallbackHandler
+
     if settings.llm_provider == "ollama":
         from langchain_ollama import ChatOllama
 
@@ -103,6 +105,7 @@ def get_chat_model(temperature: float = 0):
             temperature=temperature,
             num_predict=settings.llm_max_tokens,
             client_kwargs={"timeout": settings.llm_timeout_seconds},
+            callbacks=[TokenUsageCallbackHandler(provider="ollama", model=settings.ollama_model)],
         )
 
     if settings.llm_provider == "openai":
@@ -119,6 +122,7 @@ def get_chat_model(temperature: float = 0):
             api_key=settings.openai_api_key,
             max_tokens=settings.llm_max_tokens,
             request_timeout=settings.llm_timeout_seconds,
+            callbacks=[TokenUsageCallbackHandler(provider="openai", model=settings.openai_model)],
         )
 
     raise ValueError(f"Unsupported llm_provider '{settings.llm_provider}'.")
