@@ -10,8 +10,9 @@ phone) can be wrong, not two.
 """
 import re
 import sqlite3
+from contextlib import closing
 from pathlib import Path
-from typing import Protocol
+from typing import List, Protocol
 
 # Fewer digits than this is not a phone number worth matching on.
 _MIN_PHONE_DIGITS = 6
@@ -57,7 +58,7 @@ def _digits(text: str) -> str:
     return re.sub(r"\D", "", text)
 
 
-def _matching_users(users: list[dict], query: str) -> list[dict]:
+def _matching_users(users: List[dict], query: str) -> List[dict]:
     """Searches users by email address (any letter case) or phone number (any spacing)."""
     query = query.strip()
     if "@" in query:
@@ -69,8 +70,8 @@ def _matching_users(users: list[dict], query: str) -> list[dict]:
 
 
 class UserStore(Protocol):
-    def search_user_info(self, query: str) -> list[dict]: ...
-    def search_user_subscription(self, user_id: str) -> list[dict]: ...
+    def search_user_info(self, query: str) -> List[dict]: ...
+    def search_user_subscription(self, user_id: str) -> List[dict]: ...
 
 
 class MockUserStore:
@@ -78,13 +79,16 @@ class MockUserStore:
     and every existing test, and the deterministic fixture for tests going forward."""
 
     def __init__(self):
-        self._users = USERS
-        self._subscriptions = SUBSCRIPTIONS
+        # Copies, not references: nothing currently writes through a store, but sharing the
+        # canonical fixture by reference would let a future mutation on one instance leak
+        # into every other instance and the module-level fixture itself.
+        self._users = list(USERS)
+        self._subscriptions = list(SUBSCRIPTIONS)
 
-    def search_user_info(self, query: str) -> list[dict]:
+    def search_user_info(self, query: str) -> List[dict]:
         return _matching_users(self._users, query)
 
-    def search_user_subscription(self, user_id: str) -> list[dict]:
+    def search_user_subscription(self, user_id: str) -> List[dict]:
         return [sub for sub in self._subscriptions if sub["user_id"] == user_id]
 
 
@@ -99,12 +103,15 @@ class SqliteUserStore:
         self._init_db()
 
     def _connect(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self._db_path)
+        conn = sqlite3.connect(self._db_path, timeout=5)
         conn.row_factory = sqlite3.Row
         return conn
 
     def _init_db(self) -> None:
-        with self._connect() as conn:
+        # closing(...) as well as `conn` itself: `with conn:` alone only manages the
+        # transaction (commit/rollback) - it does not close the connection
+        # (session_store.py's SessionStore uses the same pairing for writes).
+        with closing(self._connect()) as conn, conn:
             conn.execute(
                 "CREATE TABLE IF NOT EXISTS users ("
                 "user_id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL, "
@@ -114,20 +121,23 @@ class SqliteUserStore:
                 "CREATE TABLE IF NOT EXISTS subscriptions ("
                 "user_id TEXT PRIMARY KEY, subscription TEXT NOT NULL)"
             )
-            if conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
-                conn.executemany(
-                    "INSERT INTO users (user_id, name, email, phone, language) "
-                    "VALUES (:user_id, :name, :email, :phone, :language)",
-                    USERS,
-                )
-                conn.executemany(
-                    "INSERT INTO subscriptions (user_id, subscription) "
-                    "VALUES (:user_id, :subscription)",
-                    SUBSCRIPTIONS,
-                )
+            # OR IGNORE, not a COUNT-then-INSERT guard alone: two stores opening the same
+            # empty file at once (e.g. two Streamlit sessions on a fresh install) could
+            # otherwise both see zero rows and both try to insert, and the second would
+            # crash on the user_id PRIMARY KEY instead of silently doing nothing.
+            conn.executemany(
+                "INSERT OR IGNORE INTO users (user_id, name, email, phone, language) "
+                "VALUES (:user_id, :name, :email, :phone, :language)",
+                USERS,
+            )
+            conn.executemany(
+                "INSERT OR IGNORE INTO subscriptions (user_id, subscription) "
+                "VALUES (:user_id, :subscription)",
+                SUBSCRIPTIONS,
+            )
 
-    def search_user_info(self, query: str) -> list[dict]:
-        with self._connect() as conn:
+    def search_user_info(self, query: str) -> List[dict]:
+        with closing(self._connect()) as conn:
             rows = [
                 dict(row)
                 for row in conn.execute(
@@ -136,8 +146,8 @@ class SqliteUserStore:
             ]
         return _matching_users(rows, query)
 
-    def search_user_subscription(self, user_id: str) -> list[dict]:
-        with self._connect() as conn:
+    def search_user_subscription(self, user_id: str) -> List[dict]:
+        with closing(self._connect()) as conn:
             rows = conn.execute(
                 "SELECT user_id, subscription FROM subscriptions WHERE user_id = ?",
                 (user_id,),

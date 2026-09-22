@@ -43,9 +43,15 @@ get the matching rule right instead of one. `search_user_subscription` is an exa
 `WHERE user_id = ?`, since that lookup is already exact today.
 
 **Auto-seed, not a seed script.** `SqliteUserStore.__init__` creates the schema and seeds
-it if the `users` table is empty, mirroring `SessionStore`'s self-healing-on-open posture.
-No manual step to forget, no drift between "the docs say run the seed script" and what's
-actually in the file.
+it with `INSERT OR IGNORE`, mirroring `SessionStore`'s self-healing-on-open posture. No
+manual step to forget, no drift between "the docs say run the seed script" and what's
+actually in the file. `OR IGNORE` rather than a `COUNT(*) == 0` guard is deliberate: two
+stores opening the same brand-new file at once (e.g. two Streamlit sessions on a fresh
+install) could otherwise both see zero rows and both try to insert, and the second would
+crash on the `user_id` primary key. `OR IGNORE` makes every open idempotent regardless of
+interleaving - confirmed as a real race (forced reproduction crashed the old
+check-then-insert version; `tests/tools/test_user_store.py`'s concurrency test guards the
+fix going forward).
 
 **Config-driven, like every other provider in this project.**
 ```python

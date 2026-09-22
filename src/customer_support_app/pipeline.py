@@ -66,7 +66,6 @@ class CustomerSupportPipeline:
 
     def __init__(self, store: Optional[SessionStore] = None, session_id: Optional[str] = None):
         self._llm_model = get_chat_model(temperature=0)
-        self._user_store = get_user_store()
         self._message_history = MessageHistory([])
         self._current_node = None
         self._start_node = None
@@ -81,6 +80,11 @@ class CustomerSupportPipeline:
             self._resume(store.load(session_id))
 
     def _get_pipeline(self) -> BaseNode:
+        # Resolved here, not in __init__: tests that monkeypatch this whole method (the
+        # fake_graph fixture) never touch the real, on-disk store, the same way a bare
+        # CustomerSupportPipeline() never touches the real LLM provider unless it actually
+        # runs a turn.
+        self._user_store = get_user_store()
         self._call_customer_node = CallCustomerNode(
             llm_model=self._llm_model,
             pydantic_object=PhoneCallTicket,

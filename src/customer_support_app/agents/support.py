@@ -59,10 +59,22 @@ To achieve this you have access to the following tools:"""
         "Your final answer should combine the information of previous tool observations."
     )
 
-    def __init__(self, *args, user_store: Optional[UserStore] = None, **kwargs):
+    def __init__(
+        self,
+        model,
+        pydantic_object: Optional[Type[BaseModel]],
+        max_retries: int = 3,
+        out_node=None,
+        user_store: Optional[UserStore] = None,
+    ):
         # Set before super().__init__(), which calls _init_chain() -> _get_tools() below.
         self._user_store = user_store if user_store is not None else MockUserStore()
-        super().__init__(*args, **kwargs)
+        super().__init__(
+            model=model,
+            pydantic_object=pydantic_object,
+            max_retries=max_retries,
+            out_node=out_node,
+        )
 
     def _get_tools(self):
         tools = [

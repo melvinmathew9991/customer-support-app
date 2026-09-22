@@ -1,6 +1,9 @@
 """Contract tests: MockUserStore and SqliteUserStore must behave identically, since
 `agents/support.py` is meant to work unchanged with either one (Phase 7,
 docs/User-Store-Design.md)."""
+import sqlite3
+import threading
+
 import pytest
 
 from customer_support_app.tools.user_store import MockUserStore, SqliteUserStore
@@ -61,6 +64,31 @@ def test_sqlite_store_does_not_duplicate_rows_on_reopen(tmp_path):
     SqliteUserStore(db_path)
     store = SqliteUserStore(db_path)
     assert _ids(store, "michaeljackson@gmail.com") == ["1"]
+
+
+def test_sqlite_store_seeds_safely_when_opened_concurrently(tmp_path):
+    # Two stores racing to seed the same brand-new file must not crash with a
+    # PRIMARY KEY collision (INSERT OR IGNORE, not a COUNT-then-INSERT guard alone).
+    db_path = tmp_path / "users.sqlite"
+    errors = []
+
+    def _open():
+        try:
+            SqliteUserStore(db_path)
+        except Exception as error:  # noqa: BLE001 - the test's whole point is "did anything raise"
+            errors.append(error)
+
+    threads = [threading.Thread(target=_open) for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert errors == []
+    store = SqliteUserStore(db_path)
+    assert _ids(store, "michaeljackson@gmail.com") == ["1"]
+    with sqlite3.connect(db_path) as conn:
+        assert conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 4
 
 
 def test_sqlite_store_creates_its_parent_directory(tmp_path):
