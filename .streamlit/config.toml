@@ -1,0 +1,12 @@
+# Theme palette from docs/Design.md §2. Streamlit 1.39's [theme] section supports one
+# static custom palette (confirmed against the installed streamlit/config.py) - there is
+# no way to also express Design.md's separate dark-mode hex values through this file. A
+# viewer who switches to Streamlit's own dark mode gets Streamlit's built-in dark palette,
+# not Design.md's dark column; see docs/Sprints.md Sprint 6 for that trade-off.
+[theme]
+base = "light"
+primaryColor = "#1F6F3F"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5F6F7"
+textColor = "#1A1A1A"
+font = "sans serif"

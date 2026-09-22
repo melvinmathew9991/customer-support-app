@@ -10,6 +10,7 @@ import uuid
 
 import streamlit as st
 
+from customer_support_app.agents.support import GreetingNode
 from customer_support_app.config import get_settings
 from customer_support_app.logging_config import setup_logging
 from customer_support_app.pipeline import CustomerSupportPipeline
@@ -18,7 +19,37 @@ from customer_support_app.ui.graph_renderer import GraphRenderer
 
 setup_logging()
 
-st.title("Hi, I'm your Shopify Agent")
+st.title("Support")
+
+
+def _message_kind(content: str, pipeline: CustomerSupportPipeline) -> str:
+    """Classifies a just-produced message for styling, per docs/Design.md §4.
+
+    Uses signals already available at render time rather than inventing new retry
+    detection (docs/Rules.md): an exact match against GreetingNode's own canonical
+    retry copy, and the same private _current_node read the Graph tab already relies
+    on to identify a ticket-confirmation message.
+    """
+    if content in GreetingNode.RETRY_PROMPT:
+        return "retry"
+    if type(pipeline._current_node).__name__ == "CallCustomerNode":
+        return "ticket"
+    return "normal"
+
+
+def _append_message(role: str, content: str, kind: str = "normal") -> None:
+    st.session_state.messages.append({"role": role, "content": content, "kind": kind})
+
+
+def _render_message(message: dict) -> None:
+    with st.chat_message(message["role"]):
+        kind = message.get("kind", "normal")
+        if kind == "retry":
+            st.warning(message["content"])
+        elif kind == "ticket":
+            st.success(message["content"])
+        else:
+            st.markdown(message["content"])
 
 
 def get_answer(query: str, pipeline):
@@ -59,22 +90,34 @@ def start_chatbot():
             st.session_state.pipeline = pipeline
             st.session_state.messages = []
             if pipeline.resumed:
-                st.session_state.messages = pipeline.transcript()
+                # Only "retry" can be recovered retroactively (an exact copy match) -
+                # a resumed session's old ticket-confirmation messages replay as plain
+                # text, since which node produced a past message isn't persisted.
+                st.session_state.messages = [
+                    {
+                        **m,
+                        "kind": "retry" if m["content"] in GreetingNode.RETRY_PROMPT else "normal",
+                    }
+                    for m in pipeline.transcript()
+                ]
             else:
                 res, is_over = pipeline.run("")
                 for prompt in res:
-                    st.session_state.messages.append(
-                        {"role": "assistant", "content": prompt.message}
+                    _append_message(
+                        "assistant", prompt.message, _message_kind(prompt.message, pipeline)
                     )
         else:
             pipeline = st.session_state.pipeline
 
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
+        profile = pipeline.current_user_profile
+        if profile is not None:
+            st.caption(f"{profile.name} · {profile.subscription} plan")
 
-    if prompt := st.chat_input("What is Up?", disabled=pipeline.ended):
-        st.session_state.messages.append({"role": "user", "content": prompt})
+        for message in st.session_state.messages:
+            _render_message(message)
+
+    if prompt := st.chat_input("Ask a question...", disabled=pipeline.ended):
+        _append_message("user", prompt)
         with st.chat_message("user"):
             st.markdown(prompt)
 
@@ -86,10 +129,14 @@ def start_chatbot():
 
             for full_response in responses:
                 answer = full_response.message
-                message_placeholder.markdown(answer)
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": answer}
-                )
+                kind = _message_kind(answer, pipeline)
+                if kind == "retry":
+                    message_placeholder.warning(answer)
+                elif kind == "ticket":
+                    message_placeholder.success(answer)
+                else:
+                    message_placeholder.markdown(answer)
+                _append_message("assistant", answer, kind)
 
     if pipeline.ended:
         st.info("This conversation has ended.")

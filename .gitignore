@@ -7,7 +7,8 @@ myenv/
 chroma_db/
 logs/
 data/
-.streamlit/
+.streamlit/*
+!.streamlit/config.toml
 __MACOSX/
 *.egg-info/
 build/

@@ -171,6 +171,19 @@ def test_a_conversation_resumes_at_the_same_node_with_everything_it_had(store, f
     assert is_over is False
 
 
+def test_current_user_profile_is_none_before_identification(store):
+    pipeline = CustomerSupportPipeline(store=store, session_id="s1")
+    pipeline.run("")
+
+    assert pipeline.current_user_profile is None
+
+
+def test_current_user_profile_is_set_once_identified(store):
+    pipeline = _identified(store)
+
+    assert pipeline.current_user_profile == MICHAEL
+
+
 def test_resuming_does_not_run_the_greeting_again(store):
     _identified(store)
     before = store.load("s1").messages

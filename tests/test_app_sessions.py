@@ -7,8 +7,10 @@ from streamlit.testing.v1 import AppTest
 import customer_support_app.config as config
 import customer_support_app.logging_config as logging_config
 import customer_support_app.pipeline as pipeline_module
+from customer_support_app.agents.support import GreetingNode as RealGreetingNode
 from customer_support_app.domain.chat import Role
 from customer_support_app.domain.graph import MessageOutput
+from customer_support_app.domain.validation import UserProfile
 from customer_support_app.session_store import SessionRecord, SessionStore, SessionStoreError
 
 APP = Path(__file__).resolve().parents[1] / "src" / "customer_support_app" / "app.py"
@@ -44,6 +46,7 @@ class _FakePipeline:
         self._over = bool(record and record.is_over)
         self._current_node = _NODES[self._node]()
         self.received = []
+        self.current_user_profile = None
         _FakePipeline.created.append(self)
 
     @property
@@ -59,6 +62,8 @@ class _FakePipeline:
             reply = "hello, who are you?"
         elif text == "call me":
             reply, self._node, self._over = "we will call you", "CallCustomerNode", True
+        elif text == "gibberish":
+            reply = RealGreetingNode.RETRY_PROMPT[0]
         else:
             reply, self._node = f"echo: {text}", "AuthenticatedUserNode"
         if text:
@@ -97,6 +102,10 @@ def _open(session=None):
 
 def _texts(at):
     return [md.value for cm in at.chat_message for md in cm.markdown]
+
+
+def _success_texts(at):
+    return [s.value for cm in at.chat_message for s in cm.success]
 
 
 def test_a_first_visit_creates_a_session_and_puts_its_id_in_the_url(db):
@@ -162,6 +171,10 @@ def test_an_ended_conversation_shows_its_transcript_and_no_longer_takes_input(db
 
     resumed = _open(session)
 
+    # A resumed session's history is replayed as plain markdown (kind isn't persisted -
+    # docs/Design.md §4's ticket-confirmation styling only applies to a message rendered
+    # live in the same process; see test_a_live_callback_message_renders_as_a_success_message
+    # for that case).
     assert _texts(resumed)[-1] == "we will call you"
     assert [i.value for i in resumed.info] == ["This conversation has ended."]
     assert resumed.chat_input[0].disabled is True
@@ -199,3 +212,58 @@ def test_a_database_from_a_newer_version_shows_an_error_and_stops(db, monkeypatc
         "Cannot use the saved-conversation database: uses session schema 99"
     ]
     assert not at.chat_input
+
+
+def test_a_live_callback_message_renders_as_a_success_message(db):
+    at = _open()
+    at.chat_input[0].set_value("call me").run()
+
+    # docs/Design.md §4: ticket-confirmation messages render as a success message, not
+    # plain markdown, when produced live (see the resumed-view test above for the one
+    # documented gap - a resumed session's history doesn't recover this).
+    assert _success_texts(at) == ["we will call you"]
+    assert "we will call you" not in _texts(at)
+
+
+def test_a_retry_prompt_renders_as_a_warning_message(db):
+    at = _open()
+    at.chat_input[0].set_value("gibberish").run()
+
+    assert [w.value for cm in at.chat_message for w in cm.warning] == [
+        RealGreetingNode.RETRY_PROMPT[0]
+    ]
+    assert RealGreetingNode.RETRY_PROMPT[0] not in _texts(at)
+
+
+def test_a_resumed_session_still_recognizes_a_retry_prompt_from_its_history(db):
+    first = _open()
+    session = first.query_params["session"][0]
+    first.chat_input[0].set_value("gibberish").run()
+
+    resumed = _open(session)
+
+    assert [w.value for cm in resumed.chat_message for w in cm.warning] == [
+        RealGreetingNode.RETRY_PROMPT[0]
+    ]
+
+
+def test_no_subscription_badge_before_identification(db):
+    at = _open()
+
+    assert not at.caption
+
+
+def test_a_subscription_badge_appears_once_identified(db):
+    at = _open()
+    _FakePipeline.created[-1].current_user_profile = UserProfile(
+        name="John Doe",
+        email="john@doe.com",
+        subscription="free",
+        user_id=2,
+        phone="0452 333 667",
+        language="English",
+    )
+
+    at.chat_input[0].set_value("hi").run()
+
+    assert [c.value for c in at.caption] == ["John Doe · free plan"]

@@ -163,6 +163,13 @@ class CustomerSupportPipeline:
     def ended(self) -> bool:
         return self._current_node is not None and self._current_node.is_node_final()
 
+    @property
+    def current_user_profile(self) -> Optional[UserProfile]:
+        """The identified user, once AuthenticatedUserNode holds one - None before
+        identification, or if it failed (see AuthenticatedUserNode.is_node_final)."""
+        node_input = self._current_node._node_input if self._current_node else None
+        return node_input if isinstance(node_input, UserProfile) else None
+
     def transcript(self) -> List[Dict[str, str]]:
         """What the user saw and typed so far (internal system lines left out)."""
         shown = (str(Role.USER), str(Role.ASSISTANT))

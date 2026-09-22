@@ -112,14 +112,14 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 
 | Category | Technology | Verified this update? |
 |---|---|---|
-| App runtime | Streamlit 1.39.0 | Installed; the real `app.py` is driven headlessly with Streamlit's `AppTest` in 7 unit tests and in a fresh-process resume check on the real model (Sprint 3). **Not launched in a browser since Sprint 1** |
+| App runtime | Streamlit 1.39.0 | Now themed (`.streamlit/config.toml`, Sprint 6, §10.11); driven headlessly with Streamlit's `AppTest` in 12 unit tests plus a fresh-process resume check (Sprint 3). **Still not launched in a real browser** - no Chrome browser-automation tool was connected this update either |
 | Orchestration | LangChain 0.3.7 (+ -community/-ollama/-openai/-chroma/-text-splitters) | Exercised live this update (§10.2) |
 | Session store | SQLite (standard library `sqlite3`) | 22 store tests, including migration rollback and a newer-schema refusal; a save-and-resume check re-run live this update. No new dependency, no ORM |
 | Vector store | ChromaDB 0.5.20 | Index checked against `assets/` this update: free 14 / paid 15 chunks, none stale |
 | Chat model | Ollama `llama3.2:3b` (local, default) | Exercised live this update, and across the 135-entry golden set and every experiment |
 | Chat model (tested, not adopted) | Ollama `llama3.1:8b` | Installed locally. Not re-run this update; results are from the Sprint 2 full run and targeted experiments (§10.5) |
 | Embeddings | Ollama `nomic-embed-text` (local) | Exercised live this update (retrieval) |
-| Chat model (opt-in) | OpenAI via `langchain-openai` | Not exercised — no API key configured |
+| Chat model (opt-in) | OpenAI via `langchain-openai` (`gpt-4o-mini`) | Exercised live this update, full 135-entry golden set, first time an API key was configured (§10.10) |
 | Audio/transcription | `openai-whisper` (optional `audio` extra) | **Not installed in the project `.venv`.** Installed in separate short-path venvs on 2026-09-21 (`openai-whisper` 20250625 pinned by the extra since #44, `librosa` 0.10.2, torch 2.14.0): Whisper works, the ticket step works (#43), and the extra installs in a fresh venv without a workaround; §10.6. The app degrades gracefully without it |
 | Testing | pytest 8.3.3 | 335/335 pass, re-run for #43 and #44 in the fresh audio venv (6.8 s) |
 | Lint | ruff 0.7.4 | 0 findings on `src tests scripts` and on the whole repo, re-run this update; a blocking CI gate. `ruff format` is not enforced (20 files would change) |
@@ -363,6 +363,94 @@ correctly-failing check still get merged is now actually closed (both `test` and
 `eval-gate` are required status checks under branch protection as of 2026-09-22), not just
 documented as an open item - wiring the CI job in was necessary but, this incident showed,
 not by itself sufficient.
+
+### 10.10 OpenAI vs local model, first exercise (`docs/eval/Compare-Ollama-vs-OpenAI-2026-09-22.md`)
+
+`llama3.2:3b` vs `gpt-4o-mini`, chat model only (embeddings stayed on local Ollama for
+both), same code, KB and 135-entry golden set, one full run each. No token accounting
+existed before this - a `TokenUsageCallbackHandler` (`logging_config.py`) was added,
+attached to the chat model in `config.get_chat_model()`, reading each provider's own
+`usage_metadata` so both providers' figures below are measured, not estimated.
+
+| Metric | Target | Ollama (3B) | OpenAI (`gpt-4o-mini`) |
+|---|---|---|---|
+| Identification / fails-safe / retrieval recall / tier leakage / callback recall | various | 100% / 100% / 100% / 0% / 100% | same, all 100% / 0% |
+| **Callback precision** | ≥95% | **94% (n=47)** | **98% (n=45)** |
+| Callback false-trigger rate | none | 8% (n=38) | 3% (n=38) |
+| LLM calls | — | 692 | 275 (-60%) |
+| Total tokens | — | 359,094 | 155,973 (-57%) |
+| Wall-clock | — | 13.4 min | 16.9 min (network latency per call outweighs having 2.5x fewer calls) |
+| Cost, this run | — | $0 (local) | $0.0265 |
+
+**OpenAI closed the one metric Sprint 2 carried forward as an accepted known limit
+(#23).** The two entries that flip PASS, `call-042` and `call-047`, are the exact same
+two false triggers `Model-Experiment-Results-2026-09-20.md` (§10.5) names as the 3B's
+weak point - both contain a phone number and phone-adjacent wording ("format...for the
+checkout form", "phone support") without an actual callback request, and the 3B's
+LLM-based intent check (`PydanticTextBasedEdge.check()` in `CallCustomerEdge`, reached
+only when the deterministic regexes don't match) says yes where `gpt-4o-mini` says no.
+Everything else held identical, including all three `out_of_scope_question` refusals
+verbatim. Cost note: the same tokens would have cost $0.085 on `gpt-3.5-turbo` (still
+`.env.example`'s default model name) - over 3x more for a model that does not close the
+precision gap.
+
+Limits: one run per backend (as in §10.5 and §10.7), hallucination rate not re-graded,
+wall-clock is one data point per backend on one machine, sequential not simultaneous.
+
+### 10.11 Sprint 6: UX/design polish (`docs/Design.md`, Phase 9)
+
+Applied `Design.md`'s theme/typography spec to `app.py` for the first time (it was a bare
+default Streamlit app through Sprint 5). One technical question resolved before writing
+any code: the installed Streamlit (1.39.0, checked directly against its own
+`config.py`) supports exactly one static custom `[theme]` palette, with no runtime API in
+this version to detect a viewer's light/dark selection and serve a second palette. Rather
+than fight the framework with fragile internal-CSS overrides, the light-column palette
+was set as the one custom theme; a viewer's manual dark-mode toggle gets Streamlit's own
+built-in dark defaults, not `Design.md`'s dark column - documented as a deliberate limit,
+not silently claimed as full parity.
+
+**Shipped:** `.streamlit/config.toml` (the palette); `app.py` - page title changed from
+brand copy to "Support" (§3), a subscription-tier badge (`st.caption`) once identified via
+a new `CustomerSupportPipeline.current_user_profile` property, retry prompts as
+`st.warning` and ticket-confirmation messages as `st.success` (§4), classified using the
+graph layer's own `GreetingNode.RETRY_PROMPT` copy and node identity rather than new UI-side
+heuristics (per `docs/Rules.md`). The Graph tab is untouched, as specified.
+
+**Regression check** (this sprint's explicit Definition of Done, since it touches no
+LLM-facing code the bar is exact equality, the same standard §10.8 held itself to):
+`docs/eval/Sprint6-UX-FullEval-2026-09-22.md` against the same-day baseline
+`docs/eval/Compare-Ollama-FullRun-2026-09-22.md` -
+
+| Metric | Baseline | Sprint 6 | Spread |
+|---|---|---|---|
+| Identification success | 8/8 (100%) | 8/8 (100%) | 0.0 pp |
+| Fails-safe | 6/6 (100%) | 6/6 (100%) | 0.0 pp |
+| Retrieval recall@k | 39/39 (100%) | 39/39 (100%) | 0.0 pp |
+| Tier leakage | 0/39 (0%) | 0/39 (0%) | 0.0 pp |
+| Callback recall | 44/44 (100%) | 44/44 (100%) | 0.0 pp |
+| Callback precision | 44/47 (94%) | 44/47 (94%) | 0.0 pp |
+| Phone extraction | 44/44 (100%) | 44/44 (100%) | 0.0 pp |
+| Callback false-trigger rate | 3/38 (8%) | 3/38 (8%) | 0.0 pp |
+
+0 of 135 entries changed result.
+
+**Tests:** `_FakePipeline` in `tests/test_app_sessions.py` gained a matching
+`current_user_profile` attribute; 5 new AppTest tests (badge present/absent, a live
+ticket message renders as `st.success`, a retry message as `st.warning` both live and on
+resume) plus 2 new tests for the pipeline property itself. 371/371 pass (up from 364),
+`ruff` clean.
+
+**Limits, written down rather than hidden:** (1) dark mode is Streamlit's own palette, not
+`Design.md`'s exact dark hex values - a `config.toml` capability limit in this Streamlit
+version. (2) `st.success`/`st.warning` use Streamlit's built-in alert colors, not
+`Design.md`'s exact success/warning hex codes - chosen over custom CSS per the design
+doc's own stated preference. (3) A resumed session's historical ticket-confirmation
+messages replay as plain text (only live, same-process ones get styled) - recovering this
+needs a persistence/schema change, out of scope here. (4) **No real-browser visual pass
+was done** - no Chrome browser-automation tool was connected in the session that built
+this, so §4's elements are verified structurally present (AppTest) but not visually
+confirmed in an actual browser in either theme; this is the one open item before calling
+`Design.md` §5's usability pass fully satisfied.
 
 ## 11. Evaluation Metrics
 
