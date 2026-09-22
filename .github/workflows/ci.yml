@@ -26,11 +26,72 @@ jobs:
         run: pip install -e ".[dev]"
 
       # Deterministic logic only - no Ollama or API key needed (see README).
-      # The live eval harness (tests/eval/run_eval.py) needs a local model, so it
-      # stays a manual step and is intentionally not run here.
+      # The full 135-entry golden set (tests/eval/run_eval.py) needs a local model and
+      # stays a manual pre-merge step; a small subset runs live in the eval-gate job
+      # below (docs/Eval-Gate-Design.md).
       - name: Unit tests
         run: pytest -q
 
       # A hard gate: the repo is ruff-clean (see issue #9), so any new finding fails the build.
       - name: Lint (ruff)
         run: ruff check src tests scripts
+
+  # A small, fixed golden-set subset against a real model, checked against a committed
+  # baseline (docs/Eval-Gate-Design.md). Separate job, not a step in `test` above, so this
+  # job's live model dependency (slower, network-installed) never delays the fast,
+  # deterministic unit-test/lint signal - both report independently and in parallel.
+  # PRs only: main is already gated at PR time, so re-running after merge adds nothing.
+  eval-gate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      # Pinned explicitly rather than left at Ollama's install default: the official
+      # installer also sets up a systemd service (stopped below) with its own default
+      # models path, and actions/cache needs one fixed path to key on regardless of
+      # which service ends up serving requests.
+      OLLAMA_MODELS: /home/runner/ollama-models
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+
+      - name: Install project
+        run: pip install -e ".[dev]"
+
+      - name: Install Ollama
+        run: curl -fsSL https://ollama.com/install.sh | sh
+
+      # The installer starts its own systemd-managed server; stop it so the one we start
+      # below (with OLLAMA_MODELS pinned) is the only one listening on 11434.
+      - name: Stop the auto-started Ollama service
+        run: sudo systemctl stop ollama || true
+
+      - name: Cache Ollama models
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.OLLAMA_MODELS }}
+          # Bump the trailing version if the pulled models below ever change.
+          key: ollama-models-llama3.2-3b-nomic-embed-text-v1
+
+      - name: Start Ollama
+        run: |
+          mkdir -p "$OLLAMA_MODELS"
+          nohup ollama serve > /tmp/ollama.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:11434/api/tags >/dev/null 2>&1 && exit 0
+            sleep 1
+          done
+          echo "Ollama did not become ready in time" >&2
+          cat /tmp/ollama.log 2>/dev/null || true
+          exit 1
+
+      - name: Pull models
+        run: |
+          ollama pull llama3.2:3b
+          ollama pull nomic-embed-text
+
+      - name: Run the smoke eval gate
+        run: python scripts/eval_gate.py

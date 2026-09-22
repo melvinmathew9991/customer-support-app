@@ -1,0 +1,23 @@
+{
+  "manifest": {
+    "git_sha": "12e06728453f87e3502407b2ce04e2663f93ca17",
+    "model": "ollama:llama3.2:3b",
+    "generated_at": "2026-09-22T09:23:53.267925+00:00"
+  },
+  "entries": {
+    "ident-001": true,
+    "ident-003": true,
+    "ident-004": true,
+    "ident-005": true,
+    "rag-free-001": true,
+    "rag-paid-001": true,
+    "rag-adv-001": true,
+    "rag-adv-002": true,
+    "rag-oos-001": null,
+    "call-001": true,
+    "call-004": true,
+    "call-002": true,
+    "call-003": true,
+    "call-009": true
+  }
+}
