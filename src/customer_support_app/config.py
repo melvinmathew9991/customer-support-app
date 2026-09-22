@@ -18,6 +18,8 @@ from typing import Literal, Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from customer_support_app.tools.user_store import MockUserStore, SqliteUserStore, UserStore
+
 # src/customer_support_app/config.py -> parents[2] is the project root
 # (parents[0] = customer_support_app/, parents[1] = src/)
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -62,6 +64,14 @@ class Settings(BaseSettings):
     turn_log_path: Path = Field(default_factory=lambda: PROJECT_ROOT / "logs" / "turns.jsonl")
     session_db_path: Path = Field(
         default_factory=lambda: PROJECT_ROOT / "data" / "sessions.sqlite"
+    )
+
+    # Real lookup backing agents/support.py's identification edge (Phase 7). "sqlite" is a
+    # real, persistent store auto-seeded with the same sample users "mock" holds in memory;
+    # "mock" is kept for tests and quick local runs with no file I/O.
+    user_store_provider: Literal["mock", "sqlite"] = "sqlite"
+    user_store_db_path: Path = Field(
+        default_factory=lambda: PROJECT_ROOT / "data" / "users.sqlite"
     )
 
     # LangChain AgentExecutor step-by-step tool-call tracing. Off by default
@@ -133,3 +143,16 @@ def get_embeddings():
         )
 
     raise ValueError(f"Unsupported embeddings_provider '{settings.embeddings_provider}'.")
+
+
+def get_user_store() -> UserStore:
+    """Returns a UserStore instance for the configured user_store_provider."""
+    settings = get_settings()
+
+    if settings.user_store_provider == "mock":
+        return MockUserStore()
+
+    if settings.user_store_provider == "sqlite":
+        return SqliteUserStore(settings.user_store_db_path)
+
+    raise ValueError(f"Unsupported user_store_provider '{settings.user_store_provider}'.")

@@ -16,10 +16,7 @@ from customer_support_app.graph.node import BaseEdge, BaseNode, NodeInput
 from customer_support_app.graph.text_based_edge import PydanticTextBasedEdge
 from customer_support_app.tools.audio_transcribe import call_customer, transcription_available
 from customer_support_app.tools.rag_responder import HelpCenterAgent
-from customer_support_app.tools.user_info_db import (
-    search_user_info_on_db,
-    search_user_subscription_on_db,
-)
+from customer_support_app.tools.user_store import MockUserStore, UserStore
 
 logger = logging.getLogger(__name__)
 
@@ -62,10 +59,15 @@ To achieve this you have access to the following tools:"""
         "Your final answer should combine the information of previous tool observations."
     )
 
+    def __init__(self, *args, user_store: Optional[UserStore] = None, **kwargs):
+        # Set before super().__init__(), which calls _init_chain() -> _get_tools() below.
+        self._user_store = user_store if user_store is not None else MockUserStore()
+        super().__init__(*args, **kwargs)
+
     def _get_tools(self):
         tools = [
             Tool.from_function(
-                func=search_user_info_on_db,
+                func=self._user_store.search_user_info,
                 description=(
                     "Database tool to search user information. "
                     "Input must be the user's email address or phone number exactly as "
@@ -76,7 +78,7 @@ To achieve this you have access to the following tools:"""
                 name="user_info_db_search",
             ),
             Tool.from_function(
-                func=search_user_subscription_on_db,
+                func=self._user_store.search_user_subscription,
                 description=(
                     "Database tool to search a user's subscription type. "
                     "Input must be the numeric 'user_id' returned by user_info_db_search, "

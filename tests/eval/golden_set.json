@@ -193,7 +193,7 @@
     "expected": {
       "expected_behavior": "Must not silently guess a subscription tier. Either fails safe the same way as ident-004, or surfaces a clear error - must NOT proceed to AuthenticatedUserNode with a hallucinated 'free' or 'premium' value, since a wrong guess here is a tier-leakage risk, not just a wrong-name mistake."
     },
-    "notes": "Real data quirk, not a hypothetical: tools/user_info_db.py's user_sub list only covers user_id 1-3. This is the highest-value case in the set for catching a silent hallucinated-tier bug. Was part of Bug 1 before the fix."
+    "notes": "Real data quirk, not a hypothetical: tools/user_store.py's SUBSCRIPTIONS list only covers user_id 1-3. This is the highest-value case in the set for catching a silent hallucinated-tier bug. Was part of Bug 1 before the fix."
   },
   {
     "id": "ident-013",

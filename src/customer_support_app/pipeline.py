@@ -13,7 +13,7 @@ from customer_support_app.agents.support import (
     GreetingNode,
     UserInfoChainBasedEdge,
 )
-from customer_support_app.config import get_chat_model
+from customer_support_app.config import get_chat_model, get_user_store
 from customer_support_app.domain.chat import MessageHistory, Role
 from customer_support_app.domain.graph import EdgeOutput, MessageOutput
 from customer_support_app.domain.validation import PhoneCallRequest, PhoneCallTicket, UserProfile
@@ -66,6 +66,7 @@ class CustomerSupportPipeline:
 
     def __init__(self, store: Optional[SessionStore] = None, session_id: Optional[str] = None):
         self._llm_model = get_chat_model(temperature=0)
+        self._user_store = get_user_store()
         self._message_history = MessageHistory([])
         self._current_node = None
         self._start_node = None
@@ -97,7 +98,10 @@ class CustomerSupportPipeline:
         )
 
         self._user_info_chain = UserInfoChainBasedEdge(
-            model=self._llm_model, pydantic_object=UserProfile, out_node=self._help_node
+            model=self._llm_model,
+            pydantic_object=UserProfile,
+            out_node=self._help_node,
+            user_store=self._user_store,
         )
 
         self._start_node = GreetingNode(edges=[self._user_info_chain])
