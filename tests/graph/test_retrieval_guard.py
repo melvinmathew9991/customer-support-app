@@ -6,6 +6,8 @@ from customer_support_app.domain.chat import MessageHistory
 from customer_support_app.graph.chain_based_node import (
     NOT_COVERED_REPLY,
     RetrievalNode,
+    contradicted_restriction,
+    drop_contradicted_yes,
     invents_steps,
     names_unsupported_place,
 )
@@ -27,6 +29,7 @@ CONTEXT = "You can update the bank account information in your Brightstall Payme
         'Add it by going to the Brightstall POS app and selecting the "Settings" option.',
         "Follow the password reset instructions in your store admin.",
         "Open the POS app and choose Locations.",
+        "Download and install the Brightstall POS app, then follow the guide.",
     ],
 )
 def test_invented_navigation_is_detected(answer):
@@ -99,6 +102,15 @@ def test_a_place_the_context_never_gives_for_the_task_is_flagged(question, answe
     assert names_unsupported_place(answer, PAYMENTS_CONTEXT, question) is True
 
 
+def test_a_feature_the_context_never_names_is_flagged():
+    # rag-oos-014: an invented product feature.
+    assert names_unsupported_place(
+        "You can print shipping labels by using the Brightstall shipping labels feature.",
+        PAYMENTS_CONTEXT,
+        "How do I print shipping labels for my orders?",
+    ) is True
+
+
 def test_a_place_named_for_a_task_mentioned_only_by_product_name_is_flagged():
     # rag-oos-011: "POS" names the product, not the task, so it cannot tie the place to it.
     context = "Brightstall POS syncs with your Brightstall admin to track orders."
@@ -157,3 +169,66 @@ def test_predict_warns_when_the_retrieval_log_cannot_be_built(caplog):
 
     assert answer == "You can update it in your Brightstall Payments settings."
     assert any("retrieved documents" in record.getMessage() for record in caplog.records)
+
+
+FREE_POS_CONTEXT = (
+    "Selling in person: a free subscription does not include selling in person. On a free "
+    "subscription you can sell online only.\n"
+    "Because a free subscription has no in-person selling, you do not need any Brightstall POS "
+    "hardware on this plan."
+)
+
+
+def test_an_answer_that_turns_a_restriction_around_is_replaced_by_the_restriction():
+    # rag-adv-013.
+    answer = (
+        "You need to buy Brightstall POS hardware for your pop-up shop, as selling in person "
+        "with Brightstall POS requires a paid subscription."
+    )
+
+    replacement = contradicted_restriction(answer, FREE_POS_CONTEXT)
+
+    assert replacement is not None
+    assert "you do not need any Brightstall POS hardware" in replacement
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        # Correct answers, including ones whose negation comes after the verb (rag-adv-004).
+        "You do not need any Brightstall POS hardware, as selling in person is not included.",
+        "No, a free subscription does not include selling in person.",
+        "On a free subscription you can sell online only.",
+    ],
+)
+def test_an_answer_that_keeps_the_restriction_is_left_alone(answer):
+    assert contradicted_restriction(answer, FREE_POS_CONTEXT) is None
+
+
+def test_a_leading_yes_that_the_answer_goes_on_to_deny_is_dropped():
+    # rag-free-017.
+    answer = (
+        "Yes, an app that fulfills orders is treated as a location, but it does not count "
+        "toward the location limit."
+    )
+
+    assert drop_contradicted_yes(
+        answer, "Does an app that fulfills my orders count toward my location limit?"
+    ) == (
+        "An app that fulfills orders is treated as a location, but it does not count toward "
+        "the location limit."
+    )
+
+
+def test_a_leading_yes_that_the_answer_supports_is_kept():
+    answer = "Yes, you can accept manual payments such as money orders."
+
+    assert drop_contradicted_yes(answer, "Can I accept money orders?") == answer
+
+
+def test_predict_answers_with_the_restriction_when_the_answer_contradicts_it():
+    answer = _Node("You need to buy POS hardware for your shop.", FREE_POS_CONTEXT)
+    history = MessageHistory(messages=[])
+    history.add_user_message("What POS hardware should I buy?")
+
+    assert "you do not need any Brightstall POS hardware" in answer._predict(history)
