@@ -741,6 +741,37 @@ above); no functional regression (golden set re-run, identical on all 8 metrics)
 
 ---
 
+## Out-of-band (2026-09-23) — Synthetic knowledge base and call audio (#14) ✅ Done
+Branch `chore/synthetic-kb`. The maintainer chose to replace the third-party sample data
+rather than document it or move it out of the repo.
+- ✅ **Knowledge base:** all eight files under `assets/free` and `assets/paid` rewritten from
+  scratch for **Brightstall**, a fictional store platform: same files, same tiers, same
+  tested facts, fictional product names (Brightstall Payments / POS, Pay in Parts via the
+  lending partner Crestline Credit), a fictional designated-agent address on the reserved
+  `.example` domain. One structural change: `free/payments.txt` states the manual-payment
+  rule once, in its own section. 13 chunks per tier (was 14 free, 15 paid).
+- ✅ **Call audio:** an original script (`assets/audio/customer_support_call.txt`) spoken by
+  the Windows speech engine via `scripts/generate_sample_call.ps1`. Checked through the
+  real tool with the `audio` extra (throwaway venv): Whisper transcribes it accurately in
+  about 43 s with the model warm, and the ticket names agent Ruby and customer Michael.
+- ✅ **Code and golden set:** brand strings in the greeting, the ticket schema and the RAG
+  prompt's rule-5 example; 36 lines of `golden_set.json` renamed (no entry added, removed
+  or re-labelled). `assets/NOTICE.md` and the README now say the whole repo is MIT.
+- ✅ **Regression** (`docs/eval/SyntheticKB-FullEval-2026-09-23.md` against
+  `docs/eval/Sprint6-UX-FullEval-2026-09-22.md`, 135 entries, `llama3.2:3b`): every
+  machine-scored metric identical except callback precision 94% → 92% (44/47 → 44/48). The
+  one changed entry is `call-024` ("I called 0452 314 559 yesterday and nobody answered, is
+  that line working?"), now a false trigger. The callback check never sees the knowledge
+  base, but it does see the conversation history, which starts with the new greeting text,
+  so this is a wording effect on a borderline entry, not a knowledge-base effect. The CI
+  gate baseline was regenerated on the new KB: all 14 verdicts unchanged.
+- **Hand-grade of the 51 answered RAG entries on the new KB** (one reader): 4 clear
+  hallucinations (7.8%): `rag-free-011`, `rag-paid-012`, `rag-oos-011`, `rag-oos-012`, all
+  invented places or steps for "how do I" questions (the #17 class). Not comparable
+  point-for-point with earlier grades, which were on different text.
+
+---
+
 ## Sprint 7 (2 weeks) — Deployment & observability (Phases.md Phase 10)
 **SDLC stage:** Deploy + Operate
 **Goal:** Ship somewhere real, and be able to tell if it breaks.

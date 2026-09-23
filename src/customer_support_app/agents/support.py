@@ -221,7 +221,7 @@ To achieve this you have access to the following tools:"""
 
 class AuthenticatedUserNode(RetrievalNode):
     STATIC_PROMPT = [
-        "Hi, {user_name} I am your Shopify Agent for today, you have the "
+        "Hi, {user_name} I am your Brightstall support agent for today, you have the "
         "{subscription} subscription "
         "I can help you with any Help or you can ask me to call you at anytime!"
     ]

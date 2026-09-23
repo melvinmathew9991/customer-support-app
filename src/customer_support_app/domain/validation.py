@@ -20,7 +20,7 @@ class PhoneCallRequest(BaseModel):
 
 class PhoneCallTicket(BaseModel):
     agent_name: str = Field(
-        description="Name of the shopify agent that answered the call"
+        description="Name of the support agent that answered the call"
     )
     customer_name: str = Field(description="Name of the customer")
     call_summary: str = Field(

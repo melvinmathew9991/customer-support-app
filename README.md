@@ -27,7 +27,7 @@ key required. OpenAI is available as an opt-in via `.env`.
 customer_support_app/
 ├── pyproject.toml            # single source of truth for deps/metadata
 ├── .env.example
-├── assets/                   # knowledge base docs + sample call audio (runtime data; NOT covered by the license, see assets/NOTICE.md)
+├── assets/                   # synthetic knowledge base (fictional "Brightstall") + sample call audio; see assets/NOTICE.md
 ├── docs/                     # design docs (PRD, Architecture, Rules, Phases, Design, Persistence-Design, Sprints, Process-Evaluation)
 ├── notebooks/                # legacy exploratory prototype (customer_support.ipynb)
 ├── src/customer_support_app/ # the installable package
@@ -184,12 +184,12 @@ hook once with `git config core.hooksPath .githooks`.
 
 ## License
 
-The code and documentation are released under the [MIT License](LICENSE). The files
-under `assets/` (the knowledge-base text and the sample call recording) are **not**
-covered by it: they are third-party sample data whose origin and terms have not been
-confirmed. [`assets/NOTICE.md`](assets/NOTICE.md) lists what is known about each file.
-Do not assume you may redistribute them; you can point the app at your own knowledge
-base instead (see "Updating the knowledge base").
+Everything in the repository is released under the [MIT License](LICENSE): the code, the
+documentation, and the sample data under `assets/`. The knowledge base describes
+Brightstall, a fictional store platform, and the sample call is synthesized speech from a
+script written for this project. [`assets/NOTICE.md`](assets/NOTICE.md) records where each
+file came from; it replaced third-party sample data of unconfirmed origin on 2026-09-23
+(#14), which is still in git history.
 
 ## Updating the knowledge base
 

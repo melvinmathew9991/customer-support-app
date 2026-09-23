@@ -1,0 +1,13 @@
+AGENT: Thank you for calling Brightstall support. My name is Ruby. Who am I speaking with today?
+CUSTOMER: Hi Ruby, this is Michael. I run a small homeware shop on Brightstall.
+AGENT: Nice to meet you, Michael. How can I help?
+CUSTOMER: I upgraded to a paid subscription yesterday so I could sell at a weekend market, but the point of sale app still says in-person selling isn't available on my plan.
+AGENT: I'm sorry about that. Let me look at your account. I can see the upgrade went through, but your point of sale app is still signed in with the old free plan session.
+CUSTOMER: So what do I need to do?
+AGENT: Please sign out of the point of sale app and sign back in. That refreshes the plan on the device. If in-person selling still doesn't appear after that, the upgrade needs to be applied to your store manually on our side.
+CUSTOMER: The market opens on Saturday morning, so I really need it working by then.
+AGENT: Understood. I'm opening a ticket for our billing team now so they can confirm the upgrade is applied to your store before Saturday. You'll get an email when it's done.
+CUSTOMER: That's great, thank you.
+AGENT: You're welcome, Michael. Your ticket is open, and the billing team will follow up by email. Is there anything else I can help you with today?
+CUSTOMER: No, that's everything. Thanks, Ruby.
+AGENT: Thanks for calling Brightstall, and good luck at the market. Goodbye.

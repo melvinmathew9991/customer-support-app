@@ -9,7 +9,7 @@ from customer_support_app.graph.chain_based_node import (
     invents_steps,
 )
 
-CONTEXT = "You can update the bank account information in your Shopify Payments settings."
+CONTEXT = "You can update the bank account information in your Brightstall Payments settings."
 
 
 @pytest.mark.parametrize(
@@ -31,7 +31,7 @@ def test_invented_navigation_is_detected(answer):
 @pytest.mark.parametrize(
     "answer",
     [
-        "You can update the information in your Shopify Payments settings.",
+        "You can update the information in your Brightstall Payments settings.",
         NOT_COVERED_REPLY,
         "Yes, you can accept manual payment methods like bank transfers.",
         "You have two days to respond before the content is removed.",
@@ -78,7 +78,7 @@ def test_predict_replaces_an_answer_that_invents_steps():
 
 
 def test_predict_passes_a_grounded_answer_through_unchanged():
-    answer = "You can update the information in your Shopify Payments settings."
+    answer = "You can update the information in your Brightstall Payments settings."
 
     assert _ask(answer) == answer
 
@@ -87,7 +87,7 @@ def test_predict_warns_when_the_retrieval_log_cannot_be_built(caplog):
     # The canned retriever has no vectorstore, so the scored lookup used for the turn
     # log fails; the answer must still come back, and the failure must not be silent.
     with caplog.at_level("WARNING", logger="customer_support_app.graph.chain_based_node"):
-        answer = _ask("You can update it in your Shopify Payments settings.")
+        answer = _ask("You can update it in your Brightstall Payments settings.")
 
-    assert answer == "You can update it in your Shopify Payments settings."
+    assert answer == "You can update it in your Brightstall Payments settings."
     assert any("retrieved documents" in record.getMessage() for record in caplog.records)

@@ -247,7 +247,7 @@
       "retrieval": {
         "expected_source_files": ["assets/free/payments.txt"],
         "expected_key_facts": [
-          "Payments are processed and transferred to your merchant account after a delay; Shopify Payments uses Shopify Payouts."
+          "Payments are processed and transferred to your merchant account after a delay; Brightstall Payments pays out as Brightstall payouts."
         ]
       },
       "callback_expected": false
@@ -265,7 +265,7 @@
       "retrieval": {
         "expected_source_files": ["assets/free/compliance.txt"],
         "expected_key_facts": [
-          "Shopify's online form is the way to submit a copyright infringement notice, per its DMCA process."
+          "Brightstall's online form is the way to submit a copyright infringement notice, per its DMCA process."
         ]
       },
       "callback_expected": false
@@ -337,7 +337,7 @@
       "retrieval": {
         "expected_source_files": ["assets/paid/pos.txt"],
         "expected_key_facts": [
-          "A paid subscription allows selling in person via Shopify POS."
+          "A paid subscription allows selling in person via Brightstall POS."
         ]
       },
       "callback_expected": false
@@ -347,15 +347,15 @@
   {
     "id": "rag-paid-004",
     "category": "paid_tier_question",
-    "description": "Premium-tier user asks about Shop Pay Installments payouts, answerable from assets/paid/payments.txt.",
-    "turns": ["carl@sagan.com", "How does Shop Pay Installments pay me?"],
+    "description": "Premium-tier user asks about Pay in Parts payouts, answerable from assets/paid/payments.txt.",
+    "turns": ["carl@sagan.com", "How does Pay in Parts pay me?"],
     "turn_budget": 2,
     "expected": {
       "tier_used": "paid",
       "retrieval": {
         "expected_source_files": ["assets/paid/payments.txt"],
         "expected_key_facts": [
-          "Shop Pay Installments pays out via Affirm within 1 to 3 business days to the same bank account as Shopify Payments."
+          "Pay in Parts pays out via the lending partner Crestline Credit within 1 to 3 business days to the same bank account as Brightstall Payments."
         ]
       },
       "callback_expected": false
@@ -641,7 +641,7 @@
       "tier_used": "free",
       "retrieval": {
         "expected_source_files": ["assets/free/payments.txt"],
-        "expected_key_facts": ["Update the bank account information in your Shopify Payments settings."]
+        "expected_key_facts": ["Update the bank account information in your Brightstall Payments settings."]
       },
       "callback_expected": false
     },
@@ -650,10 +650,10 @@
   {
     "id": "rag-free-007",
     "category": "free_tier_question",
-    "description": "Free-tier fee question needing the Shopify Payments vs third-party distinction (payments.txt:23).",
+    "description": "Free-tier fee question needing the Brightstall Payments vs third-party distinction (payments.txt:22).",
     "turns": [
       "john@doe.com",
-      "Do I get charged extra fees if I use a payment provider other than Shopify Payments?"
+      "Do I get charged extra fees if I use a payment provider other than Brightstall Payments?"
     ],
     "turn_budget": 2,
     "expected": {
@@ -661,7 +661,7 @@
       "retrieval": {
         "expected_source_files": ["assets/free/payments.txt"],
         "expected_key_facts": [
-          "Yes: a third-party transaction fee applies with a third-party provider; no third-party transaction fees on orders processed through Shopify Payments."
+          "Yes: a third-party transaction fee applies with a third-party provider; no third-party transaction fees on orders processed through Brightstall Payments."
         ]
       },
       "callback_expected": false
@@ -671,7 +671,7 @@
   {
     "id": "rag-free-008",
     "category": "free_tier_question",
-    "description": "Compliance definition question (compliance.txt:30,33).",
+    "description": "Compliance definition question (compliance.txt:24,27).",
     "turns": ["john@doe.com", "What's the difference between a copyright and a trademark?"],
     "turn_budget": 2,
     "expected": {
@@ -689,7 +689,7 @@
   {
     "id": "rag-free-009",
     "category": "free_tier_question",
-    "description": "Specific number the model must not get wrong (compliance.txt:104).",
+    "description": "Specific number the model must not get wrong (compliance.txt:87).",
     "turns": [
       "john@doe.com",
       "I got a trademark notice on my store. How long do I have to respond before the content is removed?"
@@ -708,7 +708,7 @@
   {
     "id": "rag-free-010",
     "category": "free_tier_question",
-    "description": "Long list answer: checks that nothing is invented (compliance.txt:79-85).",
+    "description": "Long list answer: checks that nothing is invented (compliance.txt:71-77).",
     "turns": ["john@doe.com", "What do I need to include if I want to file a DMCA counter notice?"],
     "turn_budget": 2,
     "expected": {
@@ -759,13 +759,13 @@
     "id": "rag-paid-007",
     "category": "paid_tier_question",
     "description": "Paid-tier trap: a plausible 'yes' is wrong (paid/pos.txt:7).",
-    "turns": ["carl@sagan.com", "Can I run Shopify POS on my Windows laptop?"],
+    "turns": ["carl@sagan.com", "Can I run Brightstall POS on my Windows laptop?"],
     "turn_budget": 2,
     "expected": {
       "tier_used": "paid",
       "retrieval": {
         "expected_source_files": ["assets/paid/pos.txt"],
-        "expected_key_facts": ["The Shopify POS app is available only for iOS and Android devices."]
+        "expected_key_facts": ["The Brightstall POS app is available only for iOS and Android devices."]
       },
       "callback_expected": false
     },
@@ -793,7 +793,7 @@
   {
     "id": "rag-paid-009",
     "category": "paid_tier_question",
-    "description": "Compliance consequence question (compliance.txt:40).",
+    "description": "Compliance consequence question (compliance.txt:34).",
     "turns": ["carl@sagan.com", "What happens to my store if I keep getting copyright infringement notices?"],
     "turn_budget": 2,
     "expected": {
@@ -801,7 +801,7 @@
       "retrieval": {
         "expected_source_files": ["assets/paid/compliance.txt"],
         "expected_key_facts": [
-          "Shopify has a policy of terminating stores for repeat infringement (several uncountered notices) and may disable a store for a single willful or egregious infringement."
+          "Brightstall may close stores for repeat infringement (several uncountered notices) and may disable a store for a single willful or egregious infringement."
         ]
       },
       "callback_expected": false
@@ -814,7 +814,7 @@
     "description": "Paid-tier fee question (paid/payments.txt).",
     "turns": [
       "michaeljackson@gmail.com",
-      "Will I be charged third-party transaction fees when I use Shopify Payments?"
+      "Will I be charged third-party transaction fees when I use Brightstall Payments?"
     ],
     "turn_budget": 2,
     "expected": {
@@ -822,7 +822,7 @@
       "retrieval": {
         "expected_source_files": ["assets/paid/payments.txt"],
         "expected_key_facts": [
-          "No third-party transaction fees for orders processed through Shopify Payments; you still pay credit card processing fees depending on your plan."
+          "No third-party transaction fees for orders processed through Brightstall Payments; you still pay credit card processing fees depending on your plan."
         ]
       },
       "callback_expected": false
@@ -845,7 +845,7 @@
       },
       "callback_expected": false
     },
-    "notes": "KB defect: free/payments.txt:8 says you can accept manual payments outside checkout such as money orders or bank transfers, contradicting line 46 (not allowed on free). Graded against the tier policy in line 46. Sprint 2 held-out: written from the KB text before any model run."
+    "notes": "KB defect: free/payments.txt:8 says you can accept manual payments outside checkout such as money orders or bank transfers, contradicting line 46 (not allowed on free). Graded against the tier policy in line 46. Sprint 2 held-out: written from the KB text before any model run. Historical: the Brightstall KB (#14) states the free-tier rule once, in its own manual payment methods section."
   },
   {
     "id": "rag-adv-006",
@@ -871,7 +871,7 @@
     "description": "Free user asks about multiple locations without using the word 'location' as the deciding term.",
     "turns": [
       "john@doe.com",
-      "I run shops in two different cities. Can one Shopify store on my plan manage both?"
+      "I run shops in two different cities. Can one Brightstall store on my plan manage both?"
     ],
     "turn_budget": 2,
     "expected": {
@@ -895,7 +895,7 @@
       "retrieval": {
         "expected_source_files": ["assets/paid/pos.txt"],
         "expected_key_facts": [
-          "No: a paid subscription allows selling in person with Shopify POS as well as online."
+          "No: a paid subscription allows selling in person with Brightstall POS as well as online."
         ]
       },
       "callback_expected": false
@@ -973,7 +973,7 @@
   {
     "id": "rag-oos-008",
     "category": "out_of_scope_question",
-    "description": "Partial-coverage trap (payments.txt:23 mentions fees but no figures).",
+    "description": "Partial-coverage trap (payments.txt:22 mentions fees but no figures).",
     "turns": ["john@doe.com", "What percentage do you charge for credit card processing fees?"],
     "turn_budget": 2,
     "expected": {
@@ -998,7 +998,7 @@
       "retrieval": {
         "expected_source_files": ["assets/free/payments.txt"],
         "expected_key_facts": [
-          "If you use Shopify Payments you can check your pay period to view when you receive payouts from credit card orders; other payment providers have their own rules. The KB gives no menu path."
+          "If you use Brightstall Payments you can check your pay period to view when you receive payouts from credit card orders; other payment providers have their own rules. The KB gives no menu path."
         ]
       },
       "callback_expected": false
@@ -1008,15 +1008,15 @@
   {
     "id": "rag-free-012",
     "category": "free_tier_question",
-    "description": "Fully covered procedure with real steps (compliance.txt:43-64).",
-    "turns": ["john@doe.com", "How do I submit a copyright infringement notice to Shopify?"],
+    "description": "Fully covered procedure with real steps (compliance.txt:38-56).",
+    "turns": ["john@doe.com", "How do I submit a copyright infringement notice to Brightstall?"],
     "turn_budget": 2,
     "expected": {
       "tier_used": "free",
       "retrieval": {
         "expected_source_files": ["assets/free/compliance.txt"],
         "expected_key_facts": [
-          "Use Shopify's online form (the most efficient way); if you can't, send the notice with the required information to Shopify's designated agent (Shopify Trust & Safety, Ottawa; legal@shopify.com)."
+          "Use Brightstall's online form (the most efficient way); if you can't, send the notice with the required information to Brightstall's designated agent (Brightstall Trust & Safety, Springfield; legal@brightstall.example)."
         ]
       },
       "callback_expected": false
@@ -1026,7 +1026,7 @@
   {
     "id": "rag-free-013",
     "category": "free_tier_question",
-    "description": "Covered procedure that names a location only generically ('a form in your store admin', compliance.txt:79).",
+    "description": "Covered procedure that names a location only generically ('a form in your store admin', compliance.txt:71).",
     "turns": ["john@doe.com", "My content was removed by mistake. How do I file a counter notice?"],
     "turn_budget": 2,
     "expected": {
@@ -1044,7 +1044,7 @@
   {
     "id": "rag-free-014",
     "category": "free_tier_question",
-    "description": "Covered procedure with a specific number (compliance.txt:104,140).",
+    "description": "Covered procedure with a specific number (compliance.txt:87,121).",
     "turns": ["john@doe.com", "How do I respond to a trademark notice on my store?"],
     "turn_budget": 2,
     "expected": {
@@ -1088,7 +1088,7 @@
       "retrieval": {
         "expected_source_files": ["assets/paid/locations.txt"],
         "expected_key_facts": [
-          "If you make sales from physical locations using the Shopify POS app you can add a location to your sales device to track inventory accurately; the KB gives no steps."
+          "If you make sales from physical locations using the Brightstall POS app you can add a location to your sales device to track inventory accurately; the KB gives no steps."
         ]
       },
       "callback_expected": false
@@ -1098,8 +1098,8 @@
   {
     "id": "rag-oos-009",
     "category": "out_of_scope_question",
-    "description": "Partial-coverage trap: the KB assumes Shopify Payments exists but never explains enabling it.",
-    "turns": ["john@doe.com", "How do I enable Shopify Payments?"],
+    "description": "Partial-coverage trap: the KB assumes Brightstall Payments exists but never explains enabling it.",
+    "turns": ["john@doe.com", "How do I enable Brightstall Payments?"],
     "turn_budget": 2,
     "expected": {
       "tier_used": "free",
@@ -1107,7 +1107,7 @@
         "expected_source_files": [],
         "expected_key_facts": []
       },
-      "expected_behavior": "KB only mentions activating Shopify Payments in passing (payments.txt:8) and gives no steps; should say it doesn't have the steps and must not invent menu paths, buttons or steps that are not in the KB.",
+      "expected_behavior": "KB only mentions activating Brightstall Payments in passing (payments.txt:8) and gives no steps; should say it doesn't have the steps and must not invent menu paths, buttons or steps that are not in the KB.",
       "callback_expected": false
     },
     "notes": "Sprint 2 verification set (test cohort for issues #16/#17): written from the KB text and committed before any fix or model run; do not tune against it."
@@ -1133,7 +1133,7 @@
     "id": "rag-oos-011",
     "category": "out_of_scope_question",
     "description": "Partial-coverage trap: hardware is mentioned (paid/pos.txt:12,14) without instructions.",
-    "turns": ["carl@sagan.com", "How do I connect a card reader to Shopify POS?"],
+    "turns": ["carl@sagan.com", "How do I connect a card reader to Brightstall POS?"],
     "turn_budget": 2,
     "expected": {
       "tier_used": "paid",
@@ -1623,7 +1623,7 @@
     "id": "call-039",
     "category": "callback_false_trigger",
     "description": "Asks whether a support phone line is genuine.",
-    "turns": ["carl@sagan.com", "Our accountant found this line, 1300 655 021, is that really Shopify's support number?"],
+    "turns": ["carl@sagan.com", "Our accountant found this line, 1300 655 021, is that really Brightstall's support number?"],
     "turn_budget": 2,
     "expected": { "callback_expected": false },
     "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
@@ -1686,7 +1686,7 @@
     "id": "call-046",
     "category": "callback_false_trigger",
     "description": "Asks whether a text message from a number is genuinely from the company.",
-    "turns": ["michaeljackson@gmail.com", "I got a text from 0452 993 041 saying it's Shopify, is that legit?"],
+    "turns": ["michaeljackson@gmail.com", "I got a text from 0452 993 041 saying it's Brightstall, is that legit?"],
     "turn_budget": 2,
     "expected": { "callback_expected": false },
     "notes": "Sprint 2 precision cohort (issue #23): written before any run, held out until the final verification; do not tune against it."
