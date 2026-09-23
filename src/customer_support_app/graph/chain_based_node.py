@@ -30,12 +30,65 @@ _NAVIGATION_MARKERS = (
     re.compile(r"\bnavigat\w*", re.I),
     re.compile(r"\btap(?:s|ped|ping)?\b", re.I),
     re.compile(r"\w\s*>\s*\w"),
+    # Plain-prose steps ("by going to the app and selecting Settings") and pointers to
+    # instructions the knowledge base does not have (#17).
+    re.compile(r"\bgo(?:es|ing)?\s+to\s+(?:the|your)\b", re.I),
+    re.compile(r"\bselect(?:s|ed|ing)?\b", re.I),
+    re.compile(r"\bopen(?:s|ing)?\s+(?:the|your)\b", re.I),
+    re.compile(r"\binstructions?\b", re.I),
 )
 
 
 def invents_steps(answer: str, context: str) -> bool:
     """True if the answer gives UI navigation the retrieved context never uses."""
     return any(m.search(answer) and not m.search(context) for m in _NAVIGATION_MARKERS)
+
+
+# Where in the product something is done: "in your store admin", "through the online form".
+_PLACE = re.compile(
+    r"\b(?:in|through|from|via|under|using)\s+(?:the|your|their|our)\s+"
+    r"(?:[\w'-]+\s+){0,4}?"
+    r"(?:settings|admin|app|area|section|page|menu|dashboard|screen|tab|form|portal)\b",
+    re.I,
+)
+_PREPOSITION = re.compile(r"^\w+\s+")
+# "your online form", "their online form" and "Brightstall's online form" name the same place.
+_DETERMINER = re.compile(r"\b(?:the|your|their|our|its|brightstall's)\b")
+_WORD = re.compile(r"[a-z0-9]+")
+# Words that say nothing about which task a question is about, including the product names.
+_NOT_TASK_WORDS = {
+    "a", "about", "an", "and", "are", "brightstall", "can", "do", "does", "for", "from", "get",
+    "how", "i", "i'll", "if", "in", "is", "it", "me", "my", "of", "on", "or", "pos", "should",
+    "the", "to", "what", "when", "where", "which", "who", "why", "will", "with", "would", "you",
+    "your",
+}
+
+
+def _normalized(text: str) -> str:
+    return _DETERMINER.sub("<d>", " ".join(text.lower().replace("’", "'").split()))
+
+
+def _stems(text: str) -> set:
+    # A 5-letter prefix is enough to match "respond"/"response" or "payout"/"payouts".
+    return {w[:5] for w in _WORD.findall(text.lower()) if w not in _NOT_TASK_WORDS}
+
+
+def names_unsupported_place(answer: str, context: str, question: str) -> bool:
+    """True if the answer says where to do something, and no context sentence says it for
+    this task: one that contains the same place and also mentions what the question asks.
+
+    Splicing is how the 3B model invents a location from real text: "check your pay period
+    in your Brightstall Payments settings" joins the pay-period sentence to the place named
+    in the bank-details sentence, and "reset your password in your store admin" borrows a
+    place from the compliance text (#17). Heuristic, like invents_steps().
+    """
+    context_sentences = [_normalized(s) for s in re.split(r"(?<=[.!?])\s+|\n+", context)]
+    for match in _PLACE.finditer(answer):
+        place = _normalized(_PREPOSITION.sub("", match.group(0)))
+        task = _stems(question) - _stems(place)
+        if not any(place in s and (not task or task & _stems(s)) for s in context_sentences):
+            return True
+    return False
 
 
 def _relative_source(source: Optional[str]) -> Optional[str]:
@@ -85,7 +138,8 @@ class RetrievalNode(ChainBasedNode, abc.ABC):
     # Rules 3 and 5 exist because the 3B model answers uncovered questions, and
     # "how do I..." questions the KB only partly covers, from general knowledge
     # (docs/eval/Prompt-Experiment-2026-09-19.md, docs/eval/Fix-16-17-Verification-2026-09-19.md).
-    # Prompt wording alone did not stop it, so invents_steps() backs rule 5 up in _predict.
+    # Prompt wording alone did not stop it, so invents_steps() and names_unsupported_place()
+    # back rule 5 up in _predict.
     _SYSTEM_PROMPT = (
         "You are a customer support assistant for an online store platform. The "
         "context below comes from the help center for the plan the customer is on, "
@@ -156,8 +210,13 @@ class RetrievalNode(ChainBasedNode, abc.ABC):
             answer = result["answer"]
             context = "\n".join(doc.page_content for doc in result["context"])
             fields["invented_steps_blocked"] = invents_steps(answer, context)
+            fields["unsupported_place_blocked"] = names_unsupported_place(
+                answer, context, last_user_message
+            )
 
-        return NOT_COVERED_REPLY if fields["invented_steps_blocked"] else answer
+        if fields["invented_steps_blocked"] or fields["unsupported_place_blocked"]:
+            return NOT_COVERED_REPLY
+        return answer
 
 
 class MultifunctionNode(ChainBasedNode, abc.ABC):

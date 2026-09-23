@@ -7,6 +7,7 @@ from customer_support_app.graph.chain_based_node import (
     NOT_COVERED_REPLY,
     RetrievalNode,
     invents_steps,
+    names_unsupported_place,
 )
 
 CONTEXT = "You can update the bank account information in your Brightstall Payments settings."
@@ -22,6 +23,10 @@ CONTEXT = "You can update the bank account information in your Brightstall Payme
         "Tap the menu icon and choose Payments.",
         "Open Settings>Payments and save.",
         "Clicking the button saves it.",
+        # Plain-prose steps (rag-paid-012, rag-oos-012 on the Brightstall KB, #17).
+        'Add it by going to the Brightstall POS app and selecting the "Settings" option.',
+        "Follow the password reset instructions in your store admin.",
+        "Open the POS app and choose Locations.",
     ],
 )
 def test_invented_navigation_is_detected(answer):
@@ -46,6 +51,63 @@ def test_navigation_wording_that_the_context_itself_uses_is_allowed():
 
     assert invents_steps("Click Edit to change it.", context) is False
     assert invents_steps("Click Edit, then tap Save.", context) is True  # 'tap' is not in context
+
+
+PAYMENTS_CONTEXT = (
+    "With Brightstall Payments, you can check your pay period to see when your payouts for "
+    "credit card orders will arrive.\n"
+    "If you change banks, or your bank account details change, you can update them in your "
+    "Brightstall Payments settings.\n"
+    "The quickest way to report alleged copyright infringement is Brightstall's online form."
+)
+
+
+@pytest.mark.parametrize(
+    "question, answer",
+    [
+        (
+            "My bank account details changed. How do I update where I get paid?",
+            "You can update your bank account details in your Brightstall Payments settings.",
+        ),
+        (
+            "How do I submit a copyright infringement notice to Brightstall?",
+            "You can submit it through their online form.",
+        ),
+        ("How do I check when I'll receive my payouts?", "Check your pay period."),
+    ],
+)
+def test_a_place_the_context_gives_for_the_same_task_is_allowed(question, answer):
+    assert names_unsupported_place(answer, PAYMENTS_CONTEXT, question) is False
+
+
+@pytest.mark.parametrize(
+    "question, answer",
+    [
+        # rag-free-011: the place belongs to the bank-details sentence, not to payouts.
+        (
+            "How do I check when I'll receive my payouts?",
+            "You can check your pay period in your Brightstall Payments settings.",
+        ),
+        # rag-oos-012: a place that is nowhere in the context.
+        (
+            "How do I reset my admin password?",
+            "You can reset it in your store admin.",
+        ),
+    ],
+)
+def test_a_place_the_context_never_gives_for_the_task_is_flagged(question, answer):
+    assert names_unsupported_place(answer, PAYMENTS_CONTEXT, question) is True
+
+
+def test_a_place_named_for_a_task_mentioned_only_by_product_name_is_flagged():
+    # rag-oos-011: "POS" names the product, not the task, so it cannot tie the place to it.
+    context = "Brightstall POS syncs with your Brightstall admin to track orders."
+
+    assert names_unsupported_place(
+        "To connect a card reader, set up payments in your Brightstall admin.",
+        context,
+        "How do I connect a card reader to Brightstall POS?",
+    ) is True
 
 
 class _Node(RetrievalNode):
@@ -75,6 +137,10 @@ def _ask(answer, context=CONTEXT):
 
 def test_predict_replaces_an_answer_that_invents_steps():
     assert _ask('Go to Settings > Payments and click "Edit".') == NOT_COVERED_REPLY
+
+
+def test_predict_replaces_an_answer_that_names_an_unsupported_place():
+    assert _ask("You can update them in your store admin.") == NOT_COVERED_REPLY
 
 
 def test_predict_passes_a_grounded_answer_through_unchanged():

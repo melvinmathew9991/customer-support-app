@@ -311,6 +311,14 @@ class CallCustomerEdge(PydanticTextBasedEdge):
         r"|\bno\s+need\s+(?:to\s+|for\s+(?:you\s+to\s+|a\s+)?)?(?:call|phone|ring)\b",
         re.IGNORECASE,
     )
+    # Words about being contacted by voice. A question that holds a number but none of these
+    # asks about the number (its format, whether a line is genuine, whether support has a
+    # phone line), and the 3B model accepted such questions as requests (#23).
+    _VOICE_CONTACT_RE = re.compile(
+        r"\b(?:call(?:s|ed|ing)?|ring|speak|talk|dial(?:l?ed)?|phon(?:ed|ing)|telephone[ds]?)\b"
+        r"|\bphone\s+(?:me|us)\b|\b(?:by|over\s+the|on\s+the)\s+phone\b",
+        re.IGNORECASE,
+    )
 
     def check(self, user_input: MessageHistory) -> bool:
         # A callback request always names the number to call. Requiring one is
@@ -327,6 +335,8 @@ class CallCustomerEdge(PydanticTextBasedEdge):
         if self._CALL_ME_RE.search(without_declines):
             return True
         if declines:
+            return False
+        if "?" in last_input and not self._VOICE_CONTACT_RE.search(last_input):
             return False
         return super().check(user_input)
 

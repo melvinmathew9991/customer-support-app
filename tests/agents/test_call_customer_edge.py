@@ -70,7 +70,42 @@ def test_intent_check_saying_no_is_respected_for_a_message_without_a_plain_reque
     llm = _CountingLLM(answer=False)
     edge = CallCustomerEdge(llm_model=llm)
 
-    assert edge.check(_history("is 0452 111 222 the number for your store?")) is False
+    assert edge.check(_history("0452 111 222 is the number for my store")) is False
+    assert llm.calls == 1
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "What format should an Australian number like +61 452 883 210 be in for checkout?",
+        "Do you offer phone support? I saw 1300 224 907 listed on a third-party site.",
+        "is 0452 111 222 the number for your store?",
+        "Can I add 0452 664 105 as the contact number shown on my store?",
+    ],
+)
+def test_a_question_about_a_number_that_never_mentions_voice_contact_is_not_a_request(message):
+    llm = _CountingLLM(answer=True)
+    edge = CallCustomerEdge(llm_model=llm)
+
+    assert edge.check(_history(message)) is False
+    assert llm.calls == 0
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Rather than typing all this out, could an agent dial me at 0452 771 305?",
+        "Would it be alright if someone phoned me on 0490 128 345 tomorrow morning?",
+        "Is it possible for an agent to reach out to me by phone? 0452 222 111",
+        "Can we talk? 0452 111 222",
+        "Could a member of your team telephone 0452 111 222?",
+    ],
+)
+def test_a_question_that_mentions_voice_contact_is_still_left_to_the_model(message):
+    llm = _CountingLLM(answer=True)
+    edge = CallCustomerEdge(llm_model=llm)
+
+    assert edge.check(_history(message)) is True
     assert llm.calls == 1
 
 
