@@ -319,6 +319,27 @@ class CallCustomerEdge(PydanticTextBasedEdge):
         r"|\bphone\s+(?:me|us)\b|\b(?:by|over\s+the|on\s+the)\s+phone\b",
         re.IGNORECASE,
     )
+    # A statement asking for a voice conversation with support: "I want to speak to a person",
+    # "sort this out by phone". The 3B model declined these once they carried a number (#23).
+    # Only present-tense talk/speak aimed at someone who can call back counts, so "I spoke to
+    # someone on X" or "we talk to our suppliers on X" do not.
+    _VOICE_REQUEST_RE = re.compile(
+        r"\b(?:talk|speak)\s+(?:to|with)\s+(?:someone|somebody|anyone|a\s+(?:real\s+)?person|"
+        r"a\s+human|an?\s+(?:support\s+)?agent|support|you|your\s+team|me)\b"
+        r"|\b(?:by|over\s+the|on\s+the)\s+phone\b",
+        re.IGNORECASE,
+    )
+    # "I don't want to talk on the phone", "customers can't reach my shop by phone".
+    _NEGATED_BEFORE_RE = re.compile(
+        r"\b(?:don'?t|do\s+not|not|never|can'?t|cannot|won'?t|rather\s+not)\b(?:\s+[\w']+){0,3}\s*$",
+        re.IGNORECASE,
+    )
+
+    def _asks_for_a_voice_conversation(self, text: str) -> bool:
+        return any(
+            not self._NEGATED_BEFORE_RE.search(text[: m.start()])
+            for m in self._VOICE_REQUEST_RE.finditer(text)
+        )
 
     def check(self, user_input: MessageHistory) -> bool:
         # A callback request always names the number to call. Requiring one is
@@ -336,8 +357,11 @@ class CallCustomerEdge(PydanticTextBasedEdge):
             return True
         if declines:
             return False
-        if "?" in last_input and not self._VOICE_CONTACT_RE.search(last_input):
-            return False
+        if "?" in last_input:
+            if not self._VOICE_CONTACT_RE.search(last_input):
+                return False
+        elif self._asks_for_a_voice_conversation(last_input):
+            return True
         return super().check(user_input)
 
     # A whole number as typed (optional leading + or bracket), for reading it back.

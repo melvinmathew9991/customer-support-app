@@ -36,6 +36,7 @@ _NAVIGATION_MARKERS = (
     re.compile(r"\bselect(?:s|ed|ing)?\b", re.I),
     re.compile(r"\bopen(?:s|ing)?\s+(?:the|your)\b", re.I),
     re.compile(r"\binstructions?\b", re.I),
+    re.compile(r"\bdownload\w*", re.I),
 )
 
 
@@ -44,11 +45,13 @@ def invents_steps(answer: str, context: str) -> bool:
     return any(m.search(answer) and not m.search(context) for m in _NAVIGATION_MARKERS)
 
 
-# Where in the product something is done: "in your store admin", "through the online form".
+# Where in the product something is done: "in your store admin", "through the online form",
+# "using the shipping labels feature".
 _PLACE = re.compile(
     r"\b(?:in|through|from|via|under|using)\s+(?:the|your|their|our)\s+"
     r"(?:[\w'-]+\s+){0,4}?"
-    r"(?:settings|admin|app|area|section|page|menu|dashboard|screen|tab|form|portal)\b",
+    r"(?:settings|admin|app|area|section|page|menu|dashboard|screen|tab|form|portal|feature"
+    r"|tool|option|button)\b",
     re.I,
 )
 _PREPOSITION = re.compile(r"^\w+\s+")
@@ -89,6 +92,88 @@ def names_unsupported_place(answer: str, context: str, question: str) -> bool:
         if not any(place in s and (not task or task & _stems(s)) for s in context_sentences):
             return True
     return False
+
+
+_TOKEN = re.compile(r"[a-z0-9]+(?:'[a-z]+)?")
+_SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+|\n+")
+_NEGATIONS = {
+    "not", "no", "never", "cannot", "can't", "don't", "doesn't", "isn't", "aren't", "won't",
+}
+# What a plan does or does not let a merchant do: "you do not need any POS hardware", "a free
+# subscription does not include selling in person". Matched by their first four letters.
+_CLAIM_VERBS = {"need", "incl", "allo", "sell", "add", "addi", "adds", "acce", "buy", "buyi",
+                "coun", "spli", "offe"}
+_NOT_OBJECT_WORDS = _NOT_TASK_WORDS | {"any", "this", "that", "plan", "subscription", "toward",
+                                       "towards", "only", "also", "more", "than"}
+
+
+def _claims(text: str, whole_sentence: bool = False) -> list:
+    """(verb, object words, negated) for each claim verb in the text.
+
+    A claim is negated by a negation in the three words before it or, with whole_sentence,
+    anywhere in its sentence ("selling in person is not included").
+    """
+    if whole_sentence:
+        return [c for s in _SENTENCE_SPLIT.split(text) for c in _sentence_claims(s)]
+    return _sentence_claims(text, whole_sentence=False)
+
+
+def _sentence_claims(text: str, whole_sentence: bool = True) -> list:
+    tokens = _TOKEN.findall(text.lower().replace("’", "'"))
+    sentence_negated = whole_sentence and any(t in _NEGATIONS for t in tokens)
+    claims = []
+    for i, token in enumerate(tokens):
+        if token[:4] not in _CLAIM_VERBS:
+            continue
+        negated = sentence_negated or any(t in _NEGATIONS for t in tokens[max(0, i - 3):i])
+        objects = {t[:5] for t in tokens[i + 1:i + 6]
+                   if t not in _NOT_OBJECT_WORDS and t[:4] not in _CLAIM_VERBS}
+        claims.append((token[:4], objects, negated))
+    return claims
+
+
+def _conflicts(affirmed: list, negated_claims: list) -> bool:
+    return any(
+        v == nv and objs & nobjs
+        for v, objs, neg in affirmed if not neg
+        for nv, nobjs, nneg in negated_claims if nneg
+    )
+
+
+def contradicted_restriction(answer: str, context: str) -> Optional[str]:
+    """The context's own words, if the answer affirms something the context rules out.
+
+    The 3B model sometimes turns a stated restriction around: asked what POS hardware a
+    free-plan store should buy, it answered "You need to buy Brightstall POS hardware" where
+    the context says "you do not need any Brightstall POS hardware on this plan" (#5). Such an
+    answer is replaced by the restriction itself, which is covered and exact. Heuristic: a
+    claim verb (need, include, allow, sell, add, accept, buy, count, split, offer) that the
+    answer uses without negation and a context sentence uses with it, about the same thing.
+    """
+    answer_claims = _claims(answer, whole_sentence=True)
+    conflicting = [s.strip() for s in _SENTENCE_SPLIT.split(context)
+                   if _conflicts(answer_claims, _claims(s))]
+    return " ".join(dict.fromkeys(conflicting[:2])) or None
+
+
+_YES_LEAD = re.compile(r"^\s*yes\b[,.!]?\s*", re.I)
+_YES_NO_QUESTION = re.compile(r"^\s*(?:do|does|is|are|can|could|will|would|should|am)\b", re.I)
+
+
+def drop_contradicted_yes(answer: str, question: str) -> str:
+    """The answer without a leading "Yes" that the answer itself goes on to deny.
+
+    "Does an app that fulfills my orders count toward my location limit?" was answered "Yes,
+    an app ... is treated as a location, but it does not count toward the location limit":
+    the rest is right, the "Yes" answers the opposite question (#5).
+    """
+    if not (_YES_NO_QUESTION.search(question) and _YES_LEAD.search(answer)):
+        return answer
+    asked = [(v, objs, False) for v, objs, _neg in _claims(question)]
+    if not _conflicts(asked, _claims(answer)):
+        return answer
+    rest = _YES_LEAD.sub("", answer, count=1)
+    return rest[:1].upper() + rest[1:]
 
 
 def _relative_source(source: Optional[str]) -> Optional[str]:
@@ -139,7 +224,9 @@ class RetrievalNode(ChainBasedNode, abc.ABC):
     # "how do I..." questions the KB only partly covers, from general knowledge
     # (docs/eval/Prompt-Experiment-2026-09-19.md, docs/eval/Fix-16-17-Verification-2026-09-19.md).
     # Prompt wording alone did not stop it, so invents_steps() and names_unsupported_place()
-    # back rule 5 up in _predict.
+    # back rule 5 up in _predict, and contradicted_restriction() backs up rules 1 and 2. A
+    # prompt rule for plan restrictions was tried and made things worse: the 3B model then
+    # told paid customers their plan did not include things it does.
     _SYSTEM_PROMPT = (
         "You are a customer support assistant for an online store platform. The "
         "context below comes from the help center for the plan the customer is on, "
@@ -214,9 +301,14 @@ class RetrievalNode(ChainBasedNode, abc.ABC):
                 answer, context, last_user_message
             )
 
+            restriction = contradicted_restriction(answer, context)
+            fields["contradicted_restriction_replaced"] = restriction is not None
+
         if fields["invented_steps_blocked"] or fields["unsupported_place_blocked"]:
             return NOT_COVERED_REPLY
-        return answer
+        if restriction is not None:
+            return restriction
+        return drop_contradicted_yes(answer, last_user_message)
 
 
 class MultifunctionNode(ChainBasedNode, abc.ABC):
