@@ -199,9 +199,23 @@ class CustomerSupportPipeline:
         return node.greeting_message()
 
     def run(self, user_input: Optional[str]) -> Tuple[List[MessageOutput], bool]:
+        first_new = len(self._message_history.messages)
         result = self._run_turn(user_input)
+        self._tag_replies(first_new)
         self._save()
         return result
+
+    def _tag_replies(self, first_new: int) -> None:
+        """Records on each reply of this turn the node the turn ended at.
+
+        The front end styles a message by that node (a ticket confirmation comes from
+        CallCustomerNode), and a resumed session has no other way to know it. Models only
+        ever see a message's role and content, so the extra key never reaches them.
+        """
+        node = type(self._current_node).__name__
+        for message in self._message_history.messages[first_new:]:
+            if message["role"] == str(Role.ASSISTANT):
+                message["node"] = node
 
     def _run_turn(self, user_input: Optional[str]) -> Tuple[List[MessageOutput], bool]:
         if user_input is not None and user_input != "":
