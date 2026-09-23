@@ -8,7 +8,7 @@ import logging
 import sqlite3
 from contextlib import closing
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -52,8 +52,17 @@ def _create_sessions_table(conn: sqlite3.Connection) -> None:
 _MIGRATIONS = [_create_sessions_table]
 
 
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="microseconds")
+def _now(latest: Optional[str] = None) -> str:
+    """The current time, or just after `latest` if the clock has not moved past it.
+
+    The Windows clock can tick as coarsely as every millisecond, so two saves in a row can
+    read the same time; latest_unfinished() would then fall back to row order and could
+    return a session other than the one saved last.
+    """
+    now = datetime.now(timezone.utc)
+    if latest is not None:
+        now = max(now, datetime.fromisoformat(latest) + timedelta(microseconds=1))
+    return now.isoformat(timespec="microseconds")
 
 
 class SessionStore:
@@ -81,8 +90,10 @@ class SessionStore:
                     conn.execute(f"PRAGMA user_version = {target}")
 
     def save(self, record: SessionRecord) -> None:
-        now = _now()
         with closing(self._connect()) as conn, conn:
+            # Taking the write lock first keeps two processes from reading the same latest time.
+            conn.execute("BEGIN IMMEDIATE")
+            now = _now(conn.execute("SELECT MAX(updated_at) FROM sessions").fetchone()[0])
             conn.execute(
                 """
                 INSERT INTO sessions (session_id, conversation_id, node, node_input,

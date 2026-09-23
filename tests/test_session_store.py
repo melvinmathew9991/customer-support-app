@@ -1,8 +1,10 @@
 import json
 import sqlite3
+from datetime import datetime, timezone
 
 import pytest
 
+from customer_support_app import session_store
 from customer_support_app.session_store import SessionRecord, SessionStore, SessionStoreError
 
 
@@ -98,6 +100,23 @@ def test_latest_unfinished_returns_the_most_recently_saved_open_session(store):
     assert store.latest_unfinished() == "new"
 
     store.save(_record("old"))  # saving again makes it the most recent
+
+    assert store.latest_unfinished() == "old"
+
+
+def test_the_most_recent_save_wins_even_when_the_clock_has_not_moved(store, monkeypatch):
+    # The Windows clock can return the same time for saves a millisecond apart.
+    frozen = datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc)
+
+    class _FrozenClock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return frozen
+
+    monkeypatch.setattr(session_store, "datetime", _FrozenClock)
+    store.save(_record("old"))
+    store.save(_record("new"))
+    store.save(_record("old"))
 
     assert store.latest_unfinished() == "old"
 

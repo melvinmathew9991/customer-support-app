@@ -68,7 +68,7 @@ class _FakePipeline:
             reply, self._node = f"echo: {text}", "AuthenticatedUserNode"
         if text:
             self._messages.append({"content": text, "role": "user"})
-        self._messages.append({"content": reply, "role": "assistant"})
+        self._messages.append({"content": reply, "role": "assistant", "node": self._node})
         self._current_node = _NODES[self._node]()
         self._store.save(
             SessionRecord(
@@ -171,11 +171,7 @@ def test_an_ended_conversation_shows_its_transcript_and_no_longer_takes_input(db
 
     resumed = _open(session)
 
-    # A resumed session's history is replayed as plain markdown (kind isn't persisted -
-    # docs/Design.md §4's ticket-confirmation styling only applies to a message rendered
-    # live in the same process; see test_a_live_callback_message_renders_as_a_success_message
-    # for that case).
-    assert _texts(resumed)[-1] == "we will call you"
+    assert _success_texts(resumed) == ["we will call you"]
     assert [i.value for i in resumed.info] == ["This conversation has ended."]
     assert resumed.chat_input[0].disabled is True
     assert [b.label for b in resumed.button] == ["Start a new conversation"]
@@ -219,8 +215,7 @@ def test_a_live_callback_message_renders_as_a_success_message(db):
     at.chat_input[0].set_value("call me").run()
 
     # docs/Design.md §4: ticket-confirmation messages render as a success message, not
-    # plain markdown, when produced live (see the resumed-view test above for the one
-    # documented gap - a resumed session's history doesn't recover this).
+    # plain markdown.
     assert _success_texts(at) == ["we will call you"]
     assert "we will call you" not in _texts(at)
 
@@ -245,6 +240,34 @@ def test_a_resumed_session_still_recognizes_a_retry_prompt_from_its_history(db):
     assert [w.value for cm in resumed.chat_message for w in cm.warning] == [
         RealGreetingNode.RETRY_PROMPT[0]
     ]
+
+
+def test_a_resumed_session_still_renders_its_ticket_confirmation_as_a_success_message(db):
+    first = _open()
+    session = first.query_params["session"][0]
+    first.chat_input[0].set_value("call me").run()
+
+    resumed = _open(session)
+
+    assert _success_texts(resumed) == ["we will call you"]
+    assert "we will call you" not in _texts(resumed)
+
+
+def test_a_session_saved_before_replies_carried_their_node_replays_as_plain_text(db):
+    messages = [
+        {"content": "hello, who are you?", "role": "assistant"},
+        {"content": "call me", "role": "user"},
+        {"content": "we will call you", "role": "assistant"},
+    ]
+    SessionStore(db).save(
+        SessionRecord("old", "conv", "CallCustomerNode", None, {}, messages, True)
+    )
+
+    resumed = _open("old")
+
+    assert not resumed.exception
+    assert _texts(resumed) == ["hello, who are you?", "call me", "we will call you"]
+    assert _success_texts(resumed) == []
 
 
 def test_no_subscription_badge_before_identification(db):

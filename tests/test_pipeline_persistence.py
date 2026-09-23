@@ -150,7 +150,7 @@ def test_the_greeting_turn_is_saved(store):
     saved = store.load("s1")
     assert saved.node == "GreetingNode"
     assert saved.node_input is None
-    assert saved.messages == [{"content": "hello", "role": "assistant"}]
+    assert saved.messages == [{"content": "hello", "role": "assistant", "node": "GreetingNode"}]
     assert saved.is_over is False
 
 
@@ -169,6 +169,22 @@ def test_a_conversation_resumes_at_the_same_node_with_everything_it_had(store, f
     replies, is_over = second.run("and free plans?")
     assert [r.message for r in replies] == ["Michael Jackson, on premium"]
     assert is_over is False
+
+
+def test_each_reply_is_saved_with_the_node_its_turn_ended_at(store):
+    pipeline = _identified(store)
+    pipeline.run("please call me")
+
+    saved = store.load("s1").messages
+
+    assert [(m["role"], m.get("node")) for m in saved] == [
+        ("assistant", "GreetingNode"),
+        ("user", None),
+        ("system", None),
+        ("assistant", "AuthenticatedUserNode"),
+        ("user", None),
+        ("assistant", "CallCustomerNode"),
+    ]
 
 
 def test_current_user_profile_is_none_before_identification(store):
@@ -191,7 +207,11 @@ def test_resuming_does_not_run_the_greeting_again(store):
     resumed = CustomerSupportPipeline(store=store, session_id="s1")
 
     assert resumed._message_history.messages == before
-    assert resumed.transcript()[0] == {"content": "hello", "role": "assistant"}
+    assert resumed.transcript()[0] == {
+        "content": "hello",
+        "role": "assistant",
+        "node": "GreetingNode",
+    }
 
 
 def test_the_transcript_leaves_out_internal_system_lines(store):
@@ -329,7 +349,7 @@ def test_a_timed_out_turn_is_saved_with_its_reply(store):
     saved = store.load("s1")
     assert saved.messages[-2:] == [
         {"content": "tell me something", "role": "user"},
-        {"content": TIMEOUT_REPLY, "role": "assistant"},
+        {"content": TIMEOUT_REPLY, "role": "assistant", "node": "_TimingOutNode"},
     ]
 
 
