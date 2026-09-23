@@ -849,6 +849,10 @@ cohort entry (`docs/eval/Round2-FullEval-run{1,2}-2026-09-23.md`).
 - **Reading:** each round's fixes close the failures they were designed on, and each new
   unseen cohort finds new ones on paths the 3B model decides. Rules are not converging on
   the targets for this model. #5 and #23 stay open.
+- **Decision (2026-09-23):** the maintainer accepted #5 and #23 as known limits of
+  `llama3.2:3b`. Both stay open in the Known limits milestone, retitled with their current
+  held-out figures; revisit only with a model change (e.g. `gpt-4o-mini` for the answer and
+  callback-intent steps), verified on a new unseen cohort.
 
 ---
 
