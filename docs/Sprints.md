@@ -701,12 +701,43 @@ rather than silently claimed as full compliance.
   a live browser). Flagged honestly rather than claimed - a manual check in both themes
   is still open before calling `Design.md` §5's usability pass fully satisfied.
 
+**Closeout (2026-09-23, branch `fix/sprint-6-loose-ends`)** - both open items above closed:
+- ✅ **Resumed ticket styling.** `CustomerSupportPipeline.run()` now records on each
+  assistant reply the node its turn ended at (a `"node"` key on the saved message).
+  `messages` was already a JSON list of objects, so no schema migration was needed, and
+  every model call builds its input from role and content only, so the key never reaches
+  a model. `app.py`'s `_message_kind()` classifies live and resumed replies with the same
+  rule. Sessions saved before this carry no key and still replay ticket confirmations as
+  plain text (pinned by a test). 374/374 tests pass (3 new).
+- ✅ **Real-browser check.** No Chrome extension was available, so the app was rendered in
+  headless Microsoft Edge through Playwright (installed in a throwaway venv, not a project
+  dependency) against seeded sessions containing a retry, the tier badge and a ticket, in
+  three setups: the shipped custom theme with the OS in light mode, the same with the OS
+  in dark mode, and `--theme.base dark` with no custom colors, which is what a viewer who
+  picks Dark in Streamlit's settings menu gets. WCAG contrast was computed from the
+  rendered computed styles:
+
+  | Element | Custom (light) theme | Built-in dark |
+  |---|---|---|
+  | Body text | 17.4:1 | 18.1:1 |
+  | Retry warning (`st.warning`) | 4.66:1 | 11.0:1 |
+  | Ticket confirmation (`st.success`) | 5.51:1 | 11.8:1 |
+  | Tier badge (`st.caption`) | 4.57:1 | 6.9:1 |
+  | "Conversation has ended" (`st.info`) | 8.90:1 | 11.2:1 |
+
+  Everything passes WCAG AA (4.5:1). The retry warning and the badge clear it by a hair
+  in light mode, so any change to their colors should re-check contrast. Two things
+  learned: (1) with a custom `[theme]` set, an OS-level dark preference is **ignored**,
+  and the page renders in the light palette. Only the settings-menu toggle gives dark
+  mode, so "dark mode" here means Streamlit's built-in palette, as recorded above.
+  (2) Under that built-in dark theme the active tab and accents are Streamlit red, not
+  `Design.md`'s green: the same capability limit, now seen rather than inferred.
+
 **Deliverables:** themed app (`.streamlit/config.toml`, `app.py`), 7 new/updated tests,
-golden-set regression report.
-**Definition of done:** met on the parts that could be verified in this session - every
-`Design.md` §4 element is implemented and structurally tested; no functional regression
-(golden set re-run, identical on all 8 metrics). Not yet independently confirmed: a live
-browser check of actual color rendering in both light and dark mode.
+golden-set regression report; closeout: node-tagged replies, 3 more tests, browser check.
+**Definition of done:** met. Every `Design.md` §4 element is implemented, structurally
+tested, and was checked rendered in a real browser engine in both themes (closeout
+above); no functional regression (golden set re-run, identical on all 8 metrics).
 
 ---
 
