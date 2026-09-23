@@ -53,7 +53,7 @@ def test_no_phone_number_never_reaches_intent_check(message):
     "message",
     [
         "reach me on 0452-111-222 when you can",
-        "my number is (0452) 111 222, I'd like a chat by phone",
+        "my number is (0452) 111 222, whenever suits you",
         "+61 452 111 222 is the best number for me",
         "call +61 452 111 222",
     ],
@@ -283,3 +283,39 @@ def test_profile_phone_in_system_message_does_not_count_as_user_supplied():
 
     assert edge.check(_history("call me back please")) is False
     assert llm.calls == 0
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "I want to speak to a person. My number is 0452 505 606.",
+        "Reach me on 0452 707 808 so we can sort this out by phone.",
+        "I'd like to talk to someone about my payout, 0452 121 212.",
+        "Easier to explain over the phone - I'm on 0452 111 333.",
+    ],
+)
+def test_a_statement_asking_for_a_voice_conversation_is_accepted_without_the_model(message):
+    llm = _CountingLLM(answer=False)
+    edge = CallCustomerEdge(llm_model=llm)
+
+    assert edge.check(_history(message)) is True
+    assert llm.calls == 0
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        # Past tense, or talking to someone other than support.
+        "I spoke to someone on 0452 656 565 last week.",
+        "We use 0452 767 676 to talk to our suppliers.",
+        # Negated just before the phrase.
+        "I don't want to talk on the phone, my number 0452 222 888 is for texts.",
+        "Customers can't reach my shop by phone on 0452 111 999.",
+    ],
+)
+def test_voice_words_that_are_not_a_request_are_left_to_the_model(message):
+    llm = _CountingLLM(answer=False)
+    edge = CallCustomerEdge(llm_model=llm)
+
+    assert edge.check(_history(message)) is False
+    assert llm.calls == 1
