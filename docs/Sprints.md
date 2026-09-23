@@ -814,6 +814,44 @@ once, at the end (`docs/eval/QualityFixes-FullEval-2026-09-23.md`, 187 entries,
 
 ---
 
+## Out-of-band (2026-09-23) — Quality round 2 for #5 and #23
+Branch `fix/quality-round-2`. Same method as round 1: 50 new held-out entries and the pass
+criteria committed first (`e070965`), fixes designed on everything already seen, the full
+set (237 entries) run **twice** at the end because a dev replay showed the model is not
+byte-stable between runs (9 of 73 dev answers differed). The two runs agreed on every
+cohort entry (`docs/eval/Round2-FullEval-run{1,2}-2026-09-23.md`).
+- **#23:** a statement with a number that asks for a voice conversation with support ("I
+  want to speak to a person", "sort this out by phone") is accepted without the model;
+  present tense only, aimed at someone who can call back, and not negated just before.
+- **#5:** when an answer affirms something a context sentence negates ("You need to buy POS
+  hardware" vs "you do not need any POS hardware"), the reply is that context sentence; a
+  leading "Yes" the answer itself goes on to deny is dropped; the #17 guards also catch
+  "download" steps and invented named features. A prompt rule for plan restrictions was
+  tried first and rejected: it told paid customers their plan lacked things it has.
+
+| Criterion (fixed before the run) | Round-2 held-out | Met |
+|---|---|---|
+| #23 recall >= 90% | 10/13 (77%) | No |
+| #23 precision >= 95% | 10/11 (91%) | No |
+| #5 hallucination <= 5% (strict grading) | 2/20 (10%) | No |
+| No regression vs the #61 run | none (the one run-1 failure was an Ollama socket error; it passed in run 2) | Yes |
+
+- **What improved:** round-1 cohort recall 80% -> 93% (`call-092`, `call-098` fixed);
+  dev unchanged; on dev replays the new #5 checks fix `rag-adv-013` and `rag-free-017`.
+- **What failed, and why the fixes did not reach it:** every round-2 miss was the model's
+  own decision on a path the new rules do not cover. #23: two requests with no voice word at
+  all (`call-109`, `call-110`) and a voice question the model declined (`call-112`); the
+  false trigger `call-114` ("I called X twice today and nobody picked up") also went to the
+  model. #5: `rag-adv-023` invents deactivating locations for a free user, and
+  `rag-paid-021` answers "Yes" to "do I need..." where the KB says "can". The contradiction
+  check never fired on the cohort; the model refused 6 of 9 free-tier trap questions
+  instead of stating the restriction (safe, but unhelpful).
+- **Reading:** each round's fixes close the failures they were designed on, and each new
+  unseen cohort finds new ones on paths the 3B model decides. Rules are not converging on
+  the targets for this model. #5 and #23 stay open.
+
+---
+
 ## Sprint 7 (2 weeks) — Deployment & observability (Phases.md Phase 10)
 **SDLC stage:** Deploy + Operate
 **Goal:** Ship somewhere real, and be able to tell if it breaks.
