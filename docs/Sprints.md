@@ -741,6 +741,48 @@ rather than document it or move it out of the repo.
 
 ---
 
+## Out-of-band (2026-09-23) — Quality targets #5, #17, #23 on the Brightstall KB
+Branch `fix/quality-targets`, on top of the synthetic KB (#14). Method as in Sprint 2: the
+held-out cohorts and pass criteria were committed first (22 RAG entries, 30 callback
+entries), the fixes were designed on the existing entries only, and the cohorts were run
+once, at the end (`docs/eval/QualityFixes-FullEval-2026-09-23.md`, 187 entries,
+`llama3.2:3b`).
+- ✅ **#23, callback precision:** a question that contains a number but no word about being
+  contacted by voice is rejected before the model is asked. It can only turn a model
+  decision into "no". Dev: the two standing false triggers (`call-042`, `call-047`) fixed,
+  nothing else changed.
+- ✅ **#17 / #5, invented places and steps:** `invents_steps()` learned plain-prose step
+  wording, and a new `names_unsupported_place()` requires any "in/through your ... settings,
+  admin, app, form ..." phrase to appear in a context sentence that is about the same task.
+  Dev: the 4 hallucinations on the new KB (all this class) are now refusals, and no other
+  dev answer is affected. Rejected: a second-pass check by the 3B model itself (flagged 0 of
+  the 4, and 10-13 of 35 grounded answers).
+
+| Criterion (fixed before the run) | Held-out result | Met |
+|---|---|---|
+| #17: 0 answers with invented steps or menu paths | 0 of 22 | Yes |
+| #23: callback precision >= 95% | 12/12 (100%) | Yes |
+| #23: callback recall >= 90% | 12/15 (80%) | **No** |
+| #5: hallucination <= 5% (hand-graded) | 1/22 (4.5%) lenient, 2/22 (9.1%) strict | Only on the lenient reading |
+| No regression on machine-scored metrics | identification 100%, fails-safe 100%, recall 100% (n=55), leakage 0% | Yes |
+
+- **Recall misses** (`call-092`, `call-094`, `call-098`) are statements, which the new filter
+  never touches: the model says no to "sort this out by phone", "I want to speak to a
+  person" and "too complicated to type out" with a number. A pre-existing gap, not caused
+  by the fix. Closing it needs a new rule and a new unseen cohort; this one is now used.
+- **Hallucinations on the cohort:** `rag-adv-013` tells a free user to buy POS hardware (the
+  KB says a free plan needs none), a tier trap the guards do not target. `rag-free-017`
+  opens with a wrong "Yes" and then states the correct fact; counted only in the strict
+  reading.
+- **Cost:** refusals of partly covered questions: `rag-free-011` and `rag-paid-012` on dev
+  (both were hallucinations before), and on the cohort `rag-paid-019` and `rag-adv-015`
+  (model refusals, the guards did not fire).
+- Full set: callback precision 97% (n=58), recall 95% (n=59). One run, one grader.
+- Issue status: #17 met its criterion; #23 met precision but not recall; #5 met the target
+  only on the lenient reading. #5 and #23 stay open.
+
+---
+
 ## Sprint 7 (2 weeks) — Deployment & observability (Phases.md Phase 10)
 **SDLC stage:** Deploy + Operate
 **Goal:** Ship somewhere real, and be able to tell if it breaks.
