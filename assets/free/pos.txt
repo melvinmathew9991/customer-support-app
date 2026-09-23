@@ -1,5 +1,5 @@
 Point of sale
 
-Selling in person: a free subscription doesn't allow selling in person. With a free subscription you can only sell online.
+Selling in person: a free subscription does not include selling in person. On a free subscription you can sell online only.
 
-To sell in person with Shopify POS (in retail stores, markets, pop-up shops and other locations) you need a paid subscription. Because in-person selling isn't available on a free subscription, you don't need any Shopify POS hardware on this plan.
+Selling in person with Brightstall POS (in shops, at markets, at pop-ups or anywhere else) requires a paid subscription. Because a free subscription has no in-person selling, you do not need any Brightstall POS hardware on this plan.

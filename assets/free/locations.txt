@@ -1,14 +1,14 @@
 Locations
-A location is any physical place or an app where you do any or all of the following activities:
+In Brightstall, a location is any place, physical or digital, where your business does at least one of these things:
 
-sell products
-ship or fulfill orders
-stock inventory
+keeps inventory in stock
+sells products
+packs, ships or fulfills orders
 
-Free subscription: you can set up only a single location in your Shopify store. You cannot set up multiple locations on a free subscription. Multiple locations are available only with a paid subscription.
+Free subscription: your Brightstall store can have only one location. Adding a second location is not possible on a free subscription. Multiple locations require a paid subscription.
 
-You use your single location to track inventory and fulfill orders. Your location can be your online store or the place where you stock inventory.
+Your one location is where Brightstall tracks your inventory and fulfills your orders. It can be your online store itself or the place where you keep your stock.
 
-To make sure your inventory quantities are accurate, online orders are assigned to your location.
+Every online order is assigned to that location so your inventory counts stay correct.
 
-Apps that stock inventory or fulfill orders for you are considered to be locations, but don't count towards the location limit. When you add such an app to your store, the app is automatically added as a location.
+An app that stocks inventory or fulfills orders on your behalf is also treated as a location, but it does not count toward the location limit. Brightstall adds the app as a location automatically when you install it.

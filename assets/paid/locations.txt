@@ -1,23 +1,23 @@
 Locations
-A location is any physical place or an app where you do any or all of the following activities:
+In Brightstall, a location is any place, physical or digital, where your business does at least one of these things:
 
-sell products
-ship or fulfill orders
-stock inventory
+keeps inventory in stock
+sells products
+packs, ships or fulfills orders
 
-Paid subscription: you can set up multiple locations in your Shopify store, so you are not limited to a single location. You use your locations to track inventory and fulfill orders.
+Paid subscription: your Brightstall store can have multiple locations, so you are not limited to one. Brightstall uses your locations to track inventory and fulfill orders.
 
-Your locations can be retail stores, warehouses, popups, dropshippers, or any other place where you manage or stock inventory.
+A location can be a shop, a warehouse, a market stall, a pop-up, a dropshipping partner, or anywhere else you keep or manage stock.
 
-With multiple locations, you have better visibility into your inventory across your business.
+Running several locations gives you a clearer picture of your inventory across the whole business.
 
-To make sure your inventory quantities are accurate, online orders and in-person sales are assigned to locations.
-If some of your inventory is out of stock at one location, but it’s in stock at another location, then you can use Shopify to split the order so that it can be fulfilled from multiple locations.
+Online orders and in-person sales are each assigned to a location so your inventory counts stay correct.
+When an item is out of stock at one location but available at another, Brightstall can split the order so that each part ships from a location that has the stock.
 
-If you make sales from physical locations using the Shopify POS app, then you can add a location to your sales device to track your inventory accurately.
+If you sell in person with the Brightstall POS app, you can add a location to each sales device so that its sales are counted against the right inventory.
 
-Locations that you deactivate don't count toward your location limit.
+A location that you deactivate does not count toward your location limit.
 
-Apps that stock inventory or fulfill orders for you are considered to be locations, but don't count towards those limits. When you add such an app to your store, the app is automatically added as a location.
+An app that stocks inventory or fulfills orders on your behalf is also treated as a location, but it does not count toward the location limit. Brightstall adds the app as a location automatically when you install it.
 
-If you have a custom app that was developed specifically for your store, then you might have to update it to use inventory tracking for multiple locations. Developers can learn more about migrating to support multiple locations.
+A custom app built only for your store may need an update before it can track inventory across multiple locations. Its developer can find the migration notes in the Brightstall developer documentation.

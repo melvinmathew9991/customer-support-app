@@ -105,7 +105,7 @@ class RetrievalNode(ChainBasedNode, abc.ABC):
         "4. Answer in one to three sentences.\n"
         "5. Never describe menu paths, buttons, screens or step-by-step instructions "
         "unless they appear in the context. If the context only says that something "
-        'can be done (for example "in your Shopify Payments settings"), say only that '
+        'can be done (for example "in your Brightstall Payments settings"), say only that '
         "and do not add steps.\n\n"
         "Context:\n{context}"
     )
