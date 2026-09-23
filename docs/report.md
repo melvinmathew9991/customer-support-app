@@ -22,11 +22,11 @@ Primary use case: a tiered (free/paid) e-commerce support chatbot that identifie
 Objectives, as they currently stand:
 
 - Identify a user from a natural-language email/phone message and resolve their subscription tier — done. Three fabrication or bypass bugs were found and fixed along the way (§13 findings 6, 7, 20). Phone numbers and mixed-case emails identify correctly since the audit fix (#11); before it, the greeting asked for a phone number the lookup could not use. A user who still cannot be identified after three tries is told so and the conversation ends (#37); before, they were answered from the free KB.
-- Answer support questions grounded only in the user's own tier's knowledge base, with zero cross-tier leakage — done for leakage (0% on 39 scored retrieval cases). **Grounding is not at target:** see the hallucination row below.
-- Detect callback requests and route them to a ticketing flow — working, with a caveat that changed in Sprint 2: recall is 100% (44/44) and precision 93.6% (44/47) on the full set, but on a 22-entry cohort held out from design, precision is **83%** (target ≥95%). Since #33 a request that sits beside a decline in the same message counts, at the price of one new false trigger (`call-070`). A callback request must include a phone number (a maintainer decision, #7), and the ticket has a transcript-based summary only if the optional `audio` extra is installed (with it, the path was broken when first exercised, #43 and #44, and is fixed, §10.6).
+- Answer support questions grounded only in the user's own tier's knowledge base, with zero cross-tier leakage — done for leakage (0% on 73 scored retrieval cases). **Grounding is not at target:** invented steps and places are gone on fresh held-out questions (#17 closed), but hallucination was 10% on the round-2 cohort against ≤5% (§10.14).
+- Detect callback requests and route them to a ticketing flow — working, below target on unseen messages: on the full 237-entry set recall is 94% and precision 96%, but on the round-2 held-out cohort recall is **77%** (target ≥90%) and precision **91%** (target ≥95%) (§10.14). Since #33 a request that sits beside a decline in the same message counts, at the price of one new false trigger (`call-070`). A callback request must include a phone number (a maintainer decision, #7), and the ticket has a transcript-based summary only if the optional `audio` extra is installed (with it, the path was broken when first exercised, #43 and #44, and is fixed, §10.6).
 - Run entirely on a local, free model stack — done (Ollama). A larger local model (`llama3.1:8b`) was tested and rejected (§10.5).
 - Keep a conversation across a restart — done (Sprint 3): saved per turn in a local SQLite file, resumed by session id from the terminal or the page URL.
-- Make the system's behavior measurable, not just observable — done: every defined metric has a real number (machine-scored on a 135-entry golden set; hallucination hand-graded). The hallucination rate misses its ≤5% target, and several targets are too strict to confirm at the sample sizes used (§13 finding 28).
+- Make the system's behavior measurable, not just observable — done: every defined metric has a real number (machine-scored on a 237-entry golden set; hallucination hand-graded). The hallucination rate misses its ≤5% target, and several targets are too strict to confirm at the sample sizes used (§13 finding 28).
 
 ## 3. Proposed Solution
 
@@ -40,18 +40,18 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 |---|---|---|---|
 | Config | `config.py` | 162 | pydantic-settings `Settings`: LLM/embeddings provider, paths, `turn_log_path`, `llm_max_tokens` and `llm_timeout_seconds` (#30), `session_db_path` (Sprint 3); drops chromadb's false "Failed to send telemetry event" error (#13); `get_chat_model()` attaches a `TokenUsageCallbackHandler` to both providers (this update) |
 | Logging | `logging_config.py` | 112 | Console logger + structured JSON-line turn logger (`logs/turns.jsonl`); `TokenUsageCallbackHandler` logs one `llm_usage` event (input/output tokens) per LLM call, for either provider (this update) |
-| Persistence | `session_store.py` | 161 | `SessionStore`: SQLite (standard library), one JSON row per conversation, versioned schema with an append-only migration list; unreadable rows are a warning and a miss, a newer schema raises `SessionStoreError` |
+| Persistence | `session_store.py` | 172 | `SessionStore`: SQLite (standard library), one JSON row per conversation, versioned schema with an append-only migration list; unreadable rows are a warning and a miss, a newer schema raises `SessionStoreError`; each save is stamped strictly after the newest stored time (#62) |
 | Domain | `domain/chat.py` | 63 | `MessageHistory`, `Role`, `model_input()` |
 | Domain | `domain/graph.py` | 25 | `MessageOutput`, `EdgeOutput` |
 | Domain | `domain/validation.py` | 28 | `UserProfile`, `PhoneCallRequest`, `PhoneCallTicket`, `Validation` |
 | Graph framework | `graph/node.py` | 67 | `BaseNode`: `run_to_continue`, `execute` |
 | Graph framework | `graph/edge.py` | 89 | `BaseEdge`: parse/retry/exhaustion lifecycle |
-| Graph framework | `graph/chain_based_node.py` | 188 | `RetrievalNode` (RAG, strict answer prompt, `invents_steps()` guard, retrieval logging), `MultifunctionNode` |
+| Graph framework | `graph/chain_based_node.py` | 339 | `RetrievalNode` (RAG, strict answer prompt, retrieval logging) and its answer guards: `invents_steps()`, `names_unsupported_place()` (#17), `contradicted_restriction()` and `drop_contradicted_yes()` (#5, round 2); `MultifunctionNode` |
 | Graph framework | `graph/chain_based_edge.py` | 157 | `ZeroShotChainBasedEdge` (tool-calling agent; exposes raw intermediate tool-call steps) |
 | Graph framework | `graph/text_based_edge.py` | 91 | `PydanticTextBasedEdge` (condition-check + structured extraction; system messages excluded from both) |
 | Graph framework | `graph/static_text_node.py` | 30 | Fixed-text node |
-| Agents | `agents/support.py` | 430 | `GreetingNode`, `UserInfoChainBasedEdge` (identity guards, tier taken from the DB record), `AuthenticatedUserNode` (final, so the conversation ends, when identification failed, #37), `CallCustomerEdge` (digit pre-check, do-not-call phrasings taken out before a request is looked for #33, explicit-request patterns, typed-number check) / `CallCustomerNode` |
-| Tools | `tools/user_store.py` | ~150 | `UserStore` protocol; `MockUserStore` (in-memory, test default) and `SqliteUserStore` (real, persistent, auto-seeded, default since Sprint 4); email lookup ignores case, phone lookup by digits, #11 |
+| Agents | `agents/support.py` | 464 | `GreetingNode`, `UserInfoChainBasedEdge` (identity guards, tier taken from the DB record), `AuthenticatedUserNode` (final, so the conversation ends, when identification failed, #37), `CallCustomerEdge` (digit pre-check, do-not-call phrasings taken out before a request is looked for #33, explicit-request patterns, a filter for number questions with no voice-contact word (#61), a voice-request rule for statements (round 2), typed-number check) / `CallCustomerNode` |
+| Tools | `tools/user_store.py` | 155 | `UserStore` protocol; `MockUserStore` (in-memory, test default) and `SqliteUserStore` (real, persistent, auto-seeded, default since Sprint 4); email lookup ignores case, phone lookup by digits, #11 |
 | Tools | `tools/rag_responder.py` | 161 | `HelpCenterAgent`: idempotent index, stable chunk ids, content-based staleness check |
 | Tools | `tools/audio_transcribe.py` | 48 | Whisper-based call transcription; the ticket is asked for with structured output (#43); `transcription_available()` lets callers degrade instead of crashing |
 | Pipeline | `pipeline.py` | 280 | `CustomerSupportPipeline` orchestration + per-turn structured logging; a model timeout becomes a reply (#30); with a `SessionStore` it saves after every completed turn and can resume a saved conversation by rebuilding the graph (no replay, no model call); `current_user_profile` property backs the Sprint 6 tier badge; each saved reply records the node its turn ended at (Sprint 6 closeout) |
@@ -59,13 +59,13 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 | Interfaces | `app.py` | 157 | Streamlit Chat + Graph tabs; the session id lives in the URL (`?session=<id>`), so a reload or server restart resumes; an ended conversation shows its transcript and a start-again button. Themed since Sprint 6: a subscription-tier badge, `st.warning`/`st.success` for retry/ticket-confirmation messages (§10.11) |
 | UI | `ui/graph_renderer.py` | 55 | Graphviz DAG rendering |
 | Theme | `.streamlit/config.toml` | 12 | `Design.md`'s light palette (Sprint 6); Streamlit 1.39 supports one static custom theme, so a viewer's dark-mode toggle gets Streamlit's own dark defaults, not a second custom palette (§10.11) |
-| Scripts | `scripts/reindex_kb.py`, `scripts/eval_gate.py`, `scripts/summarize_eval_runs.py` | 59, ~180, ~130 | Rebuild the Chroma index from `assets/` (`--tier`, `--check`); the CI regression gate (Sprint 5); compare several full eval reports for run-to-run variance |
+| Scripts | `scripts/reindex_kb.py`, `scripts/eval_gate.py`, `scripts/summarize_eval_runs.py`, `scripts/generate_sample_call.ps1` | 59, 174, 132, ~40 | Rebuild the Chroma index from `assets/` (`--tier`, `--check`); the CI regression gate (Sprint 5); compare several full eval reports for run-to-run variance |
 | Tests | `tests/**/test_*.py` | 3,327 | 513 tests across 20 files, none needing a live model: agents (`test_call_customer_edge` 64, `test_user_info_edge` 9, `test_call_customer_node` 4, `test_authenticated_user_node` 2), domain (`test_chat` 4), graph (`test_retrieval_guard` 33, `test_node` 5, `test_text_based_edge` 3, `test_edge` 2), tools (`test_user_store` 35, `test_rag_responder` 8 - `test_user_info_db.py` was retired in Sprint 4 with the mock DB it tested), eval (`test_golden_set` 226, `test_run_eval_scoring` 19, `test_eval_gate` 10), and top level (`test_session_store` 23, `test_pipeline_persistence` 25, `test_cli` 14, `test_config` 12, `test_app_sessions` 14, `test_pipeline_timeout` 1) |
-| Eval | `tests/eval/` | 452 (harness) | `golden_set.json` (135 hand-labeled conversations, 11 categories), `run_eval.py` (automated scoring harness), `ci_baseline.json` (Sprint 5), `README.md` (schema) |
+| Eval | `tests/eval/` | 452 (harness) | `golden_set.json` (237 hand-labeled conversations, 11 categories, incl. three held-out cohorts committed before their fixes), `run_eval.py` (automated scoring harness), `ci_baseline.json` (Sprint 5), `README.md` (schema) |
 | CI / tooling | `.github/workflows/ci.yml`, `scripts/eval_gate.py`, `.githooks/pre-commit`, `.github/pull_request_template.md` | ~180 (gate script) | pytest + `ruff check` blocking on every PR; a 14-entry live-model `eval-gate` job (Sprint 5), a required status check since 2026-09-22 (§10.9); local pre-commit test hook |
 | Docs | `docs/*.md` (+ `docs/eval/*.md`, gitignored since this update) | — | PRD, Architecture, Rules, Phases, Design, Persistence-Design, User-Store-Design, Eval-Gate-Design, Process-Evaluation, Sprints, Git-Workflow, and 46 dated eval/experiment reports that stay on disk but are no longer tracked in git |
 
-**2,552** total lines across `src/customer_support_app/`.
+**2,763** total lines across `src/customer_support_app/`.
 
 ## 5. Folder Structure
 
@@ -95,7 +95,7 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 │   └── ui/graph_renderer.py
 ├── tests/                 # 513 unit tests (deterministic logic only)
 │   └── eval/               # golden_set.json, run_eval.py, ci_baseline.json (Sprint 5), README.md
-├── assets/                # free/ + paid/ knowledge base .txt files, sample call audio
+├── assets/                # synthetic Brightstall KB (free/ + paid/), sample call script + synthesized audio, NOTICE.md
 ├── notebooks/             # legacy exploratory prototype
 ├── logs/                  # gitignored - logs/turns.jsonl, structured per-turn output (incl. llm_usage events since this update)
 ├── data/                  # gitignored - sessions.sqlite, users.sqlite (Sprint 4), saved state (holds names, emails, phone numbers in the clear)
@@ -117,17 +117,17 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 |---|---|---|
 | App runtime | Streamlit 1.39.0 | Now themed (`.streamlit/config.toml`, Sprint 6, §10.11); driven headlessly with Streamlit's `AppTest` in 15 unit tests plus a fresh-process resume check (Sprint 3), and rendered in headless Edge via Playwright in both themes for the Sprint 6 closeout (§10.11) |
 | Orchestration | LangChain 0.3.7 (+ -community/-ollama/-openai/-chroma/-text-splitters) | Exercised live this update (§10.2) |
-| Session store | SQLite (standard library `sqlite3`) | 22 store tests, including migration rollback and a newer-schema refusal; a save-and-resume check re-run live this update. No new dependency, no ORM |
-| Vector store | ChromaDB 0.5.20 | Index checked against `assets/` this update: free 14 / paid 15 chunks, none stale |
-| Chat model | Ollama `llama3.2:3b` (local, default) | Exercised live this update, and across the 135-entry golden set and every experiment |
+| Session store | SQLite (standard library `sqlite3`) | 23 store tests (incl. a frozen-clock ordering test, #62), including migration rollback and a newer-schema refusal; a save-and-resume check re-run live this update. No new dependency, no ORM |
+| Vector store | ChromaDB 0.5.20 | Index rebuilt for the Brightstall KB and checked against `assets/`: free 13 / paid 13 chunks, none stale |
+| Chat model | Ollama `llama3.2:3b` (local, default) | Exercised across the 237-entry golden set (three full runs on 2026-09-23) and every experiment |
 | Chat model (tested, not adopted) | Ollama `llama3.1:8b` | Installed locally. Not re-run this update; results are from the Sprint 2 full run and targeted experiments (§10.5) |
 | Embeddings | Ollama `nomic-embed-text` (local) | Exercised live this update (retrieval) |
 | Chat model (opt-in) | OpenAI via `langchain-openai` (`gpt-4o-mini`) | Exercised live this update, full 135-entry golden set, first time an API key was configured (§10.10) |
-| Audio/transcription | `openai-whisper` (optional `audio` extra) | **Not installed in the project `.venv`.** Installed in separate short-path venvs on 2026-09-21 (`openai-whisper` 20250625 pinned by the extra since #44, `librosa` 0.10.2, torch 2.14.0): Whisper works, the ticket step works (#43), and the extra installs in a fresh venv without a workaround; §10.6. The app degrades gracefully without it |
-| Testing | pytest 8.3.3 | 446/446 pass (20 files, up from 335/19 - Sprint 6 added 7 tests, its closeout 3, the save-time fix #62 1, and the quality fixes and held-out cohorts 71) |
+| Audio/transcription | `openai-whisper` (optional `audio` extra) | **Not installed in the project `.venv`.** Re-run on 2026-09-23 on the synthesized Brightstall call (throwaway venv): accurate transcript in about 43 s, ticket for Ruby and Michael. Installed in separate short-path venvs on 2026-09-21 (`openai-whisper` 20250625 pinned by the extra since #44, `librosa` 0.10.2, torch 2.14.0): Whisper works, the ticket step works (#43), and the extra installs in a fresh venv without a workaround; §10.6. The app degrades gracefully without it |
+| Testing | pytest 8.3.3 | 513/513 pass (20 files, up from 335/19 - Sprint 6 added 7 tests, its closeout 3, the save-time fix #62 1, quality round 1 and its cohorts 71, round 2 and its cohorts 67) |
 | Lint | ruff 0.7.4 | 0 findings on `src tests scripts` and on the whole repo, re-run this update; a blocking CI gate. `ruff format` is not enforced (20 files would change) |
-| CI | GitHub Actions (`ci.yml`) | pytest + `ruff check src tests scripts`, both blocking on PRs and pushes to `main`; a live-model `eval-gate` job since Sprint 5 (PR-only), both `test` and `eval-gate` required status checks since 2026-09-22; 71 of 73 runs green (the 2 non-green are a deliberate proof failure and a superseded duplicate, not real breakage) |
-| Version control | git + GitHub (`melvinmathew9991/customer-support-app`) | 136 commits, 38 merged PRs as of #58; merge commits, branches kept as history, tags `v0.1.0-sprint1` and `v0.1.0-sprint2` (`docs/Git-Workflow.md`); `main` requires a PR and the `test`/`eval-gate` checks |
+| CI | GitHub Actions (`ci.yml`) | pytest + `ruff check src tests scripts`, both blocking on PRs and pushes to `main`; a live-model `eval-gate` job since Sprint 5 (PR-only), both `test` and `eval-gate` required status checks since 2026-09-22; 80 of 83 finished runs green (1 deliberate proof failure, 2 cancelled as superseded) |
+| Version control | git + GitHub (`melvinmathew9991/customer-support-app`) | 157 commits, 42 merged PRs as of #62 (#63 open); merge commits, branches kept as history, tags `v0.1.0-sprint1` and `v0.1.0-sprint2` (`docs/Git-Workflow.md`); `main` requires a PR and the `test`/`eval-gate` checks |
 
 ## 8. Implementation Details
 
@@ -196,9 +196,17 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 - **Regression verified:** a full 135-entry run, 0 of 135 entries changed result, all 8 metrics identical to the same-day baseline.
 - **Closed afterwards (2026-09-23):** resumed sessions keep ticket-confirmation styling, and the theme was checked rendered in a real browser engine in both modes. See §10.11.
 
+**2026-09-23 (after Sprint 6; `docs/Sprints.md` out-of-band entries):**
+
+- **Sprint 6 closeout (#59):** `CustomerSupportPipeline.run()` records on each assistant reply the node its turn ended at, so `app.py` styles a resumed reply exactly like a live one; no schema migration (messages are a JSON list). The theme was rendered in headless Edge through Playwright in both modes and its contrast computed: all text at WCAG AA (§10.11).
+- **Synthetic knowledge base (#60, closes #14):** all eight KB files rewritten from scratch for the fictional platform Brightstall, same files, tiers and tested facts; the sample call is an original script synthesized by `scripts/generate_sample_call.ps1`; `assets/NOTICE.md` records the origin of every file and the whole repository is MIT (§10.12).
+- **Quality round 1 (#61, closes #17):** 52 held-out entries committed with their criteria first; a callback filter for questions that contain a number but no voice-contact word (#23); `names_unsupported_place()` and plain-prose step wording in `invents_steps()` (#17, #5). A 3B self-check was tried and rejected (§10.13).
+- **Save-time tie (#62):** `SessionStore.save()` stamps each row strictly after the newest stored time, under a write lock; a coarse Windows clock had made `latest_unfinished()` return the wrong session and a test flaky.
+- **Quality round 2 (#63):** 50 more held-out entries committed first; a voice-request rule for statements (#23); `contradicted_restriction()` and `drop_contradicted_yes()` (#5), plus "download" steps and named features in the #17 guards. A prompt rule for plan restrictions was tried and rejected. All three round-2 targets were missed (§10.14).
+
 ## 9. Methodology — Build History
 
-136 commits and 38 merged pull requests as of #58. By pull request:
+157 commits and 42 merged pull requests as of #62 (#63 open). By pull request:
 
 | PR | Branch | What it did |
 |---|---|---|
@@ -585,23 +593,23 @@ a stronger model (`gpt-4o-mini` cleared callback precision on the full set, §10
 | Metric | Value |
 |---|---|
 | Unit tests passing | 513/513 (20 files) |
-| Live end-to-end checks on merged `main` | 7/7 pass (identify by email and phone, paid-only and free-only retrieval, callback, fail-safe, resume) |
-| CI | 71/73 runs green as of this update; the 2 non-green are the deliberate Sprint 5 proof failure and one superseded/cancelled duplicate run, not real breakage. `eval-gate` and `test` are both *required* status checks under branch protection since 2026-09-22 - see §10.9 |
-| Golden-set size | 135 conversations across 11 categories (122 in the Sprint 3 run) |
+| Live end-to-end checks on merged `main` | 7/7 pass (identify by email and phone, paid-only and free-only retrieval, callback, fail-safe, resume); not repeated after the 2026-09-23 changes, which ran through three full golden-set runs |
+| CI | 80 of 83 finished runs green; the non-green are the deliberate Sprint 5 proof failure and two superseded/cancelled runs, not real breakage. `eval-gate` and `test` are both *required* status checks under branch protection since 2026-09-22 - see §10.9 |
+| Golden-set size | 237 conversations across 11 categories (135 before 2026-09-23; 122 in the Sprint 3 run) |
 | Golden-set run, post-Sprint 3 (#45) | 120 pass, 3 fail (`call-042`, `call-047`, `call-070`), 12 manual review (Sprint 3: 108 pass, 2 fail, 12 manual, on 122 entries) |
-| Held-out sets written before their run | 21 `rag-*`, 16 + 22 callback, 15 for #16/#17, 10 for #22, 12 for #33 |
+| Held-out sets written before their run | 21 `rag-*`, 16 + 22 callback, 15 for #16/#17, 10 for #22, 12 for #33; 2026-09-23: 22 RAG + 30 callback (round 1), 20 RAG + 30 callback (round 2) |
 | Identity bypass/fabrication bugs found and fixed | 3 |
 | Eval-harness bugs/gaps found and fixed | 3 in Sprint 1, plus a stronger callback scorer in Sprint 2 |
 | KB content defects fixed | 2 (#6, #16) |
 | Ruff findings | 27 → 0, enforced in CI |
-| Retrieval recall / tier leakage | 100% / 0% (n=39) |
-| Callback recall / precision (full set) | 100% / 93.6% (44/47); held-out cohort (`call-037`..`058`) precision 83% (95% interval 55% to 95%) |
-| Hallucination | 13.3% fabrication on an untuned cohort; 2%-14% on the blind 51-answer grade; target ≤5% |
+| Retrieval recall / tier leakage | 100% / 0% (n=73, round-2 run 2; run 1 had one entry crash on an Ollama socket error) |
+| Callback recall / precision (full set) | 94% / 96% (n=72 / 71, 237 entries); round-2 held-out cohort recall 77% (10/13), precision 91% (10/11); earlier: 100% / 93.6% on 135 entries, 83% held-out precision |
+| Hallucination | round-2 held-out 10% (2/20, strict); round-1 held-out 4.5%-9.1%; invented steps 0/22 (#17 closed); earlier 13.3% on an untuned cohort; target ≤5% |
 | Run-to-run variance (5 full runs, unchanged code) | 0 pp on every aggregate metric, 0 of 135 entries change result, 1 answer varies in wording (`rag-free-008`); §10.7 |
 | Issues | #14 closed (§10.12); #17 closed (§10.13); #5 and #23 open after two rounds (§10.13, §10.14) |
-| Commits / PRs | 136 commits, 38 merged PRs as of #58; single contributor |
+| Commits / PRs | 157 commits, 42 merged PRs as of #62 (#63 open); single contributor |
 | Token usage, full 135-entry golden set (measured, not estimated; §10.10) | `llama3.2:3b`: 692 LLM calls, 359,094 tokens, $0 (local). `gpt-4o-mini`: 275 calls, 155,973 tokens, $0.0265 |
-| Since Sprint 3 | Sprint 4 (real user store, #51), Sprint 5 (CI regression gate, #52) and its hotfix (#55) for a merge incident found by Sprint 5's own proof (§10.9), token-usage logging and a measured OpenAI comparison (§10.10), and Sprint 6 (UI polish, #58, §10.11); plus #37, #33, #43, #44 fixed out of band |
+| Since Sprint 3 | Sprint 4 (real user store, #51), Sprint 5 (CI regression gate, #52) and its hotfix (#55) for a merge incident found by Sprint 5's own proof (§10.9), token-usage logging and a measured OpenAI comparison (§10.10), and Sprint 6 (UI polish, #58, §10.11); plus #37, #33, #43, #44 fixed out of band; on 2026-09-23 the Sprint 6 closeout (#59), the synthetic KB (#60), two quality rounds (#61, #63) and the save-time fix (#62) |
 
 ## 12. Result Analysis
 
