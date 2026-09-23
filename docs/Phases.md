@@ -255,9 +255,10 @@ no new dependency, no ORM).
   `st.success` (§4), using the existing graph-layer retry vocabulary
   (`GreetingNode.RETRY_PROMPT`) and node identity rather than new UI-side heuristics.
   The Graph tab is untouched, as specified.
-- Known gap: a resumed session's replayed history recovers retry styling (an exact
-  copy match) but not ticket-confirmation styling (which node produced a past message
-  isn't persisted) - only live, same-process ticket messages are styled.
+- Each saved assistant reply records the node its turn ended at, so a resumed session
+  styles its ticket confirmations too (closed 2026-09-23; sessions saved before then
+  replay them as plain text). Checked rendered in headless Edge in both themes, all
+  text at WCAG AA or better (`docs/Sprints.md`, Sprint 6 closeout).
 
 ## Phase 10 — Deployment & observability
 - Containerize / document a deployment path for the Streamlit app.

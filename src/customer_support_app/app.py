@@ -7,6 +7,7 @@ The conversation is saved after every turn under a session id kept in the page U
 the URL can read the conversation; see docs/Persistence-Design.md.
 """
 import uuid
+from typing import Optional
 
 import streamlit as st
 
@@ -22,19 +23,23 @@ setup_logging()
 st.title("Support")
 
 
-def _message_kind(content: str, pipeline: CustomerSupportPipeline) -> str:
-    """Classifies a just-produced message for styling, per docs/Design.md §4.
+def _message_kind(content: str, node: Optional[str]) -> str:
+    """Classifies a message for styling, per docs/Design.md §4.
 
-    Uses signals already available at render time rather than inventing new retry
-    detection (docs/Rules.md): an exact match against GreetingNode's own canonical
-    retry copy, and the same private _current_node read the Graph tab already relies
-    on to identify a ticket-confirmation message.
+    Uses signals the graph already provides rather than inventing new retry detection
+    (docs/Rules.md): an exact match against GreetingNode's own canonical retry copy, and
+    the node the message's turn ended at, which marks a ticket confirmation. A live
+    message reads that node from the pipeline; a resumed one from the saved message.
     """
     if content in GreetingNode.RETRY_PROMPT:
         return "retry"
-    if type(pipeline._current_node).__name__ == "CallCustomerNode":
+    if node == "CallCustomerNode":
         return "ticket"
     return "normal"
+
+
+def _current_node_name(pipeline: CustomerSupportPipeline) -> str:
+    return type(pipeline._current_node).__name__
 
 
 def _append_message(role: str, content: str, kind: str = "normal") -> None:
@@ -90,21 +95,19 @@ def start_chatbot():
             st.session_state.pipeline = pipeline
             st.session_state.messages = []
             if pipeline.resumed:
-                # Only "retry" can be recovered retroactively (an exact copy match) -
-                # a resumed session's old ticket-confirmation messages replay as plain
-                # text, since which node produced a past message isn't persisted.
+                # Sessions saved before replies carried their node have no "node" key, and
+                # replay their ticket confirmations as plain text.
                 st.session_state.messages = [
-                    {
-                        **m,
-                        "kind": "retry" if m["content"] in GreetingNode.RETRY_PROMPT else "normal",
-                    }
+                    {**m, "kind": _message_kind(m["content"], m.get("node"))}
                     for m in pipeline.transcript()
                 ]
             else:
                 res, is_over = pipeline.run("")
                 for prompt in res:
                     _append_message(
-                        "assistant", prompt.message, _message_kind(prompt.message, pipeline)
+                        "assistant",
+                        prompt.message,
+                        _message_kind(prompt.message, _current_node_name(pipeline)),
                     )
         else:
             pipeline = st.session_state.pipeline
@@ -129,7 +132,7 @@ def start_chatbot():
 
             for full_response in responses:
                 answer = full_response.message
-                kind = _message_kind(answer, pipeline)
+                kind = _message_kind(answer, _current_node_name(pipeline))
                 if kind == "retry":
                     message_placeholder.warning(answer)
                 elif kind == "ticket":
@@ -146,9 +149,7 @@ def start_chatbot():
             st.rerun()
 
     with tab2:
-        st.session_state._graph = GraphRenderer().get(
-            type(pipeline._current_node).__name__
-        )
+        st.session_state._graph = GraphRenderer().get(_current_node_name(pipeline))
 
         st.graphviz_chart(st.session_state._graph, use_container_width=True)
 
