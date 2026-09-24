@@ -181,7 +181,7 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 - **Design first** (`docs/Eval-Gate-Design.md`): a GitHub-hosted runner installing and caching Ollama, gating on a curated 14-entry subset - not a self-hosted runner (which GitHub warns against for public repos) and not a live-model-free gate (which wouldn't satisfy the sprint's own Definition of Done).
 - **Built:** `scripts/eval_gate.py` (10 unit tests on the comparison logic, no live model needed) and a new `eval-gate` CI job, separate from `test` so the fast unit/lint signal never waits on a live model.
 - **Proven for real, not simulated:** a disposable branch deliberately broke `_get_retriever` to always return the paid KB; `eval-gate` failed on it exactly as designed.
-- **The proof caught a real incident:** that same disposable "TEST - DO NOT MERGE" PR was merged into `main` anyway, because `eval-gate` wasn't yet a *required* status check - a few minutes of `main` served every user the paid KB regardless of tier. Caught by checking the merge history directly, fixed with one `git revert -m 1` (hotfix PR #55), and `eval-gate`/`test` were both made required status checks the same day. See §10.9, §13 finding 34.
+- **The proof caught a real incident:** that same disposable "TEST - DO NOT MERGE" PR was merged into `main` anyway, 21 seconds after the fast `test` job passed and while `eval-gate` was still running (it failed 8.5 minutes after the merge) - `eval-gate` wasn't yet a *required* status check, so nothing waited for it. For about 6 minutes `main`'s code would have served every user the paid KB regardless of tier (nothing is deployed, so no real user was affected). Caught by checking the merge history directly, fixed with one `git revert -m 1` (hotfix PR #55, itself merged before its own `eval-gate` finished - it passed about 7 minutes later), and `eval-gate`/`test` were both made required status checks the same day. See §10.9, §13 finding 34.
 
 **Token-usage logging and the OpenAI comparison (outside any sprint, same day as Sprint 6):**
 
@@ -243,7 +243,7 @@ A single installable package (`src/customer_support_app/`) plus a thin CLI/Strea
 | #52 | `sprint-5` | Sprint 5: automated eval regression gate (`scripts/eval_gate.py`, a new `eval-gate` CI job, Phase 8) |
 | #53 | `scratch/prove-eval-gate-catches-regression` | "TEST - DO NOT MERGE": a disposable tier-scoping break proving the gate catches a real regression - merged to `main` by mistake alongside #52 (the incident, §13 finding 34) |
 | #54 | `hotfix/revert-tier-scoping-break` | Revert the bad merge commit (`git revert -m 1`) |
-| #55 | `hotfix/revert-tier-scoping-break` | Hotfix: the revert, CI-verified green, merged |
+| #55 | `hotfix/revert-tier-scoping-break` | Hotfix: the revert - merged once `test` passed; its `eval-gate` passed about 7 minutes after the merge |
 | #56 | `docs/sprint-5-closeout` | Docs: close out Sprint 5 (Phase 8), record the merge incident honestly |
 | #57 | `docs/record-required-checks-live` | Docs: record that `eval-gate` and `test` are now required status checks |
 | #58 | `sprint-6` | Sprint 6: `.streamlit/config.toml` and `app.py` themed per `Design.md` (Phase 9), a `TokenUsageCallbackHandler` and the OpenAI-vs-local-model comparison, `docs/eval/` stopped being tracked |
@@ -401,16 +401,20 @@ of tier; the `eval-gate` job **failed** on it (`rag-adv-001`/`rag-adv-002`, tier
 exactly as designed - this is Sprint 5's own literal Definition of Done, proven, not
 asserted.
 
-**The proof also caught a real incident.** `eval-gate` reporting red does not yet block a
-merge: it isn't marked as a *required* status check in GitHub's branch protection
+**The proof also caught a real incident.** `eval-gate` does not yet block a merge,
+whether it is red or still running: it isn't marked as a *required* status check in GitHub's branch protection
 settings (`docs/Git-Workflow.md` already flagged this as a manual step still needed). The
 disposable "TEST - DO NOT MERGE" proof PR - labelled that in its title, body, and the
-code comment itself - was merged into `main` anyway, alongside the real Sprint 5 PR. For a
-few minutes, every user of the deployed code path would have been served the paid
-knowledge base regardless of their actual subscription tier. This was caught by checking
+code comment itself - was merged into `main` anyway, alongside the real Sprint 5 PR - at 10:15:04 UTC, 21
+seconds after its `test` job passed and while its `eval-gate` job was still running
+(`eval-gate` failed at 10:23:35, 8.5 minutes after the merge). `main`'s own push CI stayed
+green, since `eval-gate` runs on PRs only. For about 6 minutes, `main`'s code would have
+served every user the paid knowledge base regardless of their actual subscription tier;
+nothing is deployed, so no real user was affected. This was caught by checking
 `main`'s actual merge history directly rather than trusting a status summary, fixed with
-`git revert -m 1` of the one bad merge commit (hotfix PR #55, itself confirmed green on
-CI - both `eval-gate` and `test` passing on the revert - before being merged), and
+`git revert -m 1` of the one bad merge commit (hotfix PR #55, merged at 10:20:52 UTC once its `test`
+job passed - its `eval-gate` job was still running and passed at 10:28:04, so the revert
+was itself merged before the gate finished, the same habit that caused the incident), and
 verified live afterward. 363/364 tests passed on the hotfix branch; the one failure,
 `test_latest_unfinished_returns_the_most_recently_saved_open_session`
 (`tests/test_session_store.py`), is a pre-existing timestamp-ordering timing flake
@@ -667,7 +671,7 @@ The work of 2026-09-23 closed everything that was fixable by construction and me
 | 31 | The do-not-call veto refused a message that declines one call and requests another ("Never call me before 9am, but do call me on X") | Medium | Fixed (#33, PR #45) at the cost of one new false trigger, a decline followed by a conditional offer (`call-070`). Not covered: "You can't call me on X" is not a decline pattern and counts as a request |
 | 32 | Run-to-run variance of the eval was unmeasured (a full 3B run once differed by one entry on unchanged code) | Low | Measured (§10.7): 5 full runs, 0 pp spread on every aggregate metric, 0 flippers, one answer whose wording varied. The one-entry flip on record is `call-031`, a model-decided entry; not reproduced, not explained |
 | 33 | Sprint 4's own end-to-end audit (before merge, `docs/Sprints.md`): a real seed race in `SqliteUserStore` (confirmed with a forced-interleaving reproduction, not hypothetical), a shared-mutable-fixture reference in `MockUserStore`, two style inconsistencies, tests silently writing a real store file despite faking out the graph entirely, and SQLite connections never explicitly closed | Medium (the seed race; the rest low) | All fixed before PR #51 merged. None LLM-facing, so re-verified with the unit suite and a live check rather than a second golden-set run |
-| 34 | **A disposable, explicitly-labelled "TEST - DO NOT MERGE" proof PR (deliberately broken to test the Sprint 5 CI gate) was merged into `main` anyway**, because the new `eval-gate` CI check was not yet marked *required* in GitHub branch protection - a check reporting red does not by itself block a merge. For a few minutes `main` served every user the paid knowledge base regardless of tier | High (briefly live on `main`) | Fixed within minutes: caught by checking the actual merge history directly (not a status summary), reverted with one `git revert -m 1` (hotfix PR #55, itself CI-verified green before merging). The same day, `eval-gate` and `test` were both added as required status checks under branch protection (every other existing setting preserved) - the root cause is closed, not just the symptom |
+| 34 | **A disposable, explicitly-labelled "TEST - DO NOT MERGE" proof PR (deliberately broken to test the Sprint 5 CI gate) was merged into `main` anyway**, because the new `eval-gate` CI check was not yet marked *required* in GitHub branch protection - it was merged while `eval-gate` was still running, and a check that isn't required blocks nothing, red or pending. For about 6 minutes `main`'s code would have served every user the paid knowledge base regardless of tier (nothing deployed, no real user affected) | High (briefly live on `main`) | Fixed within minutes: caught by checking the actual merge history directly (not a status summary), reverted with one `git revert -m 1` (hotfix PR #55, merged once `test` passed; its `eval-gate` passed about 7 minutes after the merge). The same day, `eval-gate` and `test` were both added as required status checks under branch protection (every other existing setting preserved) - the root cause is closed, not just the symptom |
 | 35 | `docs/eval/` had grown to 46 report files and kept growing every run, with no accounting for the storage/traceability cost of that growth against the value of keeping every raw run | Low | Decided, not a bug: `docs/eval/` is now gitignored going forward (maintainer decision). Existing files stay on disk and in git history unchanged; only future changes stop being tracked |
 | 36 | `.streamlit/` was already blanket-ignored in `.gitignore` (evidently for `secrets.toml`-style local config) - would have silently swallowed Sprint 6's new `config.toml` theme file, the sprint's actual deliverable, with no error or warning | Medium (would have shipped a no-op theme) | Fixed before it shipped: `.gitignore` now excludes only `config.toml` from that directory's blanket rule; `secrets.toml`-style files stay ignored |
 | 37 | Sprint 6's theming (`Design.md` §4/§5) was never visually checked in a real browser, in either light or dark mode - no Chrome browser-automation tool was connected in the building session, so only structural presence (via `AppTest`) was verified, not actual color/contrast rendering | Medium | Closed 2026-09-23: rendered in headless Edge in both themes, every text element at WCAG AA or better (§10.11 closeout) |

@@ -620,12 +620,15 @@ maintainer before any code.
   "TEST - DO NOT MERGE" in its title, body, and the code comment itself) was merged into
   `main` anyway, alongside the real Sprint 5 PR - because `eval-gate` was not yet
   configured as a *required* status check in GitHub's branch protection settings, a PR can
-  merge regardless of what CI reports. For a few minutes, `main` served every user the
-  paid knowledge base regardless of their actual tier. Caught immediately (the merge
+  merge regardless of what CI reports: it merged 21 seconds after `test` passed, while
+  `eval-gate` was still running (it failed 8.5 minutes later). For about 6 minutes, `main`'s
+  code would have served every user the paid knowledge base regardless of their actual
+  tier (nothing is deployed, so no real user was affected). Caught immediately (the merge
   history was checked directly, not assumed from a status message), fixed with a `git
-  revert -m 1` of the one bad merge commit (hotfix PR #55, verified green - `eval-gate`
-  passing on the revert, unit suite passing except one confirmed-unrelated pre-existing
-  flake) and merged. **This is exactly the gap `docs/Eval-Gate-Design.md` and
+  revert -m 1` of the one bad merge commit (hotfix PR #55, merged once `test` passed; its
+  `eval-gate` was still running and passed about 7 minutes after the merge - the revert was
+  itself merged before the gate finished; locally the unit suite passed except one
+  confirmed-unrelated pre-existing flake). **This is exactly the gap `docs/Eval-Gate-Design.md` and
   `Git-Workflow.md` already flagged** ("has to be added as a required check under branch
   protection to actually block a merge instead of just reporting red") - it just hadn't
   happened yet, and this incident is the concrete reason to do it now, not a hypothetical.
