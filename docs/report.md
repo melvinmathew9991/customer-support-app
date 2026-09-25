@@ -454,8 +454,8 @@ checkout form", "phone support") without an actual callback request, and the 3B'
 LLM-based intent check (`PydanticTextBasedEdge.check()` in `CallCustomerEdge`, reached
 only when the deterministic regexes don't match) says yes where `gpt-4o-mini` says no.
 Everything else held identical, including all three `out_of_scope_question` refusals
-verbatim. Cost note: the same tokens would have cost $0.085 on `gpt-3.5-turbo` (still
-`.env.example`'s default model name) - over 3x more for a model that does not close the
+verbatim. Cost note: the same tokens would have cost $0.085 on `gpt-3.5-turbo` (then
+the default `OPENAI_MODEL`, since switched to `gpt-4o-mini`) - over 3x more for a model that does not close the
 precision gap.
 
 Limits: one run per backend (as in §10.5 and §10.7), hallucination rate not re-graded,
@@ -730,7 +730,7 @@ The work of 2026-09-23 had three practical obstacles and one methodological one.
 - One run per backend (§10.10), same caveat as every other model comparison in this report (§10.5, §10.7).
 - Compared the chat model only - embeddings stayed on local Ollama for both runs, so this is not evidence about an all-OpenAI stack.
 - `gpt-4o-mini`'s callback-precision win (98% vs 94%) is measured on the same golden set the local model's own fixes were developed against over several sprints - it's a fairer comparison than Sprint 1's uninformative 100%, but still not a cohort OpenAI had no prior exposure to in this codebase's history.
-- `OPENAI_MODEL` in `.env.example` still defaults to `gpt-3.5-turbo`, a model this comparison never actually ran (`gpt-4o-mini` was used instead, deliberately, as the cheaper and better-performing choice) - the default itself is now known-stale, not just unexercised.
+- `OPENAI_MODEL` defaulted to `gpt-3.5-turbo` (in `config.py`, `.env.example` and the README), a model this comparison never actually ran (`gpt-4o-mini` was used instead, deliberately, as the cheaper and better-performing choice). **Fixed:** the default is now `gpt-4o-mini`, the model this comparison measured.
 
 **New, from Sprint 6:**
 - Dark mode is Streamlit's own built-in palette, not `Design.md`'s dark column - a real capability limit in Streamlit 1.39.0's `config.toml` (one static custom theme), not an oversight.

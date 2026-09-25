@@ -859,6 +859,16 @@ cohort entry (`docs/eval/Round2-FullEval-run{1,2}-2026-09-23.md`).
 
 ---
 
+## Out-of-band (2026-09-26) — Default OpenAI model
+Branch `fix/openai-default-model`. `OPENAI_MODEL` defaulted to `gpt-3.5-turbo` in
+`config.py`, `.env.example` and the README, a model no run in this repo has measured. It is
+now `gpt-4o-mini`, the model `docs/eval/Compare-Ollama-vs-OpenAI-2026-09-22.md` ran: a third
+of the cost on the same tokens, and callback precision 98% vs the 3B's 94%. Ollama stays
+the default provider, so local runs are unchanged; only `LLM_PROVIDER=openai` without an
+explicit `OPENAI_MODEL` is affected. The prototype notebook keeps its original model.
+
+---
+
 ## Sprint 7 (2 weeks) — Deployment & observability (Phases.md Phase 10)
 **SDLC stage:** Deploy + Operate
 **Goal:** Ship somewhere real, and be able to tell if it breaks.

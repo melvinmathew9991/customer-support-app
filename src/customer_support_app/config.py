@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     ollama_model: str = "llama3.2:3b"
     ollama_base_url: str = "http://localhost:11434"
 
-    openai_model: str = "gpt-3.5-turbo"
+    openai_model: str = "gpt-4o-mini"
     openai_api_key: Optional[str] = None
 
     embeddings_provider: Literal["ollama", "sentence-transformers"] = "ollama"
