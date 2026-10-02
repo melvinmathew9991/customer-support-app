@@ -4,10 +4,12 @@
 every later sprint's regression gate) is measured against. See
 `docs/eval/Metrics.md` for how each field below feeds a specific metric.
 
-The set is 135 conversations across the 11 categories below (`ident-*` 14,
-`rag-*` 51, `call-*` 70). Growth since Sprint 1 added phrasing and topic
-variations within the existing categories rather than new ones, so the
-category list stays the taxonomy every metric is defined against. Entries
+The set is 239 conversations across the 12 categories below (`ident-*` 14,
+`rag-*` 93, `call-*` 130, `mt-*` 2). Growth since Sprint 1 mostly added phrasing and
+topic variations within the existing categories; the one new category,
+`multi_turn_session` (2026-10-02), exists because every other entry has at most
+two turns after the greeting, which hid a crash on the fifth question of every
+session. Entries
 written as held-out cohorts were committed before the run that scored them
 (see the `docs/eval/` reports); do not tune a fix against them afterwards.
 
@@ -58,6 +60,7 @@ again), etc. Leave irrelevant fields out rather than null-filling them.
 | `callback_request_explicit` | direct, unambiguous callback phrasing | Callback recall |
 | `callback_request_indirect` | indirect/polite callback phrasing | Callback recall |
 | `callback_false_trigger` | mentions "phone"/"call" but isn't requesting a callback | Callback precision |
+| `multi_turn_session` | one identified user asks six or more questions in a row; every turn must be answered from the KB and the session must stay at `AuthenticatedUserNode` | Multi-turn completion rate (target 100%) |
 
 ## Known data quirks to account for when scoring (not bugs to fix here)
 
