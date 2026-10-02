@@ -237,6 +237,26 @@ def score_callback(entry, transcript, final_node, _log_records):
     return passed, detail
 
 
+def score_multi_turn(entry, transcript, final_node, log_records):
+    # A long conversation must survive: every turn answered, none of it ending the session
+    # early, and every question after identification answered from the knowledge base. Before
+    # this category existed every conversation had at most two turns, so a crash on the fifth
+    # question of every session went unnoticed.
+    replies = transcript[1:]  # transcript[0] is the greeting
+    turns_answered = sum(1 for messages in replies if messages)
+    retrievals = sum(1 for r in log_records if r.get("event") == "retrieval")
+    questions = len(entry["turns"]) - 1  # the first turn identifies the user
+    node_ok = final_node == entry["expected"]["final_node"]
+    passed = turns_answered == len(entry["turns"]) and retrievals == questions and node_ok
+    return passed, {
+        "turns_answered": turns_answered,
+        "turns_sent": len(entry["turns"]),
+        "retrievals": retrievals,
+        "final_node": final_node,
+        "answer": _last_assistant_message(transcript),
+    }
+
+
 CATEGORY_SCORERS = {
     "happy_path_identification": score_identification,
     "ambiguous_identification": score_identification,
@@ -249,6 +269,7 @@ CATEGORY_SCORERS = {
     "callback_request_explicit": score_callback,
     "callback_request_indirect": score_callback,
     "callback_false_trigger": score_callback,
+    "multi_turn_session": score_multi_turn,
 }
 
 # Which categories feed which docs/eval/Metrics.md metric, for aggregation.
@@ -257,6 +278,7 @@ FAILS_SAFE_CATS = {"unknown_user_identification", "subscription_lookup_missing"}
 RETRIEVAL_CATS = {"free_tier_question", "paid_tier_question", "adversarial_tier_crossing"}
 CALLBACK_RECALL_CATS = {"callback_request_explicit", "callback_request_indirect"}
 CALLBACK_ALL_CATS = CALLBACK_RECALL_CATS | {"callback_false_trigger"}
+MULTI_TURN_CATS = {"multi_turn_session"}
 
 
 def run_all(golden_set):
@@ -331,6 +353,7 @@ def compute_metrics(results):
         else None
     )
 
+    metrics["multi_turn_completion_rate"] = pass_rate(MULTI_TURN_CATS)
     metrics["callback_recall"] = pass_rate(CALLBACK_RECALL_CATS)
     # Out-of-scope questions are never callback requests, so a fire there is a
     # false trigger and belongs in the precision denominator too.
@@ -388,6 +411,9 @@ def build_report(results, metrics):
     lines.append(fmt("Fails-safe rate", "100%", metrics["fails_safe_rate"]))
     lines.append(fmt("Retrieval recall@k", "≥90%", metrics["retrieval_recall_at_k"]))
     lines.append(fmt("Tier-leakage rate", "0%", metrics["tier_leakage_rate"]))
+    lines.append(
+        fmt("Multi-turn completion rate", "100%", metrics["multi_turn_completion_rate"])
+    )
     lines.append(fmt("Callback recall", "≥90%", metrics["callback_recall"]))
     lines.append(fmt("Callback precision", "≥95%", metrics["callback_precision"]))
     lines.append(

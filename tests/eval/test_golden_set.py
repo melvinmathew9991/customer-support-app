@@ -81,3 +81,21 @@ def test_rag_id_prefix_matches_category():
     }
     for e in RAG:
         assert e["id"].startswith(prefix[e["category"]]), e["id"]
+
+
+MULTI_TURN = [e for e in GOLDEN if e["category"] == "multi_turn_session"]
+
+
+def test_there_are_multi_turn_entries():
+    assert MULTI_TURN
+
+
+@pytest.mark.parametrize("entry", MULTI_TURN, ids=lambda e: e["id"])
+def test_multi_turn_entry_is_well_formed(entry):
+    assert entry["id"].startswith("mt-")
+    assert entry["turns"][0] in KNOWN_EMAILS
+    # More questions after identification than the old CallCustomerEdge retry limit (5).
+    assert len(entry["turns"]) - 1 >= 6
+    assert entry["expected"]["final_node"] == "AuthenticatedUserNode"
+    # No question may hold digits: a number could legitimately start a callback.
+    assert not any(ch.isdigit() for turn in entry["turns"][1:] for ch in turn)
