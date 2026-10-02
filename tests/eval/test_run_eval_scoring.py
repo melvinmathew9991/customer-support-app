@@ -183,3 +183,42 @@ def test_the_harness_stops_sending_turns_once_the_conversation_is_over(monkeypat
     assert error is None
     assert created[0].turns == 2  # the greeting run counts as the first turn
     assert len(transcript) == 2
+
+
+MULTI = {
+    "turns": ["john@doe.com", "q1", "q2", "q3"],
+    "expected": {"final_node": "AuthenticatedUserNode"},
+}
+RETRIEVALS = [{"event": "retrieval"}] * 3
+
+
+def test_a_multi_turn_session_with_every_turn_answered_passes():
+    transcript = [["welcome"], ["Hi John"], ["a1"], ["a2"], ["a3"]]
+    passed, _ = run_eval.score_multi_turn(MULTI, transcript, "AuthenticatedUserNode", RETRIEVALS)
+    assert passed is True
+
+
+def test_a_multi_turn_session_that_crashes_partway_fails():
+    # The fifth-question crash: the transcript stops early and the node moved to the call node.
+    transcript = [["welcome"], ["Hi John"], ["a1"]]
+    passed, detail = run_eval.score_multi_turn(
+        MULTI, transcript, "CallCustomerNode", RETRIEVALS[:1]
+    )
+    assert passed is False
+    assert detail["turns_answered"] == 2
+
+
+def test_a_multi_turn_session_with_a_silent_turn_fails():
+    transcript = [["welcome"], ["Hi John"], ["a1"], [], ["a3"]]
+    passed, _ = run_eval.score_multi_turn(MULTI, transcript, "AuthenticatedUserNode", RETRIEVALS)
+    assert passed is False
+
+
+def test_multi_turn_completion_is_its_own_metric():
+    results = [
+        {"category": "multi_turn_session", "passed": True, "detail": {}},
+        {"category": "multi_turn_session", "passed": False, "detail": {}},
+    ]
+    metrics = run_eval.compute_metrics(results)
+    assert metrics["multi_turn_completion_rate"] == (0.5, 2)
+    assert metrics["callback_precision"] is None  # not mixed into the callback metrics
