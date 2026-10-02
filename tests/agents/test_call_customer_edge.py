@@ -319,3 +319,15 @@ def test_voice_words_that_are_not_a_request_are_left_to_the_model(message):
 
     assert edge.check(_history(message)) is False
     assert llm.calls == 1
+
+
+def test_many_non_callback_messages_never_move_to_the_call_node():
+    """Regression: with a retry limit of 5, the fifth message that was not a callback request
+    made the edge give up and continue to CallCustomerNode with no number, which crashed on
+    None.phone_number. Not asking for a call is not a failure, so the edge never gives up."""
+    edge = CallCustomerEdge(llm_model=_CountingLLM(answer=False))
+
+    for _ in range(10):
+        # Holds a number, so the decision reaches the (stubbed) intent check every time.
+        result = edge.execute(_history("my order number is 0452 111 222, where is it?"))
+        assert result.should_continue is False

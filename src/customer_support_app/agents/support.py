@@ -279,7 +279,10 @@ class AuthenticatedUserNode(RetrievalNode):
 
 
 class CallCustomerEdge(PydanticTextBasedEdge):
-    def __init__(self, llm_model, max_retries: int = 5, out_node: BaseNode = None):
+    # No retry limit: a message that is not a callback request is not a failure, and giving
+    # up would move to CallCustomerNode with no number to call. With a limit of 5, the fifth
+    # ordinary question of every conversation crashed on None.phone_number.
+    def __init__(self, llm_model, max_retries: Optional[int] = None, out_node: BaseNode = None):
         super().__init__(
             condition=(
                 "Does the user ask a support agent to call them? Only mentioning, "

@@ -63,3 +63,13 @@ def test_successful_parse_returns_the_parsed_result():
 
     assert output.should_continue is True
     assert output.result == "ok"
+
+
+def test_no_retry_limit_never_continues_on_failures():
+    """max_retries=None: failures never make the edge give up and continue to its node."""
+    edge = FlakyEdge(outcomes=[False] * 10, max_retries=None)
+
+    for attempt in range(1, 11):
+        result = edge.execute(None)
+        assert result.should_continue is False
+        assert result.num_fails == attempt

@@ -78,7 +78,8 @@ class BaseEdge(abc.ABC, Generic[EdgeInput, ResultsType]):
                 parsing_exception, "llm_output", None
             ) or str(parsing_exception)
             self._num_fails += 1
-            if self._num_fails >= self._max_retries:
+            # max_retries=None: never give up, the edge simply does not continue.
+            if self._max_retries is not None and self._num_fails >= self._max_retries:
                 return self._get_edge_output(
                     should_continue=True,
                     result=MessageOutput(error_message, role=Role.SYSTEM),
