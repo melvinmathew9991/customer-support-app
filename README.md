@@ -28,7 +28,7 @@ customer_support_app/
 ├── pyproject.toml            # single source of truth for deps/metadata
 ├── .env.example
 ├── assets/                   # synthetic knowledge base (fictional "Brightstall") + sample call audio; see assets/NOTICE.md
-├── docs/                     # design docs (PRD, Architecture, Rules, Phases, Design, Persistence-Design, Sprints, Process-Evaluation)
+├── docs/                     # design docs and eval reports - kept locally by the maintainer, not in the repo (see below)
 ├── notebooks/                # legacy exploratory prototype (customer_support.ipynb)
 ├── src/customer_support_app/ # the installable package
 │   ├── config.py             # pydantic-settings: LLM/embeddings provider, paths
@@ -43,6 +43,11 @@ customer_support_app/
 │   └── ui/graph_renderer.py   # renders the DAG in the Streamlit "Graph" tab
 └── tests/                     # pytest unit tests (no Ollama required)
 ```
+
+The `docs/` folder (PRD, architecture, rules, sprint plan, design docs, eval reports and
+the project report) is not tracked in git since #68; it lives only in the maintainer's
+checkout. References to `docs/...` in this README, the PR template and code comments point
+to those files, so a fresh clone will not have them.
 
 ## Setup
 
@@ -179,7 +184,7 @@ slow and non-deterministic by nature.
 ## Contributing
 
 Branching, commit and PR conventions, the pre-commit hook and CI are described
-in [`docs/Git-Workflow.md`](docs/Git-Workflow.md). After cloning, enable the
+in `docs/Git-Workflow.md`. After cloning, enable the
 hook once with `git config core.hooksPath .githooks`.
 
 ## License
