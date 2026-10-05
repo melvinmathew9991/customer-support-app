@@ -1,8 +1,8 @@
 {
   "manifest": {
-    "git_sha": "04995a8ec0c256fab2bd260e27a0d7a39ee76a28",
+    "git_sha": "cfc589ba36e6d84fb917a00f249a20379c5b2827",
     "model": "ollama:llama3.2:3b",
-    "generated_at": "2026-09-23T04:09:40.667710+00:00"
+    "generated_at": "2026-10-05T09:11:42.776009+00:00"
   },
   "entries": {
     "ident-001": true,
@@ -18,6 +18,7 @@
     "call-004": true,
     "call-002": true,
     "call-003": true,
-    "call-009": true
+    "call-009": true,
+    "mt-001": true
   }
 }

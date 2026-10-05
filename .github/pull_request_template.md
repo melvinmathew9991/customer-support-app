@@ -16,6 +16,6 @@
 
 ## Testing
 - [ ] `pytest` passes locally
-- [ ] Eval re-run if LLM-dependent behavior changed (`docs/eval/` report added)
-- [ ] `docs/Sprints.md` / `docs/Phases.md` updated
-- [ ] `docs/report.md` updated if this change alters anything it states (counts, behavior, metrics, findings, limits)
+- [ ] Eval re-run if LLM-dependent behavior changed (numbers in Results above; report saved under the local `docs/eval/`)
+- [ ] Local `docs/Sprints.md` / `docs/Phases.md` updated (not part of the diff: `docs/` is untracked since #68)
+- [ ] Local `docs/report.md` updated if this change alters anything it states (counts, behavior, metrics, findings, limits)
