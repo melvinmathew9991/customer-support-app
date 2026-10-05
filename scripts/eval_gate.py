@@ -2,7 +2,7 @@
 
 Runs a small, fixed subset of the golden set against the live pipeline and fails if any
 entry that wasn't failing starts failing, compared to the checked-in baseline. The full
-135-entry golden set stays a manual pre-merge step (see the PR template) - this only runs
+239-entry golden set stays a manual pre-merge step (see the PR template) - this only runs
 a fast subset, small enough for CI's CPU-only, ephemeral Ollama.
 
 Usage:
@@ -43,6 +43,9 @@ SMOKE_IDS = [
     "call-002",
     "call-003",
     "call-009",
+    # The one multi-turn entry: seven turns, so a regression that only shows after a few
+    # questions (#67, a crash on the fifth) fails the gate instead of reaching main.
+    "mt-001",
 ]
 
 # Sentinel so "this id has no baseline entry" is distinguishable from "the baseline's

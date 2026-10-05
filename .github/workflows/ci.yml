@@ -26,7 +26,7 @@ jobs:
         run: pip install -e ".[dev]"
 
       # Deterministic logic only - no Ollama or API key needed (see README).
-      # The full 135-entry golden set (tests/eval/run_eval.py) needs a local model and
+      # The full 239-entry golden set (tests/eval/run_eval.py) needs a local model and
       # stays a manual pre-merge step; a small subset runs live in the eval-gate job
       # below (docs/Eval-Gate-Design.md).
       - name: Unit tests
